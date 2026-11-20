@@ -58,3 +58,29 @@ Gaps it found and what addressed them: no success case (M10), opening call (M11)
 
 - Whether the two-view-pair default misleads for subjects with many co-equal actors was not tested beyond the reviewer's deadlock case.
 - Length. The reviewer asked for a one-fifth cut from about 3,300 words. The revision is about 4,000 words including three worked examples and a 30-item checklist, so it grew: it added the procedure, the cold-read protocol and a non-message example, and fixed contradictions. The "why use a walkthrough" section became a paragraph and the contrast sentence was dropped, but this is not the cut asked for. A second review should judge whether it is read and what to cut.
+
+## Field trials
+
+The skill is being tried on the bundled demos, one at a time: an agent redoes a demo by following the skill, logs where it helped, where it disagreed, what was unclear and what the skill was silent on, and the skill is revised before the next demo.
+
+### Trial 1: spreadsheet recalculation
+
+Verdict from the trial: mixed. Better on substance (the reader can now say what goes wrong in the wrong order, that a formula cell can be skipped, and which cells were recomputed), worse on length (card text 2.2 times longer).
+
+| Finding                                                                                                                                  | Decision | Change                                                                                                                              |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| "Pair what happens with what it changes" pushed toward a third view that made the result worse; the subject has no messages or code      | Accepted | The rule now applies when the subject has both; two views of state are enough otherwise; a third view must fit beside the other two |
+| "Do not show the whole system at the start" is wrong when the starting state already exists, and conflicts with keeping the layout still | Accepted | Show existing state from the first call and mark only the part discussed; build up only what the run creates                        |
+| The sentence-count limit let text double while every call passed                                                                         | Accepted | About 40 words in up to three sentences; joined statements count; an order of what to keep when not everything fits                 |
+| "Label every relation" is too absolute when all arrows mean one thing                                                                    | Accepted | Say it once and leave the arrows bare                                                                                               |
+| "About five things at once, group them" cannot apply when the things are the subject                                                     | Accepted | Exempted, with "keep the instance small"                                                                                            |
+| Three rules named three places to define a term                                                                                          | Accepted | One rule in section 1; the others point to it                                                                                       |
+| "Concurrency" heading hid guidance that applies to any unfixed order                                                                     | Accepted | Heading renamed                                                                                                                     |
+| Silent on example size, a closing call, a call that changes nothing, and why the mechanism matters                                       | Accepted | Added "size the example", "Closing", and "a call that changes nothing"                                                              |
+| Silent on what to do when the tool cannot show something                                                                                 | Accepted | One rule in the procedure: put it in the text or drop it, and record the gap                                                        |
+| Cold read: unclear what the intro is and whether the reader sees the test question                                                       | Accepted | Stated; added "list every sentence read twice"; two rounds, storyboard then built                                                   |
+| Checklist 16 fails a step name that the step itself defines                                                                              | Accepted | Reworded                                                                                                                            |
+| Checklist 15 cannot fail when two views share ids                                                                                        | Kept     | It can fail in other designs; revisit after more trials                                                                             |
+| Remove worked example A and the evidence tags in running text                                                                            | Deferred | One trial on a subject they do not fit is not enough; revisit after trials on message-based subjects                                |
+
+Most valuable parts, by the trial's account: writing the test question's answer before designing, picking values that tell things apart, checking facts against a primary source (it showed the original demo's "sort" stage is not what the cited documentation describes), and the cold read.

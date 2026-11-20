@@ -13,7 +13,7 @@ How to decide what a stepped, multi-view explanation contains, so a reader finis
 
 ## The procedure
 
-Produce these artifacts in order and keep them in one design record (a text file next to the config) so a reviewer can check them.
+Produce these artifacts in order and keep them in one design record (a text file in your working notes; it need not ship with the walkthrough) so a reviewer can check them.
 
 1. **Reader record**: four lines (section 1).
 2. **Scenario and data table**: one concrete run and its values (sections 2, 7).
@@ -23,12 +23,14 @@ Produce these artifacts in order and keep them in one design record (a text file
 6. **Fact check** with pointers (section 8).
 7. **Reader test**, then revise (section 10).
 
+If the tool cannot show something the design calls for (a key, a note, a kind of mark), put it in a call's text or drop it, and write the gap in the record. Do not bend the design around the tool without saying so.
+
 If you cannot ask the requester for step 1, write your best guess, mark each line "assumed", and put the record where the requester will see it.
 
 ## 1. Reader and outcome
 
 1. **Reader:** who, in one line ("a backend developer who has used OAuth but never read the spec").
-2. **Knows / does not know:** the terms they know and the terms they do not. Define each unknown term once, at first use, in the walkthrough's intro, or cut it. If many terms are unknown, the outcome is probably two outcomes: split the walkthrough.
+2. **Knows / does not know:** the terms they know and the terms they do not. Define each unknown term once, or cut it. Where: in the call that first needs it; in the intro only if more than one step depends on it. If many terms are unknown, the outcome is probably two outcomes: split the walkthrough.
 3. **Afterwards they can:** one observable ability, with a verb you could test: predict, explain to someone else, spot the bug, choose between A and B. "Understand" is not a test.
 4. **Test question:** the question that checks line 3, with its written answer. The walkthrough exists to make the reader able to give that answer.
 
@@ -44,7 +46,8 @@ If the subject is a fixed structure with nothing that changes (a lookup table, a
 2. **List the nouns** (actors, stores, messages, values) **and the events** that happen to them.
 3. **Cut.** Keep an item only if removing it would change the answer to the test question, or remove a fact that a kept call refers to. Everything else goes, however true or interesting. [L1 coherence, medium confidence in this setting]
 4. **Say what you cut** in one line of the intro ("Omitted: retries, TLS, token expiry"). What remains must not become false.
-5. If you must track more than about five actors or things at once, group them (show a service as one box now, open it later) or split the outcome. [P]
+5. If you must track more than about five actors or things at once, group them (show a service as one box now, open it later) or split the outcome. This does not apply when the things are the subject itself and are all alike (the cells of a sheet, the items of a list): keep them, and keep the instance small. [P]
+6. **Size the example:** the smallest instance that contains every phenomenon the written answer names, and no smaller. If the answer says "a cell reached twice is computed once", the example needs a cell reached twice.
 
 ## 3. Views
 
@@ -67,7 +70,7 @@ Choose two or three views. A fourth needs a reason you can state in one sentence
 Rules:
 
 - **Each view answers a different question** ("who is talking?", "what does the store hold now?"). Name the question per view. If two views answer the same one, drop one.
-- **Pair what happens with what it changes.** Most subjects need one view of the events (messages, code lines, a decision path) and one of the state they change (a table, a graph, an array). Add a third only for a detail the first two hide (exact bytes, the exact line). [N3: concrete step plus whole-state view]
+- **Pair what happens with what it changes, when the subject has both.** Most subjects need one view of the events (messages, code lines, a decision path) and one of the state they change (a table, a graph, an array). If the subject has no messages or code (a recalculation, a layout pass), two views of the state are enough and the list of calls is the events view: do not add a flow chart only to have one. Add a third view only for a detail the first two hide (exact bytes, the exact line), and only if it fits on screen beside the other two at reading size; if it does not, its content goes in the text. [N3: concrete step plus whole-state view]
 - **A view is wrong when:** it never changes across the whole walkthrough (make it static context or cut it); it holds one or two elements (put them in the call text); the reader must scroll or zoom to read it (split the subject); the reader must work out which row matches which node (give the thing one name and one value everywhere).
 - **Same thing, same name, same value** in every view that shows it.
 - **Schematic beats realistic.** Draw what the idea needs and no more. [L2]
@@ -80,15 +83,19 @@ Rules:
 
 **A step is a phase the reader can name.** Typically 3 to 7 steps of 1 to 5 calls. [P] Name it with a noun or short phrase in the reader's words ("Exchange the code", not "Phase 3"). Put a boundary where the reader's question changes, where control passes to another actor, or where a stable state is reached that the reader can take in before moving on. Give a step a one-sentence purpose and, if state changed, a closing sentence on where things stand. [N1: orientation, summaries]
 
-**Opening.** Start with the first real call, preceded by a sentence of context, or with a named opening call that shows only the entities that call needs. Do not show the whole system at the start.
+**Opening.** Start with the first real call, preceded by a sentence of context, or with a named opening call. If the run starts from state that already exists (a sheet, a table, a cluster), show that state from the first call and mark only the part each opening call talks about. Build a view up only when the things are created during the run. Never trade a still layout for a late entrance.
 
-**Merge or split?** Merge consecutive calls that change the same thing in the same way with no decision between them, unless each needs its own arrow or line. Do not merge calls that carry the idea to save clicks: reader-paced steps are what helps. [L1 segmenting, L2]
+**Closing.** End on a call whose final state lets the reader read the answer off the views (what changed, what was left alone), and say once why the mechanism matters.
+
+**A call that changes nothing** (a check that declines, a wait) is still a call when the reader needs to see it happen; say what was looked at and what the outcome was.
+
+**Merge or split?** Merge consecutive calls that change the same thing in the same way with no decision between them, unless each is a separate message or line of code that the reader must see on its own. Do not merge calls that carry the idea to save clicks: reader-paced steps are what helps. [L1 segmenting, L2]
 
 **Loops.** If iterations are alike (retry, polling), show the first, the second (what carries over), and the one that differs (the last, or the one where something breaks), and state how many were skipped. If each iteration changes different state (quicksort, a graph search, a merge), do not skip: group iterations into steps and show all. Under four iterations, show all.
 
 **Branches and errors.** Walk the main path uninterrupted. Mark the divergence in the text ("here the server can refuse"). Put each alternative path in its own later step, reusing the same views and values so the reader compares like with like. Do not interleave two paths in one run of calls. [L5, by analogy: interdependent steps make readers go back and forth] If two paths are equally long and important, make two walkthroughs.
 
-**Concurrency.** Choose one valid order, say it is one of several, and say why you chose it (usually: it exposes the problem).
+**Any order the system does not fix** (concurrent work, an unordered set, a scheduler's choice). Choose one valid order, say it is one of several, and say why you chose it (usually: it exposes the problem).
 
 **Size.** Decide the total from the reader's session, not from the subject: for example 15 to 25 calls for a five-minute read at about 15 seconds a call. [P] Over budget means cut (section 2), not squeeze.
 
@@ -97,10 +104,10 @@ Rules:
 Each call has a name and a text.
 
 - **Name = what happens**, in a short verb phrase with the real command, message or value where it fits (`POST /token`, "Mark A3 dirty"). If the real thing is long (an SQL statement), shorten it and keep its distinguishing part.
-- **Text = what changed, why, and what to notice.** State the change with names and values, old and new ("balance 40 becomes 25": after the call the old value is gone from the view). Say what it means, not where it is on screen. Two or three sentences usually fit; four or more means split the call or move detail to a note. [P]
+- **Text = what changed, why, and what to notice.** State the change with names and values, old and new ("balance 40 becomes 25": after the call the old value is gone from the view). Say what it means, not where it is on screen. Keep it to about 40 words in up to three sentences; a colon or semicolon that joins two statements counts as a sentence break. Over that, split the call or cut. When the demands below do not all fit, keep the change and its values first, then why, and drop the rest. [P]
 - **Stand alone.** A reader who jumps to any call should be able to follow it, given only the intro's definitions. So the text names things by their own names or values ("the row for order 17"), not by position, colour, "this" or "above". [W1, A3]
 - **Do not narrate the layout** ("an arrow goes from the client to the server"). Exceptions to "tie text to something highlighted": a step's purpose and recap sentences, and a prediction prompt.
-- **One new term per call,** defined where it first matters, in the reader's words. No forward references ("as we will see"). [L6]
+- **One new term per call,** defined in the call that first needs it (section 1 says when the intro is the better place), in the reader's words. No forward references ("as we will see"). [L6]
 - **Words belong with what they describe:** keep each call's text with the call that highlights the thing, not in a distant note. [L1 contiguity; the studies placed words in or beside one graphic, so this is an extrapolation]
 - **Later in a long walkthrough** you may leave routine moves unexplained so the reader predicts them [L3, L4: fading, strongest evidence is for maths and programming], but still state every change of value.
 - **For a how-to** (the reader will do these things), write each call as one imperative action with the goal first ("To revoke the token, send...") [W1]. For an explanation, write what the system does.
@@ -121,7 +128,7 @@ Each call has a name and a text.
 - **Make values tell things apart:** 14 and 9, not 10 and 10. Pick values that make the edge case visible when you reach it.
 - **Realistic, not real people.** Plausible names, ids and timestamps; reserved example domains; no real secrets or customers. Prefer real output when it exists (an actual hash, a recorded run). If real output uses names the reader does not know (pids, transaction ids), relabel with the reader's names and say once that you did.
 - **One name per thing,** from the reader's domain. Abbreviations are defined at first use. Each view's title says what it shows ("Orders table", not "State").
-- **Label every relation with what it carries** ("POST /token with code and verifier"), not "uses". Each arrow goes one way. [D1]
+- **Label every relation with what it carries** ("POST /token with code and verifier"), not "uses". Each arrow goes one way. If every arrow in a view means the same thing, say what it means once, in the first call that uses one, and leave the arrows bare. [D1]
 - **Give a key** for any encoding that is not obvious (what the dashed line, the amber mark, the badge mean). [D1]
 - **Allocation:** what changes goes in the highlight; why goes in the text; exact bytes go in a payload view; background goes in the intro.
 
@@ -136,7 +143,7 @@ Each call has a name and a text.
 ## 9. Load and accessibility
 
 - **Introduce late:** a view, an actor or a term appears when the first call that needs it does. [L5]
-- **Pre-teach** the key terms in the step's intro before the calls that use them. Evidence is good for novices and in fast-paced lessons, weaker when the learner controls the pace, which is the case here, and it can burden experts. [L1 pre-training, L3]
+- **Pre-teach** only the terms that several steps depend on, in the intro; define the rest where they are first needed (section 1). Evidence is good for novices and in fast-paced lessons, weaker when the learner controls the pace, which is the case here, and it can burden experts. [L1 pre-training, L3]
 - **At most two levels of detail** (a call, and the detail behind it). [P; L5 says this of interface features]
 - **Never colour alone.** Every meaning carried by colour is also carried by text, a mark or a position. Check by looking at it in greyscale. Keep to three or four colour meanings, used the same way throughout. [A1, A2]
 - **The text path tells the whole story.** Read only the call texts, in order, to someone who cannot see the views: every change is stated and every term defined. [A3]
@@ -145,9 +152,10 @@ Each call has a name and a text.
 
 ## 10. Test it
 
+0. **Two rounds.** Test the storyboard first, because changes are cheap there; test again on the built walkthrough, because views change what the text needs to say.
 1. **Storyboard on paper:** one card per call with name, text and a sketch of each view's state. Read the cards aloud. Fix on paper.
 2. **Test on three to five people from the intended audience** (separately for clearly different audiences). Ask the test question before and after. Watch them step through, asking them to think aloud; do not explain or hint. Note where they stall, go back, misread or say "wait". Revise, then test on new readers: several small rounds find more than one large one. [W2, W3]
-3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent only the intro and the call names and texts, in order, no views. Ask it to (a) answer the test question, (b) list every term or value it could not derive from the text, treating anything not defined there as unknown even if it knows it, (c) list every state change the text does not state. This tests only the text path, and a model's prior knowledge hides gaps, so report it as a weaker test.
+3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent only the intro and the call names and texts, in order, no views. Ask it to (a) answer the test question, (b) list every term or value it could not derive from the text, treating anything not defined there as unknown even if it knows it, (c) list every state change the text does not state, (d) list every sentence it had to read twice. "The intro" is the title and opening lines the reader sees before the first call. Give the test question only after the read, so it does not steer the reading. This tests only the text path, and a model's prior knowledge hides gaps, so report it as a weaker test.
 4. **Evidence caveat.** Most of the research behind these rules is from short lab lessons, not interactive multi-view explanations. The reader test is the authority.
 
 ## Worked examples
@@ -194,14 +202,14 @@ Run it on the draft and the design record. Answer yes or no. Any "no" is a findi
 13. Does the walkthrough open with context or a first real call showing only what that call needs?
 14. Can each call be said in one sentence with one verb, without splitting an atomic event?
 15. Does each call touch every view whose state it depends on, and no other?
-16. Does each step name use only words the reader record lists as known?
+16. Does each step name use only words the reader knows or that the step's first call defines?
 17. Are alike loop iterations cut to first, second and the different one, with the skipped count stated; and are unlike iterations all shown? (n/a if no loops)
 18. Is each alternative or error path in its own step after the main path, with the divergence marked? (n/a if none)
 
 **Text**
 
 19. Does each call name say what happens, using the real command, message or value where short enough?
-20. Is each call's text three sentences or fewer?
+20. Is each call's text about 40 words or fewer, in at most three sentences?
 21. Does each sentence say what changed, why, or what to notice, rather than where something is on screen?
 22. When a value changes, does the text give the old and the new one?
 23. Does reading only the call texts in order state every change?
