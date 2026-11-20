@@ -339,7 +339,7 @@ function cardSections({
   const labels = new Map(entitiesOf(content).map((entity) => [entity.id, entity.label]));
   const rows: { key: string; value: string }[] = [];
   for (const pointer of content.pointers) {
-    if (!state.present.includes(pointer.id)) continue;
+    if (!state.present.includes(pointer.id) || pointerAt(pointer, state.patches) === null) continue;
     rows.push({
       key: text(state.patches[pointer.id]?.label) ?? pointer.label ?? pointer.id,
       value: describePointer(content, pointer, state),

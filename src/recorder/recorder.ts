@@ -57,6 +57,8 @@ export interface RangeOption {
 }
 
 export interface ArrayOptions extends ViewOptions {
+  /** Put this array in the pane of that name, under the arrays already there, instead of its own. */
+  pane?: string;
   pointers?: (string | PointerOption)[];
   ranges?: RangeOption[];
 }
@@ -98,6 +100,8 @@ const show = (value: Cell): string => (value === null || value === undefined ? '
 interface ArrayState {
   kind: 'array';
   id: string;
+  /** The pane it is drawn in: its own id unless `options.pane` shares one. */
+  pane: string;
   options: ArrayOptions;
   data: Scalar[];
   proxy: Scalar[];
@@ -167,6 +171,10 @@ export class Recorder {
   private frameCount = 0;
   private readonly visits = new Map<string, number>();
   private readonly titles = new Map<string, number>();
+  private readonly deferred: (() => void)[] = [];
+  /** Set by `leave`: what follows belongs to the caller's next call, not to the one that returned. */
+  private sealed = false;
+  private readonly queue: [string, Effect][] = [];
   private readonly popped: number[] = [];
   private stepTitle: string | undefined;
   private manualStep = false;
@@ -187,6 +195,7 @@ export class Recorder {
     const view: ArrayState = {
       kind: 'array',
       id,
+      pane: options.pane ?? id,
       options,
       data: [...data],
       proxy: [],
@@ -304,6 +313,10 @@ export class Recorder {
     this.steps.at(-1)!.calls.push(call);
     this.call = call;
 
+    for (const later of this.deferred.splice(0)) later();
+    this.sealed = false;
+    for (const [pane, effect] of this.queue.splice(0)) this.emit(pane, effect);
+
     // Frames that returned in the last call leave the stack now, so the reader sees them go.
     const stack = this.stackView();
     for (const depth of this.popped.splice(0)) {
@@ -353,12 +366,12 @@ export class Recorder {
     const pointer = view.pointers.get(name)!;
     if (!pointer.shown) {
       pointer.shown = true;
-      this.emit(view.id, { add: name });
-      this.emit(view.id, { update: name, fields: { at } });
+      this.emit(view.pane, { add: name });
+      this.emit(view.pane, { update: name, fields: { at } });
     } else if (pointer.at === at) {
-      this.emit(view.id, { read: name });
+      this.emit(view.pane, { read: name });
     } else {
-      this.emit(view.id, { update: name, fields: { at } });
+      this.emit(view.pane, { update: name, fields: { at } });
     }
     pointer.at = at;
     const vars = this.views.find(
@@ -380,17 +393,27 @@ export class Recorder {
     }
     if (!range.shown) {
       range.shown = true;
-      this.emit(view.id, { add: name });
+      this.emit(view.pane, { add: name });
     }
-    this.emit(view.id, { update: name, fields: { from, to } });
+    this.emit(view.pane, { update: name, fields: { from, to } });
   }
 
-  /** Sets a lasting tone on a cell, pointer or range, or on a row of any pane. `none` clears it. */
-  tone(pane: string, id: string | number, tone: Tone): void {
+  /**
+   * Sets a lasting tone on a cell, pointer or range, or on a row of any pane. `none` clears it.
+   * For an array, `id` may be an index or `[first, last]` (inclusive, and empty when last is
+   * before first), so a base case can mark "these cells are done" without checking for none.
+   */
+  tone(pane: string, id: string | number | readonly [number, number], tone: Tone): void {
     this.open('tone');
-    const view = this.view(pane);
-    const target = view.kind === 'array' && typeof id === 'number' ? `${pane}.${id}` : String(id);
-    this.update(pane, target, { tone });
+    const { pane: where, array } = this.target(pane);
+    if (Array.isArray(id)) {
+      for (let index = id[0]; index <= id[1]; index += 1) {
+        this.update(where, `${pane}.${index}`, { tone });
+      }
+      return;
+    }
+    const cell = array !== undefined && typeof id === 'number' ? `${pane}.${id}` : String(id);
+    this.update(where, cell, { tone });
   }
 
   /** Sets a variable shown in a `vars` pane. A value that does not change is a read. */
@@ -420,6 +443,11 @@ export class Recorder {
 
   /** A function call begins. Fills the next free depth of the stack pane, if there is one. */
   enter(name: string, args: Record<string, Scalar> = {}): void {
+    if (!this.started) {
+      // The outermost call starts before any line has run: it joins the first call.
+      this.deferred.push(() => this.enter(name, args));
+      return;
+    }
     this.open('enter');
     const arg = Object.values(args).join(', ');
     const label = `${name}(${arg})`;
@@ -457,6 +485,8 @@ export class Recorder {
       this.emit(stack.id, { update: this.slot(stack, depth), fields });
       this.popped.push(depth);
     }
+    // Whatever the caller does next, such as moving a range back, shows in its own next call.
+    this.sealed = true;
     const parent = this.frames.at(-1);
     this.stepTitle = parent === undefined ? undefined : `Back in ${parent.label}`;
   }
@@ -495,6 +525,8 @@ export class Recorder {
   /** The config. It is plain data and loads with no recorder present. */
   finish(): WalkthroughInput {
     if (this.steps.length === 0) throw new Error('nothing was recorded: call at() first');
+    this.sealed = false;
+    for (const [pane, effect] of this.queue.splice(0)) this.emit(pane, effect);
     for (const step of this.steps) {
       if (step.calls.length === 0) throw new Error(`step "${step.title}" has no calls`);
     }
@@ -514,7 +546,15 @@ export class Recorder {
           ],
         },
       },
-      ...this.views.map((view) => this.paneOf(view)),
+      ...this.views
+        // Arrays that share a pane are drawn by the first of them.
+        .filter(
+          (view, index) =>
+            view.kind !== 'array' ||
+            this.views.findIndex((item) => item.kind === 'array' && item.pane === view.pane) ===
+              index,
+        )
+        .map((view) => this.paneOf(view)),
     ];
     const steps = this.steps.map((step) => ({
       id: step.id,
@@ -551,14 +591,26 @@ export class Recorder {
   }
 
   private register(view: View): void {
-    this.unique('pane', view.id);
+    const shared = view.kind === 'array' && view.pane !== view.id;
+    if (!shared) this.unique('pane', view.kind === 'array' ? view.pane : view.id);
+    else if (!this.views.some((item) => item.kind === 'array' && item.pane === view.pane)) {
+      this.unique('pane', view.pane);
+    }
+    if (this.views.some((item) => item.kind === 'array' && item.id === view.id)) {
+      throw new Error(`the array "${view.id}" is declared twice`);
+    }
     this.views.push(view);
   }
 
-  private view(id: string): View {
-    const view = this.views.find((item) => item.id === id);
-    if (view === undefined) throw new Error(`no pane "${id}" was declared`);
-    return view;
+  /** The pane and the id of a cell, pointer or range, by array id or by pane id. */
+  private target(name: string): { pane: string; array: ArrayState | undefined } {
+    const array = this.views.find(
+      (item): item is ArrayState => item.kind === 'array' && item.id === name,
+    );
+    if (array !== undefined) return { pane: array.pane, array };
+    if (!this.views.some((item) => item.id === name))
+      throw new Error(`no pane or array "${name}" was declared`);
+    return { pane: name, array: undefined };
   }
 
   private stackView(): StackState | undefined {
@@ -600,6 +652,10 @@ export class Recorder {
   /** Adds an effect to the open call, folding repeats so the config stays short and lint clean. */
   private emit(pane: string, effect: Effect): void {
     if (this.quiet > 0 || this.call === undefined) return;
+    if (this.sealed) {
+      this.queue.push([pane, effect]);
+      return;
+    }
     const list = (this.call.effects[pane] ??= []);
     const verb = (['add', 'update', 'read', 'remove'] as const).find(
       (key) => effect[key] !== undefined,
@@ -643,7 +699,7 @@ export class Recorder {
         if (typeof prop === 'string' && INDEX.test(prop)) {
           const index = Number(prop);
           if (index < target.length && recorder.started && view.present.has(index)) {
-            recorder.emit(view.id, { read: `${view.id}.${index}` });
+            recorder.emit(view.pane, { read: `${view.id}.${index}` });
           }
           return Reflect.get(target, prop);
         }
@@ -665,9 +721,9 @@ export class Recorder {
             const cell = `${view.id}.${index}`;
             if (fresh) {
               view.present.add(index);
-              recorder.emit(view.id, { add: cell });
+              recorder.emit(view.pane, { add: cell });
             }
-            recorder.emit(view.id, { update: cell, fields: { value } });
+            recorder.emit(view.pane, { update: cell, fields: { value } });
           } else {
             view.present.add(index);
           }
@@ -692,7 +748,7 @@ export class Recorder {
   private drop(view: ArrayState, index: number): void {
     if (!view.present.has(index)) return;
     view.present.delete(index);
-    if (this.started) this.emit(view.id, { remove: `${view.id}.${index}` });
+    if (this.started) this.emit(view.pane, { remove: `${view.id}.${index}` });
   }
 
   private trackRow(view: GridState, row: number): Cell[] {
@@ -730,40 +786,47 @@ export class Recorder {
       case 'pane':
         return { ...head(view.panel, view.id), content: view.content };
       case 'array': {
-        const initial = view.initial ?? view.data;
-        const pointers = [...view.pointers].map(([id, pointer]) => ({
-          id,
-          array: view.id,
-          side: pointer.side,
-          ...(pointer.label === undefined ? {} : { label: pointer.label }),
-          initial: false,
-        }));
-        const ranges = [...view.ranges].map(([id, range]) => {
-          const bound = range.from !== undefined && range.to !== undefined;
-          return {
+        const group = this.views.filter(
+          (item): item is ArrayState => item.kind === 'array' && item.pane === view.pane,
+        );
+        const pointers = group.flatMap((array) =>
+          [...array.pointers].map(([id, pointer]) => ({
             id,
-            array: view.id,
-            from: range.from ?? 0,
-            to: range.to ?? -1,
-            ...(range.label === undefined ? {} : { label: range.label }),
-            ...(range.dim ? { dim: true } : {}),
-            ...(range.tone === undefined ? {} : { tone: range.tone }),
-            initial: bound,
+            array: array.id,
+            side: pointer.side,
+            ...(pointer.label === undefined ? {} : { label: pointer.label }),
+            initial: false,
+          })),
+        );
+        const ranges = group.flatMap((array) =>
+          [...array.ranges].map(([id, range]) => {
+            const bound = range.from !== undefined && range.to !== undefined;
+            return {
+              id,
+              array: array.id,
+              from: range.from ?? 0,
+              to: range.to ?? -1,
+              ...(range.label === undefined ? {} : { label: range.label }),
+              ...(range.dim ? { dim: true } : {}),
+              ...(range.tone === undefined ? {} : { tone: range.tone }),
+              initial: bound,
+            };
+          }),
+        );
+        const arrays = group.map((array) => {
+          const initial = array.initial ?? array.data;
+          return {
+            id: array.id,
+            label: array.id,
+            cells: initial,
+            ...(array.longest > initial.length ? { length: array.longest } : {}),
           };
         });
-        const content = {
-          arrays: [
-            {
-              id: view.id,
-              label: view.id,
-              cells: initial,
-              ...(view.longest > initial.length ? { length: view.longest } : {}),
-            },
-          ],
-          pointers,
-          ranges,
+        return {
+          ...head('array', view.pane),
+          id: view.pane,
+          content: { arrays, pointers, ranges },
         };
-        return { ...head('array', view.id), content };
       }
       case 'vars':
         return {
@@ -787,7 +850,7 @@ export class Recorder {
             direction: view.options.direction ?? 'column',
             boxes: Array.from({ length: Math.max(view.deepest, 1) }, (_, depth) => ({
               id: this.slot(view, depth),
-              label: 'frame',
+              label: `depth ${depth + 1}`,
               ...(depth > 0 ? { parent: this.slot(view, depth - 1) } : {}),
             })),
           },
