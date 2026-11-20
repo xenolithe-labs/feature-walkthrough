@@ -47,6 +47,9 @@ authentication switched on.
    npm publish               # builds through "prepack", then asks for the key again
    ```
 
+   Then mark the commit: `git tag v0.1.0 && git push origin v0.1.0`. The release workflow runs,
+   sees that 0.1.0 is already on npm, and stages nothing.
+
 2. **Trust the workflow.** On npmjs.com, in the package's **Settings**, add a trusted publisher
    for GitHub Actions:
 
