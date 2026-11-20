@@ -68,7 +68,7 @@ export interface AtOptions {
   label?: string;
   /**
    * The card text: why this happens, what to notice. A function is run once the call is open, so
-   * that reading a cell to describe it is recorded as part of this call and not the last one.
+   * that describing a cell does not record a read, in this call or the one before.
    */
   text?: string | (() => string);
   /** Mark only the snippet inside the line, or the given piece of it, instead of the whole line. */

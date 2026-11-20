@@ -101,6 +101,7 @@ pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel r
 - `src/shell/` — the page around the panels.
 - `src/panels/`, `src/annotations/` — panel types and annotation plugins, registered in `src/registry.ts`.
 - `src/walkthroughs/` — the bundled demo configs.
+- `src/recorder/` — the trace recorder: run an algorithm, get a config. No React.
 - `cli/` — the `feature-walkthrough` command.
 - `skills/` — the skill for coding agents; `reference.md` in it is generated.
 
