@@ -1213,3 +1213,226 @@ body {
     animation: none !important;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Controls. Every control in the header and the navigation bar is the same height and shape,
+   and one that is on, open or playing is filled, so its state can be seen at a glance.
+   ------------------------------------------------------------------------------------------- */
+.fw {
+  --fw-control-height: 32px;
+}
+
+.fw-views,
+.fw-toggle,
+.fw-arrow,
+.fw-play-button,
+.fw-play select,
+.fw-outline > summary {
+  box-sizing: border-box;
+  height: var(--fw-control-height);
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.fw-view {
+  height: 100%;
+  padding: 0 14px;
+  font-size: inherit;
+}
+
+.fw-view + .fw-view {
+  border-left: 1px solid var(--fw-control-border);
+}
+
+.fw-toggle,
+.fw-play-button,
+.fw-outline > summary {
+  display: inline-flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+  padding: 0 14px;
+  border: 1px solid var(--fw-control-border);
+  border-radius: 999px;
+  background: var(--fw-surface);
+  white-space: nowrap;
+}
+
+.fw-toggle-dot {
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.fw-toggle-state {
+  color: var(--fw-muted);
+}
+
+.fw-toggle[aria-pressed='true'],
+.fw-play-button[data-playing],
+.fw-outline[open] > summary {
+  border-color: var(--fw-select);
+  background: var(--fw-select);
+  color: var(--fw-surface);
+  font-weight: 600;
+}
+
+.fw-toggle[aria-pressed='true'] .fw-toggle-dot {
+  background: currentColor;
+}
+
+.fw-toggle[aria-pressed='true'] .fw-toggle-state {
+  color: inherit;
+}
+
+.fw-toggle:disabled {
+  opacity: 0.6;
+}
+
+.fw-play {
+  gap: 6px;
+}
+
+.fw-play select {
+  padding: 0 8px;
+  border: 1px solid var(--fw-control-border);
+  border-radius: 999px;
+  background: var(--fw-surface);
+}
+
+.fw-arrow {
+  width: 38px;
+  border-radius: 999px;
+}
+
+.fw-views:has(.fw-view:focus-visible) {
+  outline: 2px solid var(--fw-select);
+  outline-offset: 2px;
+}
+
+/* A hover that says "this can be pressed", on every control that is not already on. */
+.fw-view:not([aria-pressed='true']):hover,
+.fw-toggle:not([aria-pressed='true']):not(:disabled):hover,
+.fw-arrow:not(:disabled):hover,
+.fw-play-button:not([data-playing]):hover,
+.fw-outline:not([open]) > summary:hover,
+.fw-step:not([aria-current='step']):hover {
+  background: var(--fw-surface-2);
+}
+
+/* The name of the current call takes whatever room is left, and never squeezes the buttons. */
+.fw-where {
+  flex: 1 1 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-hint {
+  flex: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 719px) {
+  /* The steps are one row that scrolls sideways, with whole names, instead of a pile of clipped
+     ones. The current step is kept in sight. */
+  .fw-steps ol {
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .fw-steps li {
+    flex: none;
+    max-width: none;
+  }
+
+  .fw-step {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .fw-step-title {
+    max-width: none;
+    overflow: visible;
+  }
+
+  /* Buttons on one row, the name of the call on its own row under them. */
+  .fw-where {
+    flex-basis: 100%;
+    order: 5;
+    white-space: normal;
+  }
+
+  .fw-progress {
+    order: 6;
+  }
+
+  .fw-head-controls {
+    width: 100%;
+    margin-left: 0;
+    gap: 6px;
+  }
+
+  /* Tighter, so the three header controls share one row and the navigation buttons another. */
+  .fw-view,
+  .fw-toggle,
+  .fw-play-button,
+  .fw-outline > summary {
+    padding: 0 10px;
+  }
+
+  .fw-play-button {
+    min-width: 0;
+  }
+
+  .fw-arrow {
+    width: 34px;
+  }
+}
+
+/* Under a laptop's width the controls get a row of their own, so the title keeps the full width. */
+@media (max-width: 899px) {
+  .fw[data-view='grid'] .fw-head-controls {
+    order: -1;
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+/* The theme switch looks like the view switch; it has its own class so each can be found alone. */
+.fw-theme-choice {
+  height: 100%;
+  padding: 0 14px;
+  border: 0;
+  background: none;
+  font-size: inherit;
+}
+
+.fw-theme-choice + .fw-theme-choice {
+  border-left: 1px solid var(--fw-control-border);
+}
+
+.fw-theme-choice[aria-pressed='true'] {
+  background: var(--fw-select);
+  color: var(--fw-surface);
+  font-weight: 600;
+}
+
+.fw-theme-choice:not([aria-pressed='true']):hover {
+  background: var(--fw-surface-2);
+}
+
+.fw-views:has(.fw-theme-choice:focus-visible) {
+  outline: 2px solid var(--fw-select);
+  outline-offset: 2px;
+}
+
+@media (max-width: 719px) {
+  .fw-theme-choice {
+    padding: 0 10px;
+  }
+}

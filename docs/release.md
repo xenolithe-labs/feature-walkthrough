@@ -20,7 +20,7 @@ git tag v0.2.0 && git push origin v0.2.0    # once it is on main
    in `package.json` differ, runs the checks, builds, and runs `npm stage publish`.
 2. On npmjs.com, open the package's **Staged Packages** tab, look at what was staged, and click
    **Approve**. npm asks for your security key. From a terminal the same thing is
-   `npm stage list feature-walkthrough`, then `npm stage approve <stage-id>`.
+   `npm stage list @xenolithe-labs/feature-walkthrough`, then `npm stage approve <stage-id>`.
 
 To rehearse without staging, run the workflow by hand from the Actions tab and leave "dry run"
 ticked.
@@ -30,13 +30,17 @@ ticked.
 `pnpm release:check` does what the release workflow will do, and a little more, on your machine:
 the checks, the full build, the browser tests, and a dry run of the publish that prints the
 package's size and file count. Then try the package as a user would: `pnpm pack`, install the
-tarball in an empty folder, and run `npx feature-walkthrough` there. Update `CHANGELOG.md` and the
+tarball in an empty folder, and run `npx @xenolithe-labs/feature-walkthrough` there. Update `CHANGELOG.md` and the
 version in `package.json` in the same commit.
 
 ## One-time setup
 
 Do these once, in order, signed in to npm as an owner of the package with two-factor
 authentication switched on.
+
+The package is `@xenolithe-labs/feature-walkthrough`, owned by the `xenolithe-labs` organisation on npm, so
+whoever publishes must be a member of that organisation with permission to publish. It is public:
+`publishConfig.access` in `package.json` says so, which a scoped package needs.
 
 1. **Create the package.** npm can only trust a workflow for a package that exists. From a clean
    checkout of the release commit:
