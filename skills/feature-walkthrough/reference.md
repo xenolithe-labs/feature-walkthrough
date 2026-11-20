@@ -404,6 +404,53 @@ Effects on this panel take the shared verbs only.
           },
           "text": {
             "type": "string"
+          },
+          "tokens": {
+            "type": "object",
+            "properties": {
+              "palette": {
+                "maxItems": 256,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "lines": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    ],
+                    "items": false,
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                }
+              }
+            },
+            "required": ["palette", "lines"],
+            "additionalProperties": false
           }
         },
         "required": ["id", "title", "text"],

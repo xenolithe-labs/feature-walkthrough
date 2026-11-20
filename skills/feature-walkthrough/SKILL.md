@@ -16,6 +16,8 @@ reader moves through it one call at a time. You write the JSON; you never write 
 3. Fix every error and every warning, then lint again until it prints `ok`.
 4. Show it: `npx feature-walkthrough flow.json` serves it locally, or
    `npx feature-walkthrough build flow.json -o flow.html` writes one self-contained HTML file.
+   Both add syntax colours to code panes. To get colours into a JSON file that is loaded some
+   other way, run `npx feature-walkthrough highlight flow.json -o flow.coloured.json`.
 
 Do not hand over a config that has not passed `lint`.
 
@@ -145,7 +147,9 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   the id `tone`.
 - **`code`**: `sources` `{ id, title, lang?, text }`. Mark lines with
   `{ "read": "sourceId", "lines": [3, [7, 9]] }`; line numbers start at 1 and `[7, 9]` is a range.
-  Any effect on a source brings it to the front. Count the lines; lint rejects a line past the end.
+  Any effect on a source brings it to the front. Set `lang` (`js`, `python`, `sql`, `hcl`, ...) and
+  the command line adds syntax colours when it shows or builds the config; you never write the
+  `tokens` field yourself. Count the lines; lint rejects a line past the end.
   Add `"expr": "a < b"` (or a list) to mark just that text inside the marked lines, and lint checks
   it is really there. `{ "update": "src", "fields": { "at": 7, "badge": "run 3" } }` keeps a
   current-line arrow in the margin, and a small label at the end of that line, until a later call

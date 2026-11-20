@@ -425,3 +425,23 @@ test('algorithm demos: a call stack, a queue and a table follow the code', async
     '2',
   );
 });
+
+test('code is coloured in both themes, and a marked expression is one box', async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=quicksort&s=4&c=5');
+  const keyword = page.locator('.fw-code-line[data-line="10"] code span', { hasText: 'function' });
+  const light = await keyword.evaluate((node) => getComputedStyle(node).color);
+  await page.getByRole('button', { name: 'Dark theme' }).click();
+  const dark = await keyword.evaluate((node) => getComputedStyle(node).color);
+  expect(light).not.toBe(dark);
+  // The colours differ from the plain text colour, so something was really coloured.
+  const plain = await page
+    .locator('.fw-code-number')
+    .first()
+    .evaluate((node) => getComputedStyle(node).color);
+  expect(dark).not.toBe(plain);
+
+  const marked = page.locator('.fw-code-line[data-mark] mark.fw-code-expr');
+  await expect(marked).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
