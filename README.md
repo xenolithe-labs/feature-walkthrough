@@ -3,12 +3,12 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The engine, the page, eleven panels and thirteen demos work end to end.
+> **Status: early.** The engine, the page, eleven panels and sixteen demos work end to end.
 
 | Panel      | Shows                                                               |
 | ---------- | ------------------------------------------------------------------- |
 | `sequence` | Lanes and the messages between them                                 |
-| `graph`    | Nodes and relationships that appear as calls add them               |
+| `graph`    | Nodes (or records of named slots) and edges that calls add          |
 | `flow`     | A chart of steps and decisions that calls walk through              |
 | `boxes`    | Boxes within boxes: components, modules, call frames                |
 | `table`    | Rows of data, with the rows and cells a call reads or changes       |
@@ -24,7 +24,9 @@ plan and apply, and what git stores on add, commit and push (with real object id
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
 its call stack, breadth-first search and edit distance. Three event-driven demos: a Kafka consumer
 group that loses a consumer, a Temporal Activity that misses a heartbeat and is retried, and
-EventBridge rules that start a Step Functions execution.
+EventBridge rules that start a Step Functions execution. Three data-structure demos, also recorded
+from the real code: reversing a linked list in place, inserting into a binary search tree, and a
+hash table that chains a collision.
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 
@@ -72,7 +74,10 @@ Do not write the steps of a loop by hand. Run the algorithm with a `Recorder`
 (`import { Recorder } from 'feature-walkthrough'`): arrays you give it record their own reads and
 writes, a few calls say which line is running and where a pointer is, and `finish()` returns the
 ordinary config. Every line number is checked against the displayed source, so a wrong one fails
-instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill.
+instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill. Linked structures work the same way:
+`rec.records()` and `heap.node(...)` make the objects the algorithm uses record their own pointer
+changes, drawn as records (nodes of named slots) with arrows that leave from the slot, and `layout:
+"tree"` lays them out as a tree.
 
 Two views: **Grid** shows every pane at once; **Focus** shows the panes the current call touches
 large, on a stage that fills a desktop-sized window (the page itself does not scroll there; on a

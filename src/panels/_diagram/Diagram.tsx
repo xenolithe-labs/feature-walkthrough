@@ -28,6 +28,7 @@ import {
   layout,
   pinned,
   type Direction,
+  type LayoutMode,
   type LayoutNode,
   type Positions,
 } from './layout';
@@ -40,14 +41,22 @@ export interface DiagramNode extends LayoutNode {
   sub?: string | undefined;
   tone?: string | undefined;
   kind?: string | undefined;
+  /** Extra data for a custom node component, merged into the node's data. */
+  data?: Record<string, unknown>;
 }
 
 export interface DiagramEdge {
   id: string;
   source: string;
   target: string;
+  /** The slot of `source` the edge leaves from (record nodes); the tree layout reads it. */
+  slot?: string | undefined;
+  /** False: not a parent-child link, so the tree layout ignores it. */
+  tree?: boolean | undefined;
   label?: string | undefined;
   type?: string;
+  /** Extra data for a custom edge component, merged into the edge's data. */
+  data?: Record<string, unknown>;
 }
 
 type BoxData = {
@@ -194,11 +203,26 @@ function usePositions(
   nodes: readonly DiagramNode[],
   edges: readonly DiagramEdge[],
   direction: Direction,
+  mode: LayoutMode,
 ): Positions | undefined {
   const key = JSON.stringify([
     direction,
-    nodes.map(({ id, width, height, x, y }) => [id, width, height, x ?? null, y ?? null]),
-    edges.map(({ id, source, target }) => [id, source, target]),
+    nodes.map(({ id, width, height, x, y, slots }) => [
+      id,
+      width,
+      height,
+      x ?? null,
+      y ?? null,
+      slots ?? null,
+    ]),
+    edges.map(({ id, source, target, slot, tree }) => [
+      id,
+      source,
+      target,
+      slot ?? null,
+      tree ?? null,
+    ]),
+    mode,
   ]);
   const [resolved, setResolved] = useState<{ key: string; positions: Positions } | undefined>();
 
@@ -206,26 +230,34 @@ function usePositions(
     let cancelled = false;
     const [, sizes, links] = JSON.parse(key) as [
       Direction,
-      [string, number, number, number | null, number | null][],
-      [string, string, string][],
+      [string, number, number, number | null, number | null, string[] | null][],
+      [string, string, string, string | null, boolean | null][],
     ];
     void layout(
-      sizes.map(([id, width, height, x, y]) => ({
+      sizes.map(([id, width, height, x, y, slots]) => ({
         id,
         width,
         height,
         x: x ?? undefined,
         y: y ?? undefined,
+        slots: slots ?? undefined,
       })),
-      links.map(([id, source, target]) => ({ id, source, target })),
+      links.map(([id, source, target, slot, tree]) => ({
+        id,
+        source,
+        target,
+        slot: slot ?? undefined,
+        tree: tree ?? undefined,
+      })),
       direction,
+      mode,
     ).then((positions) => {
       if (!cancelled) setResolved({ key, positions });
     });
     return () => {
       cancelled = true;
     };
-  }, [key, direction]);
+  }, [key, direction, mode]);
 
   return resolved?.key === key ? resolved.positions : pinned(nodes);
 }
@@ -296,6 +328,8 @@ export interface DiagramProps {
   selection: Selection;
   theme: 'light' | 'dark';
   direction?: Direction;
+  /** How nodes are placed: layered (the default) or as a tree. */
+  layout?: LayoutMode;
   label: string;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
@@ -314,11 +348,12 @@ export function Diagram({
   selection,
   theme,
   direction = 'RIGHT',
+  layout: mode = 'layered',
   label,
   nodeTypes,
   edgeTypes,
 }: DiagramProps) {
-  const positions = usePositions(nodes, edges, direction);
+  const positions = usePositions(nodes, edges, direction, mode);
   const frame = useRef<HTMLDivElement | null>(null);
   const allNodeTypes = useMemo(() => ({ ...BASE_NODE_TYPES, ...nodeTypes }), [nodeTypes]);
   const allEdgeTypes = useMemo(() => ({ ...BASE_EDGE_TYPES, ...edgeTypes }), [edgeTypes]);
@@ -371,7 +406,7 @@ export function Diagram({
       position: positions[node.id] ?? { x: 0, y: 0 },
       width: node.width,
       height: node.height,
-      data: { label: node.label, sub: node.sub, tone: node.tone, kind: node.kind },
+      data: { label: node.label, sub: node.sub, tone: node.tone, kind: node.kind, ...node.data },
       className: classOf(node.id, shownIds.has(node.id), current, selection.id),
       ariaLabel: node.label,
     }));
@@ -388,7 +423,7 @@ export function Diagram({
       // An edge shows only while both of its ends do.
       const shown = shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
       return {
-        data: { lane },
+        data: { lane, ...edge.data },
         id: edge.id,
         source: edge.source,
         target: edge.target,

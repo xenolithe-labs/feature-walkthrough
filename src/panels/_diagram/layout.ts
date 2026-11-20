@@ -3,21 +3,30 @@
  * that nothing moves when a later call adds one. Positions pinned in the
  * config win; ELK is only loaded when something is not pinned.
  */
+import { treeLayout } from './tree-layout';
+
 export interface LayoutNode {
   id: string;
   width: number;
   height: number;
   x?: number | undefined;
   y?: number | undefined;
+  /** The ids of the node's slots, in order (record nodes); the tree layout uses them. */
+  slots?: readonly string[] | undefined;
 }
 
 export interface LayoutEdge {
   id: string;
   source: string;
   target: string;
+  /** The slot of `source` the edge leaves from, if it leaves from one. */
+  slot?: string | undefined;
+  /** False for an edge the tree layout must not treat as a parent-child link. */
+  tree?: boolean | undefined;
 }
 
 export type Direction = 'RIGHT' | 'DOWN';
+export type LayoutMode = 'layered' | 'tree';
 export type Positions = Record<string, { x: number; y: number }>;
 
 const cache = new Map<string, Promise<Positions>>();
@@ -118,9 +127,11 @@ export function layout(
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
   direction: Direction,
+  mode: LayoutMode = 'layered',
 ): Promise<Positions> {
   const fixed = pinned(nodes);
   if (fixed !== undefined) return Promise.resolve(fixed);
+  if (mode === 'tree') return Promise.resolve(treeLayout(nodes, edges, direction));
   const key = JSON.stringify([direction, nodes, edges]);
   let result = cache.get(key);
   if (result === undefined) {

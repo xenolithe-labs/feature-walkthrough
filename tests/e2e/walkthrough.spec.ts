@@ -920,3 +920,226 @@ test('focus view: the marked items of every staged pane are in view, small or la
   if ((await off.count()) > 0) await off.first().click();
   await expectMarkedItemsInView(page);
 });
+
+/** The centre of an element's box, in page coordinates. */
+async function centreOf(locator: ReturnType<Page['locator']>) {
+  const box = (await locator.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2, box };
+}
+
+test('records: an arrow starts in the slot it names, and re-pointing removes one arrow and adds another', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Turn node 2: its next pointer goes from n3 back to n1. The call that does it.
+  await open(page, '#w=reverse-list&s=3&c=3');
+  await expect(page.locator('.fw-card-title')).toHaveText('Point the node backwards');
+  const slot = page.locator('.fw-slot[data-entity="n2.next"]');
+  await expect(slot).toHaveClass(/is-updated/);
+  await expect(slot).toHaveAttribute('aria-label', /n2 next: points to n1/);
+  await expect(page.locator('.react-flow__edge[data-id="n2.next.n3"]')).toHaveClass(/is-removed/);
+  await expect(page.locator('.react-flow__edge[data-id="n2.next.n1"]')).toHaveClass(/is-added/);
+
+  // The dot at the foot of the new arrow is inside that slot, not at the middle of the node.
+  const dot = await centreOf(page.locator('.react-flow__edge[data-id="n2.next.n1"] .fw-slot-dot'));
+  const cell = (await slot.boundingBox())!;
+  expect(dot.x).toBeGreaterThan(cell.x);
+  expect(dot.x).toBeLessThan(cell.x + cell.width);
+  expect(dot.y).toBeGreaterThan(cell.y);
+  expect(dot.y).toBeLessThan(cell.y + cell.height);
+  const node = (await page.locator('.react-flow__node[data-id="n2"]').boundingBox())!;
+  expect(Math.abs(dot.x - (node.x + node.width / 2))).toBeGreaterThan(4);
+
+  // The three variables are slots of one node, each with an arrow to what it names.
+  for (const [variable, target] of [
+    ['prev', 'n1'],
+    ['curr', 'n2'],
+    ['next', 'n3'],
+  ] as const) {
+    await expect(page.locator(`.fw-slot[data-entity="vars.${variable}"]`)).toHaveAttribute(
+      'aria-label',
+      new RegExp(`points to ${target}$`),
+    );
+  }
+  expect(errors).toEqual([]);
+});
+
+test('records: a slot is a keyboard-reachable, selectable element that follows the address', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=reverse-list&s=3&c=3');
+  const slot = page.locator('.fw-slot[data-entity="n2.next"]');
+  await slot.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=n2\.next/);
+  await expect(slot).toHaveClass(/is-selected/);
+  await expect(slot).toHaveAttribute('aria-pressed', 'true');
+  // The card names it, and a second press lets go.
+  await expect(page.locator('.fw-selected')).toContainText('n2 next');
+  await page.keyboard.press('Space');
+  await expect(slot).not.toHaveClass(/is-selected/);
+  // A link to a slot opens with it selected.
+  await page.goto('/#w=reverse-list&s=3&c=3&sel=n1.val');
+  await page.reload();
+  await expect(page.locator('.fw-slot[data-entity="n1.val"]')).toHaveClass(/is-selected/);
+  // A slot of a node that is not there yet cannot be reached with the keyboard or a screen reader.
+  await open(page, '#w=hash-table&s=1&c=1');
+  await expect(page.locator('.react-flow__node[data-id="e9"]')).toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-slot[data-entity="e9.key"]')).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('.fw-slot[data-entity="e9.key"]')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  await expect(page.locator('.fw-slot[data-entity="e5.key"]')).toHaveAttribute('tabindex', '0');
+});
+
+test('records: the tree layout puts children left to right under their parent', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=bst-insert&s=2&c=13');
+  const box = async (id: string) =>
+    (await page.locator(`.react-flow__node[data-id="${id}"]`).boundingBox())!;
+  const [n8, n3, n10, n1, n6, n5, n14, n12] = await Promise.all(
+    ['n8', 'n3', 'n10', 'n1', 'n6', 'n5', 'n14', 'n12'].map(box),
+  );
+  const centre = (b: NonNullable<typeof n8>) => b.x + b.width / 2;
+  // Left child before right child, wherever they sit.
+  expect(centre(n3!)).toBeLessThan(centre(n8!));
+  expect(centre(n10!)).toBeGreaterThan(centre(n8!));
+  expect(centre(n1!)).toBeLessThan(centre(n6!));
+  // 14 has only a right-hand parent slot filled on 10: its right child stays on the right.
+  expect(centre(n14!)).toBeGreaterThan(centre(n10!));
+  // The inserted 5 hangs on the left of 6, and 12 on the left of 14.
+  expect(centre(n5!)).toBeLessThan(centre(n6!));
+  expect(centre(n12!)).toBeLessThan(centre(n14!));
+  // Each level is a row, and a child is below its parent.
+  expect(Math.abs(n3!.y - n10!.y)).toBeLessThan(2);
+  expect(n5!.y).toBeGreaterThan(n6!.y + n6!.height - 1);
+  expect(n6!.y).toBeGreaterThan(n3!.y + n3!.height - 1);
+  expect(errors).toEqual([]);
+});
+
+test('records: a slot keeps its width when the text in it changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const widthAt = async (call: number) => {
+    await open(page, `#w=bst-insert&s=1&c=${call}`);
+    return (await page.locator('.fw-slot[data-entity="vars.side"]').boundingBox())!.width;
+  };
+  // Before side is set it is empty; after, it says "right".
+  const empty = await widthAt(1);
+  const right = await widthAt(6);
+  await expect(page.locator('.fw-slot[data-entity="vars.side"] .fw-slot-value')).toHaveText(
+    /left|right/,
+  );
+  expect(right).toBe(empty);
+});
+
+test('records: the hash table chains a collision in one bucket, in focus view too', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=hash-table&s=3&c=8&v=focus');
+  const edge = (id: string) => page.locator(`.react-flow__edge[data-id="${id}"]`);
+  await expect(edge('buckets.1.e5')).toHaveCount(1);
+  await expect(edge('e5.next.e9')).toHaveClass(/is-added|is-removed|is-faded/);
+  await expect(page.locator('.fw-slot[data-entity="buckets.1"]')).toHaveAttribute(
+    'aria-label',
+    /points to e5$/,
+  );
+  await expect(page.locator('.fw-slot[data-entity="buckets.0"]')).toHaveAttribute(
+    'aria-label',
+    /null$/,
+  );
+  expect(errors).toEqual([]);
+});
+
+test('records: a hand-written config with captions on, a node added later and an edge that ends at a slot', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  const config = {
+    id: 'hand',
+    title: 'Hand-written records',
+    layout: {
+      panes: [
+        {
+          id: 'g',
+          panel: 'graph',
+          title: 'Records',
+          content: {
+            initial: true,
+            direction: 'RIGHT',
+            nodes: [
+              { id: 'a', label: 'node a', slots: [{ id: 'val', value: 1 }, { id: 'next' }] },
+              {
+                id: 'b',
+                label: 'node b',
+                initial: false,
+                slots: [
+                  { id: 'val', value: 2 },
+                  { id: 'next', value: 'null' },
+                ],
+              },
+            ],
+            edges: [{ from: 'a.next', to: 'b.val', initial: false }],
+          },
+        },
+      ],
+    },
+    steps: [
+      {
+        id: 's1',
+        title: 'Build',
+        calls: [
+          { id: 'c1', label: 'Look at a', effects: { g: [{ read: 'a.val' }] } },
+          { id: 'c2', label: 'Add b', effects: { g: [{ add: 'b' }] } },
+          {
+            id: 'c3',
+            label: 'Link them',
+            effects: { g: [{ add: 'a.next.b.val' }, { update: 'a.next', fields: { value: '' } }] },
+          },
+        ],
+      },
+    ],
+  };
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openConfig(page, 'hand', config);
+  await expect(page.locator('.react-flow__node[data-id="a"]')).toBeVisible();
+
+  // b is not there yet: its caption and slots are out of the tab order and hidden from readers.
+  const bHead = page.locator('.react-flow__node[data-id="b"] .fw-record-head');
+  await expect(page.locator('.react-flow__node[data-id="b"]')).toHaveClass(/is-absent/);
+  await expect(bHead).toHaveAttribute('tabindex', '-1');
+  await expect(bHead).toHaveAttribute('aria-hidden', 'true');
+  const aHead = page.locator('.react-flow__node[data-id="a"] .fw-record-head');
+  await expect(aHead).toHaveText('node a');
+  await expect(aHead).toHaveAttribute('tabindex', '0');
+
+  // Once it is added they come back.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(bHead).toHaveAttribute('tabindex', '0');
+  await expect(bHead).not.toHaveAttribute('aria-hidden', 'true');
+
+  // The arrow leaves a's next slot and ends at b's val slot, not at the node.
+  const edge = page.locator('.react-flow__edge[data-id="a.next.b.val"]');
+  await expect(edge).toHaveClass(/is-added/);
+  const dot = await centreOf(edge.locator('.fw-slot-dot'));
+  const next = (await page.locator('.fw-slot[data-entity="a.next"]').boundingBox())!;
+  expect(dot.x).toBeGreaterThan(next.x);
+  expect(dot.x).toBeLessThan(next.x + next.width);
+  expect(dot.y).toBeGreaterThan(next.y);
+  expect(dot.y).toBeLessThan(next.y + next.height);
+  const head = (await edge.locator('.fw-edge-head').boundingBox())!;
+  const target = (await page.locator('.fw-slot[data-entity="b.val"]').boundingBox())!;
+  // The tip of the arrowhead touches the slot: its box is within a few pixels of the slot's box.
+  const gapX = Math.max(target.x - (head.x + head.width), head.x - (target.x + target.width), 0);
+  const gapY = Math.max(target.y - (head.y + head.height), head.y - (target.y + target.height), 0);
+  expect(Math.hypot(gapX, gapY)).toBeLessThan(4);
+  expect(errors).toEqual([]);
+});

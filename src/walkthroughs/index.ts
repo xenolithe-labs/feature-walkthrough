@@ -4,6 +4,9 @@ import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
+import { bstInsertDemo } from './algorithms/bst-insert';
+import { hashTableDemo } from './algorithms/hash-table';
+import { reverseListDemo } from './algorithms/reverse-list';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
@@ -24,6 +27,9 @@ export const plainDemos: WalkthroughInput[] = [
   quicksortDemo,
   bfsDemo,
   editDistanceDemo,
+  reverseListDemo,
+  bstInsertDemo,
+  hashTableDemo,
   kafkaConsumerGroup,
   temporalHeartbeat,
   eventbridgeRouting,

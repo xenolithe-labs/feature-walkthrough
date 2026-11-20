@@ -105,6 +105,7 @@ but you name them in effects:
 | A column of a schema table | `table.column` | `order.user_id`      |
 | A relation without an `id` | `from:to`      | `order.user_id:user` |
 | A cell of an array         | `array.index`  | `items.3`            |
+| A slot of a record node    | `node.slot`    | `n1.next`            |
 
 `update` may only set fields the element has. A misspelt field, or a tone that is not a tone, is a
 lint error.
@@ -123,8 +124,8 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | Panel      | Use it for                                   | Elements                                                        | Present at start |
 | ---------- | -------------------------------------------- | --------------------------------------------------------------- | ---------------- |
 | `sequence` | Messages between lanes over time             | lanes, calls                                                    | lanes            |
-| `graph`    | Things and relationships that build up       | nodes, edges                                                    | no               |
-| `flow`     | A flow chart that calls walk through         | nodes, edges                                                    | yes              |
+| `graph`    | Things and relationships that build up       | nodes, slots, edges                                             | no               |
+| `flow`     | A flow chart that calls walk through         | nodes, slots, edges                                             | yes              |
 | `boxes`    | Nesting: modules, components, frames         | boxes, edges                                                    | yes              |
 | `table`    | Rows of data that calls read and change      | rows                                                            | yes              |
 | `code`     | Source text, with the lines in question      | sources                                                         | yes              |
@@ -141,6 +142,27 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   (for example `cached.query`); give an explicit `id` when two edges join the same pair. Read the
   edge as well as the node to show which way a decision went. `fields` can change `label`, `sub`
   and `tone`. `direction` is `RIGHT` or `DOWN`.
+  **Records** (data structures): a node may have `slots`, an ordered row (or, with
+  `"arrange": "column"`, a column) of named places, each `{ id, value?, label?, tone? }`. A slot is
+  an element with the id `node.slot`: `read` marks it, `update` with `fields.value` (text or a
+  number) changes what it says, `tone` works. Every slot reserves the width of the widest value
+  that is declared or written to it (`width`, in characters, reserves more), so nothing shifts as
+  values change. A slot is present when
+  its node is; `"initial": false` on a slot makes it appear only when a call does `add node.slot`.
+  `"head": false` hides the node's label strip, `"names": false` hides the slots' names. An edge
+  end may be a node or `node.slot`: `{ "from": "n1.next", "to": "n2" }` draws the arrow out of
+  that slot (a dot in the slot, then a curve), and a `to` slot ends at the slot. The arrow with
+  the default id is `n1.next.n2`; **re-pointing is `remove` of the old edge and `add` of the new
+  one**, both declared in the content. A pointer that is empty is a slot whose value says `null`.
+  `"tree": false` on an edge says it is a reference (a variable pointing in), not a link of the
+  structure: it is drawn, and arrives from above or below, but the tree layout ignores it.
+  `"layout": "tree"` places nodes as a tree: the first edge that points at a node makes its source
+  the parent (edges that would close a cycle, and `tree: false` edges, are not tree edges but
+  still draw), children go left to right (top to bottom when `direction` is `RIGHT`) in the order
+  of the slots they hang from, then in declaration order, and a node that uses `left` and
+  `right` slots leaves a gap for the child it lacks. Positions come from the whole content, so
+  nothing moves when a call adds a node. Lint rules: `unknown-slot`, `duplicate-slot`, an effect
+  on a slot of a node that is not present (`slot-of-absent-node`).
 - **`boxes`**: boxes `{ id, label, sub?, parent? }`; `parent` nests one box inside another.
   `direction` is `row` or `column`.
 - **`table`**: `columns` `{ id, label, mono? }` and `rows` `{ id, cells: { columnId: "text" } }`.
@@ -317,3 +339,38 @@ const config = rec.finish(); // plain JSON: steps, calls, effects, line marks
   file next to the recorder calls and add a test that `stripHooks` of it equals the `source.text`
   you pass, and that the final state of the walkthrough equals the algorithm's real result.
   `src/walkthroughs/algorithms/` has four examples (binary search, quicksort, BFS, edit distance).
+
+### Data structures
+
+For linked lists, trees and hash tables, ask the recorder for a `records` pane and track the
+objects the algorithm uses. A tracked object is the same plain object with its properties turned
+into accessors, so the code that runs is the code that is shown.
+
+```ts
+const heap = rec.records('list', { title: 'Linked list', direction: 'RIGHT', layout: 'tree' });
+heap.vars('vars', { prev: null, curr: null }, { head: false }); // variables: arrows into the structure
+let head = null;
+for (const val of [3, 1]) head = heap.node({ val, next: head }, { id: `n${val}` }); // setup
+// ... inside the algorithm, on lines of their own:
+//   rec.node(node, { id: 'x' });   // a node made during the run is added by that call
+//   rec.ref('curr', curr);         // a variable moved
+// and plain code does the rest: `curr.next = prev` records the slot change and the arrow move.
+```
+
+- `heap.node(obj, { id?, label?, arrange?, head?, names?, x?, y? })` makes every own property a
+  slot, in order. A property holding an object or `null` is a pointer slot (value `null`, or empty
+  with an arrow); anything else is a value slot. `heap.slots(id, cells)` is a node whose slots are
+  the cells of an array (the buckets of a hash table).
+- Setting a pointer records `remove` of the old edge, `update` of the slot and `add` of the new
+  edge; reading a property records a `read` of its slot. Before the first `at()` it is setup and
+  becomes the starting state. After `finish()` the objects are ordinary again.
+- `heap.vars(id, { name: null | text })` is a node of variables; `rec.ref(name, value)` sets
+  one. Their arrows are marked `tree: false`, except for variables named in `links`
+  (`{ links: ['root'] }`): that arrow is a link of the structure, so a tree layout hangs the tree
+  under the variables node, centred above its root.
+- `rec.node(obj)` and `rec.ref(...)` use the first `rec.records()`; they start with `rec.`, so
+  `stripHooks` removes them. The pane is ordinary `graph` config, and every edge that ever
+  existed is declared. `src/walkthroughs/algorithms/` has three examples (reversing a linked
+  list, inserting into a binary search tree, a hash table with chaining). A tree whose nodes
+  change parent (a B-tree split moving children) cannot be shown, because layout is fixed from
+  the first parent each node is given.
