@@ -106,7 +106,7 @@ export async function layoutElk(
       'elk.algorithm': 'layered',
       'elk.direction': direction,
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-      'elk.edgeRouting': routing === 'orthogonal' ? 'ORTHOGONAL' : 'POLYLINE',
+      'elk.edgeRouting': routing === 'curved' ? 'POLYLINE' : 'ORTHOGONAL',
       'elk.json.edgeCoords': 'ROOT',
       'elk.spacing.nodeNode': String(space.node),
       'elk.layered.spacing.nodeNodeBetweenLayers': String(labelled ? space.labelled : space.layer),

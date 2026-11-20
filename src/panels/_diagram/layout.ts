@@ -22,7 +22,7 @@ import {
   pinnedGroups,
 } from './groups';
 import { hubLayout } from './hub-layout';
-import { MAX_ROUTED_BOXES, routeOrthogonal, type Side } from './ortho';
+import { MAX_ROUTED_BOXES, MAX_ROUTED_EDGES, routeOrthogonal, type Side } from './ortho';
 import { gridLayout, isPlaced } from './place';
 import { labelSize, pointAlong, type Rect, type Route } from './route';
 import { treeLayout } from './tree-layout';
@@ -214,10 +214,10 @@ function routeAround(
   const routes: Record<string, Route> = {};
   if (options.routing === 'straight') return routes;
   const boxes = absoluteBoxes(nodes, positions);
-  if (boxes.size > MAX_ROUTED_BOXES) {
+  if (boxes.size > MAX_ROUTED_BOXES || edges.length > MAX_ROUTED_EDGES) {
     notes.push({
       rule: 'not-routed',
-      message: `${boxes.size} nodes are too many to route round: edges are drawn straight`,
+      message: `${boxes.size} nodes and ${edges.length} edges are too many to route round: edges are drawn straight`,
     });
     return routes;
   }

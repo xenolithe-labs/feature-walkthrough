@@ -42,18 +42,18 @@ async function measureDemos() {
       const options = layoutOptionsOf(content);
       const routed = await layoutFull(nodes, edges, content.direction, content.layout, options);
       const asRouted = drawn(content, routed, nodes);
-      const asStraight = drawn({ ...content, routing: 'straight' }, routed, nodes);
+      // What shipped before: positions from ELK with no label room, every edge a straight line.
+      const before = await layoutFull(nodes, edges, content.direction, content.layout, {
+        ...options,
+        routing: 'straight',
+      });
+      const asStraight = drawn({ ...content, routing: 'straight' }, before, nodes);
       const extent = (boxes: Iterable<{ x: number; y: number; width: number; height: number }>) => {
         const all = [...boxes];
         const w = Math.max(...all.map((b) => b.x + b.width)) - Math.min(...all.map((b) => b.x));
         const h = Math.max(...all.map((b) => b.y + b.height)) - Math.min(...all.map((b) => b.y));
         return `${Math.round(w)}x${Math.round(h)}`;
       };
-      // What the layout was before routes: no label room, and lines left to the diagram.
-      const before = await layoutFull(nodes, edges, content.direction, content.layout, {
-        ...options,
-        routing: 'straight',
-      });
       rows.push({
         size: extent(asRouted.boxes.values()),
         sizeBefore: extent(

@@ -24,6 +24,8 @@ export interface Request {
 
 /** Past this many boxes the lattice is too big to search for every edge in time. */
 export const MAX_ROUTED_BOXES = 70;
+/** And this many edges: 200 edges between 70 boxes measured about 0.6 s. */
+export const MAX_ROUTED_EDGES = 300;
 
 const BEND = 26;
 const SHARED = 18;

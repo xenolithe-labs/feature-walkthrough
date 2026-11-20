@@ -19,6 +19,7 @@ import { text, toneOf } from '../_shared/changes';
 import type { DiagramEdge, DiagramNode } from './Diagram';
 import type { RecordData, SlotEdgeData, SlotView } from './RecordNode';
 import { RecordNode, SlotEdge } from './RecordNode';
+import { type RecordNodeDecl, recordSizes, shapeOf } from './record-sizes';
 import {
   EndSchema,
   SlotSchema,
@@ -49,28 +50,8 @@ export const recordNodeFields = {
 };
 
 export const edgeEnd = EndSchema;
-
-export interface RecordNodeDecl {
-  id: string;
-  label: string;
-  sub?: string | undefined;
-  tone?: string | undefined;
-  x?: number | undefined;
-  y?: number | undefined;
-  slots?: SlotDecl[] | undefined;
-  arrange?: 'row' | 'column' | undefined;
-  head?: boolean | undefined;
-  names?: boolean | undefined;
-  initial?: boolean | undefined;
-}
-
-export const shapeOf = (node: RecordNodeDecl): RecordShape => ({
-  id: node.id,
-  slots: node.slots ?? [],
-  direction: node.arrange ?? 'row',
-  head: node.head ?? true,
-  names: node.names ?? true,
-});
+export { recordSizes, shapeOf };
+export type { RecordNodeDecl };
 
 /** The elements the slots of every node make. */
 export function slotEntities(nodes: readonly RecordNodeDecl[]) {
@@ -99,29 +80,6 @@ export interface RecordInputs {
   current: Touched;
   selected: string | undefined;
   select(id: string): void;
-}
-
-/** The sizes of every node. Record nodes are sized from their slots; the rest by `plain`. */
-export function recordSizes(
-  paneId: string,
-  nodes: readonly RecordNodeDecl[],
-  walkthrough: Walkthrough,
-  plain: (node: RecordNodeDecl) => { width: number; height: number },
-): Map<string, { size: { width: number; height: number }; geometry: RecordGeometry | undefined }> {
-  const widest = widestValues(paneId, nodes, walkthrough);
-  const sized = new Map<
-    string,
-    { size: { width: number; height: number }; geometry: RecordGeometry | undefined }
-  >();
-  for (const node of nodes) {
-    if (node.slots === undefined) {
-      sized.set(node.id, { size: plain(node), geometry: undefined });
-    } else {
-      const geometry = recordGeometry(shapeOf(node), node.label, widest);
-      sized.set(node.id, { size: { width: geometry.width, height: geometry.height }, geometry });
-    }
-  }
-  return sized;
 }
 
 /** The type, slot ids and data a record node needs on top of a plain `DiagramNode`. */

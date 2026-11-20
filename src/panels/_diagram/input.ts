@@ -15,7 +15,7 @@ import {
   type LayoutOptions,
 } from './layout';
 import type { Side } from './ortho';
-import { recordSizes, type RecordNodeDecl } from './records';
+import { recordSizes, type RecordNodeDecl } from './record-sizes';
 import { DISC, circleSize } from './shape';
 import { splitEnd } from './slots';
 

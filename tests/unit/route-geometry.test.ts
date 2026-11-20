@@ -315,3 +315,33 @@ describe('the right-angle router', () => {
     expect(first.get('one')).not.toEqual(first.get('two'));
   });
 });
+
+describe('what the right-angle router costs (measured)', () => {
+  it('70 pinned boxes and 200 edges: time, and no edge through a node', () => {
+    const boxes = new Map<string, ReturnType<typeof box>>();
+    for (let i = 0; i < 70; i += 1) {
+      boxes.set(`n${i}`, box((i % 10) * 220, Math.floor(i / 10) * 110));
+    }
+    const requests = Array.from({ length: 200 }, (_, i) => ({
+      id: `e${i}`,
+      from: `n${(i * 7) % 70}`,
+      to: `n${(i * 13 + 5) % 70}`,
+    })).filter((request) => request.from !== request.to);
+    const started = performance.now();
+    const routes = routeOrthogonal(boxes, [...boxes.keys()], requests);
+    const ms = performance.now() - started;
+    console.info(
+      `router: 70 boxes, ${requests.length} edges: ${ms.toFixed(0)} ms, ${routes.size} routed`,
+    );
+    expect(routes.size).toBeGreaterThan(requests.length * 0.95);
+    for (const request of requests.slice(0, 40)) {
+      const points = routes.get(request.id);
+      if (points === undefined) continue;
+      for (const [name, rect] of boxes) {
+        if (name === request.from || name === request.to) continue;
+        expect(polylineHitsRect(points, rect)).toBe(false);
+      }
+    }
+    expect(ms).toBeLessThan(4000);
+  });
+});
