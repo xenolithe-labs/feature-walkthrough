@@ -16,7 +16,7 @@ import { createRegistry } from '../../src/registry';
 
 type Effects = Record<string, unknown>[];
 
-const nodes = [
+const nodes: { id: string; label: string; parent?: string; parents?: string[] }[] = [
   { id: 'root', label: 'Root' },
   { id: 'a', label: 'A', parent: 'root' },
   { id: 'a1', label: 'A1', parent: 'a' },
@@ -47,7 +47,7 @@ function config(content: unknown, calls: Effects[] = [[]]): WalkthroughInput {
 const rules = (input: WalkthroughInput) =>
   loadConfig(input, createRegistry()).problems.map((problem) => problem.rule);
 const all = new Set(nodes.map((node) => node.id));
-const rowsOf = (extra: Partial<Parameters<typeof treeRows>[0]> = {}) =>
+const rowsOf = (extra: Partial<Omit<Parameters<typeof treeRows>[0], 'nodes'>> = {}) =>
   treeRows({ nodes, patches: {}, shown: all, touched: new Set(), ...extra });
 
 describe('tree model', () => {

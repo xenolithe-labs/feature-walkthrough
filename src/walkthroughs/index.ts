@@ -1,11 +1,13 @@
 import type { ConfigInput, WalkthroughInput } from '../core';
 import colours from './colours.generated.json' with { type: 'json' };
+import { awsScpInheritance } from './aws-scp-inheritance';
 import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
+import { kafkaBrokerFailure } from './kafka-broker-failure';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
 import { oauthPkce } from './oauth-pkce';
 import { reactRender } from './react-render';
@@ -25,8 +27,10 @@ export const plainDemos: WalkthroughInput[] = [
   bfsDemo,
   editDistanceDemo,
   kafkaConsumerGroup,
+  kafkaBrokerFailure,
   temporalHeartbeat,
   eventbridgeRouting,
+  awsScpInheritance,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */
