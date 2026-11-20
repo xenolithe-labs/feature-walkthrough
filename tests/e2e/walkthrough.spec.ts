@@ -1040,14 +1040,17 @@ test('aws-vpc-request: a read edge shows one dot, reversed for a reply, and none
 });
 
 test('aws-vpc-request: a weight is the stroke width and an update changes it', async ({ page }) => {
-  const weight = (id: string) =>
-    page.evaluate(
+  const weight = async (id: string) => {
+    await page.waitForSelector(`[data-testid="rf__edge-${id}"] .fw-edge-line`);
+    return page.evaluate(
       (edge) =>
         document
           .querySelector(`[data-testid="rf__edge-${edge}"] .fw-edge-line`)!
           .getAttribute('data-weight'),
       id,
     );
+  };
+
   await open(page, awsHash(4, 1));
   expect(await weight('t-a1')).toBe('4');
   await page.goto(`/${awsHash(4, 2)}`);
