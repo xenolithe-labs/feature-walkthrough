@@ -69,6 +69,7 @@ npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML
 npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config
 npx feature-walkthrough skills install                 # copy the agent skills into ./.claude/skills
+npx feature-walkthrough help [command]                 # the usage, or the details of one command
 ```
 
 Code panes get syntax colours for any language the source names in `lang`. The colours are worked
