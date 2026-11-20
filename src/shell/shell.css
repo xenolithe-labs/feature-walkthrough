@@ -297,8 +297,6 @@ body {
   color: var(--fw-muted);
   font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .fw-outline-list ol {
@@ -456,8 +454,6 @@ body {
   border-bottom: 1px solid var(--fw-border);
   font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--fw-muted);
 }
 
@@ -557,8 +553,6 @@ body {
   margin: 0;
   font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--fw-muted);
 }
 
