@@ -2,6 +2,8 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { demos } from '../../src/walkthroughs';
+import { withPanes } from '../helpers/panes';
+import { openConfig } from './stress-helpers';
 
 const walkthroughs = 'walkthroughs' in demos ? demos.walkthroughs : [demos];
 
@@ -571,4 +573,350 @@ test('timeline: a narrow screen scrolls the axis inside the pane, not the page',
   }));
   expect(sizes.inner).toBeGreaterThan(sizes.outer);
   expect(sizes.page).toBe(0);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Views: the grid shows every pane at once; the focus view puts the panes a call touches on a
+// stage and lists the rest in a bar.
+// ---------------------------------------------------------------------------------------------
+
+const VIEW_KEY = 'feature-walkthrough:view';
+const viewOf = (page: Page) => shell(page).getAttribute('data-view');
+const pageHeight = (page: Page) => page.evaluate(() => document.documentElement.scrollHeight);
+const sideOverflow = (page: Page) =>
+  page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+const callCount = async (page: Page) =>
+  Number((await page.locator('.fw-where-count').textContent())!.match(/of (\d+)/)![1]);
+
+test('the grid is the default and the view control switches to focus and back', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=git-commit&s=3&c=4');
+  expect(await viewOf(page)).toBe('grid');
+  await expect(page.locator('.fw-stage')).toHaveCount(0);
+  const group = page.getByRole('group', { name: 'View' });
+  await expect(group.getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(group.getByRole('button', { name: 'Focus' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+
+  await group.getByRole('button', { name: 'Focus' }).click();
+  expect(await viewOf(page)).toBe('focus');
+  await expect(page.locator('.fw-stage')).toBeVisible();
+  await expect(page.locator('.fw-rail-item')).not.toHaveCount(0);
+  await expect(page).toHaveURL(/v=focus/);
+  // The place is kept.
+  expect(await position(page)).toBe('3.4');
+
+  await group.getByRole('button', { name: 'Grid' }).click();
+  expect(await viewOf(page)).toBe('grid');
+  await expect(page.locator('.fw-stage')).toHaveCount(0);
+  await expect(page).toHaveURL(/v=grid/);
+  expect(await position(page)).toBe('3.4');
+  expect(errors).toEqual([]);
+});
+
+test('the choice is remembered, an address can force a view, and the config can set a default', async ({
+  page,
+}) => {
+  await open(page, '#w=bfs&s=2&c=4');
+  await page.getByRole('button', { name: 'Focus' }).click();
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), VIEW_KEY)).toBe('focus');
+
+  // A new visit without a view in the address follows the reader's choice, on any walkthrough.
+  await page.goto('/#w=quicksort&s=1&c=1');
+  await page.reload();
+  await expect(shell(page)).toBeVisible();
+  expect(await viewOf(page)).toBe('focus');
+  expect(await page.evaluate(() => window.location.hash)).not.toContain('v=');
+
+  // The address wins over the stored choice, without overwriting it.
+  await page.goto('/#w=quicksort&s=1&c=1&v=grid');
+  await page.reload();
+  expect(await viewOf(page)).toBe('grid');
+  expect(await page.evaluate((key) => window.localStorage.getItem(key), VIEW_KEY)).toBe('focus');
+
+  // Moving and switching walkthroughs keep the view named in the address.
+  await page.keyboard.press('ArrowRight');
+  expect(await page.evaluate(() => window.location.hash)).toContain('v=grid');
+  await page.locator('.fw-picker select').selectOption('binary-search');
+  expect(await page.evaluate(() => window.location.hash)).toContain('v=grid');
+  expect(await viewOf(page)).toBe('grid');
+
+  // The author's default applies until the reader chooses.
+  await page.evaluate((key) => window.localStorage.removeItem(key), VIEW_KEY);
+  await openConfig(page, 'focus-default', withPanes('git-commit', 4, 'focus'));
+  expect(await viewOf(page)).toBe('focus');
+  await page.getByRole('button', { name: 'Grid' }).click();
+  await page.reload();
+  expect(await viewOf(page)).toBe('grid');
+});
+
+test('focus view on a desktop window: the page does not scroll and shows at most three panes', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openConfig(page, 'eight', withPanes('git-commit', 8), '#v=focus');
+  const total = await callCount(page);
+  for (let index = 0; index < total; index += 1) {
+    if (index > 0) await page.keyboard.press('ArrowRight');
+    expect(await pageHeight(page)).toBeLessThanOrEqual(900);
+    expect(await sideOverflow(page)).toBe(0);
+    const staged = await page.locator('.fw-stage-pane').count();
+    expect(staged).toBeGreaterThanOrEqual(2);
+    expect(staged).toBeLessThanOrEqual(3);
+    // Eight panes are listed, and every one the call touches is on stage or named in the bar.
+    await expect(page.locator('.fw-rail-item')).toHaveCount(8);
+    const rail = await page.locator('.fw-rail-item').evaluateAll((items) =>
+      items.map((item) => ({
+        touched: (item as HTMLElement).dataset.touched === 'true',
+        onStage: (item as HTMLElement).dataset.onStage === 'true',
+      })),
+    );
+    expect(rail.filter((item) => item.onStage).length).toBe(staged);
+    if (rail.some((item) => item.touched && !item.onStage)) {
+      await expect(page.locator('.fw-rail-note')).toContainText('Also touched');
+    }
+  }
+  expect(errors).toEqual([]);
+});
+
+test('focus view with two panes: both stay on stage, side by side', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openConfig(page, 'two', withPanes('oauth-pkce', 2), '#v=focus&s=2&c=1');
+  await expect(page.locator('.fw-stage-pane')).toHaveCount(2);
+  await expect(page.locator('.fw-rail-item')).toHaveCount(2);
+  const [a, b] = await page
+    .locator('.fw-stage-pane')
+    .evaluateAll((list) => list.map((item) => item.getBoundingClientRect().toJSON() as DOMRect));
+  expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
+  expect(a!.height).toBeGreaterThan(400);
+  expect(await pageHeight(page)).toBeLessThanOrEqual(900);
+});
+
+test('focus view: the bar says what the call does to each pane, and a swap is marked and announced', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=git-commit&s=1&c=1&v=focus');
+  let swaps = 0;
+  const total = await callCount(page);
+  for (let index = 0; index < total; index += 1) {
+    if (index > 0) await page.keyboard.press('ArrowRight');
+    const swapped = page.locator('.fw-stage-pane[data-swapped="true"]');
+    if ((await swapped.count()) === 0) {
+      await expect(page.locator('.fw-tag.is-swapped')).toHaveCount(0);
+      continue;
+    }
+    swaps += 1;
+    const name = (await swapped.locator('.fw-pane-name').textContent())!;
+    await expect(swapped.locator('.fw-tag.is-swapped')).toHaveText('Swapped in');
+    await expect(page.locator('.fw-rail-new')).toHaveCount(1);
+    await expect(page.locator('[aria-live="polite"]', { hasText: 'is now shown' })).toContainText(
+      name,
+    );
+  }
+  expect(swaps).toBeGreaterThan(0);
+
+  // A touched pane says so in words, not only in colour.
+  await page.goto('/#w=bfs&s=2&c=4&v=focus');
+  await page.reload();
+  await expect(page.locator('.fw-rail-item[data-touched="true"]').first()).toContainText(
+    /\d+ (added|changed|read|removed)/,
+  );
+  await expect(page.locator('.fw-rail-item[data-touched="false"]').first()).toContainText(
+    'not touched',
+  );
+});
+
+test('focus view: a pane can be pinned from the bar, and following the call lets go of it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=quicksort&s=2&c=3&v=focus');
+  const off = page.locator('.fw-rail-item[data-on-stage="false"]');
+  if ((await off.count()) === 0) {
+    // Everything fits on this stage: nothing to pin.
+    await expect(page.getByRole('button', { name: 'Follow the call' })).toHaveCount(0);
+    return;
+  }
+  const id = (await off.first().getAttribute('data-pane'))!;
+  const item = page.locator(`.fw-rail-item[data-pane="${id}"]`);
+  await item.focus();
+  await page.keyboard.press('Enter');
+  await expect(item).toHaveAttribute('aria-pressed', 'true');
+  await expect(item).toHaveAttribute('data-on-stage', 'true');
+  // The pin holds while the reader steps on, and the arrow keys still step from the bar.
+  await page.keyboard.press('ArrowRight');
+  expect(await position(page)).toBe('2.4');
+  await expect(item).toHaveAttribute('data-on-stage', 'true');
+  await page.getByRole('button', { name: 'Follow the call' }).click();
+  await expect(item).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByRole('button', { name: 'Follow the call' })).toHaveCount(0);
+});
+
+test('focus view at phone width: one pane at a time, the stage on the first screen, no sideways scroll', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '#w=git-commit&s=3&c=4&v=focus');
+  expect(await sideOverflow(page)).toBe(0);
+  await expect(page.locator('.fw-stage-pane')).toHaveCount(1);
+  const stage = (await page.locator('.fw-stage').boundingBox())!;
+  expect(stage.y + 250).toBeLessThan(844);
+  // Much less page than the grid has at this width.
+  const focusHeight = await pageHeight(page);
+  await page.goto('/#w=git-commit&s=3&c=4&v=grid');
+  await page.reload();
+  expect(focusHeight).toBeLessThan((await pageHeight(page)) * 0.6);
+
+  // The other panes are one tap away and each says what the call does to it.
+  await page.goto('/#w=git-commit&s=3&c=4&v=focus');
+  await page.reload();
+  const items = page.locator('.fw-rail-item');
+  expect(await items.count()).toBeGreaterThanOrEqual(3);
+  const second = items.nth(1);
+  await second.scrollIntoViewIfNeeded();
+  await second.click();
+  await expect(page.locator('.fw-stage-pane')).toHaveCount(1);
+  await expect(page.locator('.fw-stage-pane')).toHaveAttribute(
+    'data-pane',
+    (await second.getAttribute('data-pane'))!,
+  );
+  // Every control is big enough to touch.
+  for (const control of await page.locator('.fw-rail-item, .fw-view').all()) {
+    expect((await control.boundingBox())!.height).toBeGreaterThanOrEqual(24);
+  }
+  expect(await sideOverflow(page)).toBe(0);
+
+  // The other theme, and the next call.
+  await page.getByRole('button', { name: /theme/ }).click();
+  await page.keyboard.press('ArrowRight');
+  expect(await sideOverflow(page)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+for (const id of [
+  'git-commit',
+  'quicksort',
+  'bfs',
+  'react-render',
+  'terraform-apply',
+  'oauth-pkce',
+]) {
+  test(`focus view: every panel of ${id} fits its place on the stage`, async ({ page }) => {
+    const errors = watchErrors(page);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page, `#w=${id}&v=focus`);
+    const total = await callCount(page);
+    const sample = [...new Set([0, 1, 2, Math.floor(total / 2), total - 2, total - 1])].filter(
+      (index) => index >= 0 && index < total,
+    );
+    let at = 0;
+    for (const target of sample) {
+      while (at < target) {
+        await page.keyboard.press('ArrowRight');
+        at += 1;
+      }
+      await page.waitForTimeout(150);
+      const stage = (await page.locator('.fw-stage').boundingBox())!;
+      for (const pane of await page.locator('.fw-stage-pane').all()) {
+        const box = (await pane.boundingBox())!;
+        expect(box.height).toBeGreaterThan(150);
+        expect(box.y).toBeGreaterThanOrEqual(stage.y - 1);
+        expect(box.y + box.height).toBeLessThanOrEqual(stage.y + stage.height + 1);
+        // A diagram has drawn at least one node inside its frame.
+        const nodes = pane.locator('.react-flow__node:not(.is-absent)');
+        if ((await nodes.count()) > 0) {
+          const inside = await nodes.evaluateAll(
+            (list, frame) =>
+              list.some((node) => {
+                const rect = node.getBoundingClientRect();
+                return (
+                  rect.width > 0 &&
+                  rect.right > frame.x &&
+                  rect.left < frame.x + frame.width &&
+                  rect.bottom > frame.y &&
+                  rect.top < frame.y + frame.height
+                );
+              }),
+            box,
+          );
+          expect(inside).toBe(true);
+        }
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+/** Every staged pane that has a marked element shows the first one inside its frame. */
+async function expectMarkedItemsInView(page: Page): Promise<void> {
+  await page.waitForTimeout(250);
+  const hidden = await page.evaluate(() => {
+    const marked =
+      '[data-mark="added"],[data-mark="updated"],[data-mark="read"],[data-mark="removed"]';
+    const problems: string[] = [];
+    for (const pane of document.querySelectorAll<HTMLElement>('.fw-stage-pane')) {
+      const target = pane.querySelector<HTMLElement>(marked);
+      if (target === null) continue;
+      const frame = pane.querySelector<HTMLElement>('.fw-pane-body')!.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      const overlapY = Math.min(box.bottom, frame.bottom) - Math.max(box.top, frame.top);
+      const overlapX = Math.min(box.right, frame.right) - Math.max(box.left, frame.left);
+      if (overlapY < Math.min(box.height, 8) || overlapX < Math.min(box.width, 8)) {
+        problems.push(`${pane.dataset.pane}: ${target.className}`);
+      }
+    }
+    return problems;
+  });
+  expect(hidden).toEqual([]);
+}
+
+test('focus view: the marked items of every staged pane are in view, small or large, however the pane got its size', async ({
+  page,
+}) => {
+  const links = [
+    '#w=git-commit&s=3&c=4',
+    '#w=terraform-apply&s=3&c=2',
+    '#w=bfs&s=2&c=4',
+    '#w=quicksort&s=5&c=3',
+    '#w=react-render&s=2&c=2',
+  ];
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    for (const link of links) {
+      await page.goto(`/${link}&v=focus`);
+      await page.reload();
+      await expect(page.locator('.fw-stage-pane').first()).toBeVisible();
+      await expectMarkedItemsInView(page);
+    }
+  }
+
+  // A window that is resized while the reader looks: the stage steps on to the next call.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=git-commit&s=3&c=4&v=focus');
+  await page.reload();
+  await expect(page.locator('.fw-stage-pane')).toHaveCount(3);
+  for (const width of [1024, 390, 1440]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowLeft');
+    await expectMarkedItemsInView(page);
+  }
+
+  // A pane the reader pins is shown at the size of its place, with its marks in view.
+  await page.goto('/#w=bfs&s=2&c=4&v=focus');
+  await page.reload();
+  const off = page.locator('.fw-rail-item[data-on-stage="false"]');
+  if ((await off.count()) > 0) await off.first().click();
+  await expectMarkedItemsInView(page);
 });

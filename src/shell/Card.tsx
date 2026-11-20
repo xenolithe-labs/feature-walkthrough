@@ -86,12 +86,19 @@ export function Card({
   card,
   selection,
   selectedLabel,
+  compact = false,
 }: {
   card: CardModel;
   selection: Selection;
   selectedLabel: string | undefined;
+  /** Keep the words of the call up front and fold the lists of elements away on a small screen. */
+  compact?: boolean;
 }) {
   const { position } = card;
+  const [more, setMore] = useState(() => window.matchMedia('(min-width: 900px)').matches);
+  const sections = card.sections.map((section) => (
+    <Section key={section.id} section={section} selection={selection} />
+  ));
   return (
     <aside className="fw-card" aria-label="Details of this call">
       <p className="fw-card-position">
@@ -132,9 +139,18 @@ export function Card({
           </button>
         </p>
       )}
-      {card.sections.map((section) => (
-        <Section key={section.id} section={section} selection={selection} />
-      ))}
+      {compact && card.sections.length > 0 ? (
+        <details
+          className="fw-card-more"
+          open={more}
+          onToggle={(event) => setMore(event.currentTarget.open)}
+        >
+          <summary>Elements this call touches</summary>
+          {sections}
+        </details>
+      ) : (
+        sections
+      )}
     </aside>
   );
 }

@@ -146,6 +146,11 @@ export type Pane = z.infer<typeof PaneSchema>;
 
 export const LayoutSchema = z.strictObject({
   panes: z.array(PaneSchema).min(1),
+  /**
+   * The view a reader gets first: "grid" shows every pane at once, "focus" shows the panes the
+   * current call touches large and lists the rest. A reader's own choice and a link's `v=` win.
+   */
+  view: z.enum(['grid', 'focus']).optional(),
 });
 export type Layout = z.infer<typeof LayoutSchema>;
 

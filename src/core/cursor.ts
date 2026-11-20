@@ -7,6 +7,16 @@ export interface Cursor {
   s: number;
   c: number;
   sel?: string;
+  /** The view the address asks for. Absent when the address says nothing about it. */
+  view?: View;
+}
+
+/** How the panes are arranged: all at once in a grid, or a stage that follows the call. */
+export const VIEWS = ['grid', 'focus'] as const;
+export type View = (typeof VIEWS)[number];
+
+export function isView(value: unknown): value is View {
+  return typeof value === 'string' && (VIEWS as readonly string[]).includes(value);
 }
 
 /** Number of calls in each step. */
@@ -80,13 +90,14 @@ export function isLast(shape: Shape, s: number, c: number): boolean {
   return s === shape.length - 1 && c === (shape[s] ?? 1) - 1;
 }
 
-/** `#w=<id>&s=<step>&c=<call>[&sel=<entity>]`, with step and call counted from 1. */
+/** `#w=<id>&s=<step>&c=<call>[&sel=<entity>][&v=<view>]`, with step and call counted from 1. */
 export function encodeHash(cursor: Cursor): string {
   const params = new URLSearchParams();
   params.set('w', cursor.w);
   params.set('s', String(cursor.s + 1));
   params.set('c', String(cursor.c + 1));
   if (cursor.sel !== undefined && cursor.sel !== '') params.set('sel', cursor.sel);
+  if (cursor.view !== undefined) params.set('v', cursor.view);
   return `#${params.toString()}`;
 }
 
@@ -108,5 +119,8 @@ export function decodeHash(
   const cursor: Cursor = { w: target.id, ...clamp(target.shape, s, c) };
   const sel = params.get('sel');
   if (known && sel !== null && sel !== '') cursor.sel = sel;
+  // The view does not depend on the walkthrough: a link can ask for it on any of them.
+  const view = params.get('v');
+  if (isView(view)) cursor.view = view;
   return cursor;
 }

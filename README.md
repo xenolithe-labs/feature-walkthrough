@@ -74,8 +74,15 @@ writes, a few calls say which line is running and where a pointer is, and `finis
 ordinary config. Every line number is checked against the displayed source, so a wrong one fails
 instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill.
 
+Two views: **Grid** shows every pane at once; **Focus** shows the panes the current call touches
+large, on a stage that fills a desktop-sized window (the page itself does not scroll there; on a
+phone it is about a screen and a half), with a bar that lists every pane and what the call does
+to it. The reader switches with the control in the header (the choice is kept per
+browser), a link can ask for one with `v=focus` or `v=grid`, and a config can set the default with
+`layout.view`.
+
 Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
-(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>`), so any call can be linked to.
+(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>&v=<view>`), so any call can be linked to.
 
 ## The config
 
