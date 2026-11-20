@@ -1,6 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, tree). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -105,6 +105,7 @@ but you name them in effects:
 | A column of a schema table | `table.column` | `order.user_id`      |
 | A relation without an `id` | `from:to`      | `order.user_id:user` |
 | A cell of an array         | `array.index`  | `items.3`            |
+| A column of a table pane   | `col.column`   | `col.lag`            |
 
 `update` may only set fields the element has. A misspelt field, or a tone that is not a tone, is a
 lint error.
@@ -133,6 +134,7 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | `array`    | A row of cells with pointers and ranges      | cells, pointers, ranges                                         | cells            |
 | `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
 | `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
+| `tree`     | An outline: files, DOM, accounts, an AST     | nodes                                                           | yes              |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown.
@@ -143,10 +145,38 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   and `tone`. `direction` is `RIGHT` or `DOWN`.
 - **`boxes`**: boxes `{ id, label, sub?, parent? }`; `parent` nests one box inside another.
   `direction` is `row` or `column`.
-- **`table`**: `columns` `{ id, label, mono? }` and `rows` `{ id, cells: { columnId: "text" } }`.
+- **`table`**: `columns` `{ id, label, mono?, meter? }` and `rows` `{ id, cells: { columnId: "text" }, group? }`.
   Cell values are strings. `update` with `fields` keyed by column id changes cells. Add
   `"cells": ["columnId"]` to a `read` to mark single cells and not the whole row. No column may have
-  the id `tone`.
+  the id `tone`. Headers keep the case you write. Optional, and none changes a table that does not
+  use them:
+  - `legend`: `{ "L": { "tone": "good", "label": "leader" } }` (tones `good`, `warn`, `muted`; the
+    tone may be left out). A cell whose text is a legend key is drawn with that tone, and the legend
+    is shown under the table. Use it for placement matrices and heat-map grids: change a cell with
+    `update`, and its tone follows.
+  - `group` on a row: consecutive rows with the same group get a header row that spans the table.
+    Keep a group's rows together (lint warns otherwise). Group headers are not elements.
+  - `meter: { max, warn? }` on a column: its cells must be numbers written as text (`"38"`). They
+    are drawn as a bar and the number, and a number above `warn` is toned. Lint rejects a cell, or
+    an `update` value, that is not a number or is outside 0 to `max`. A legend does not apply to a
+    meter column.
+  - `{ "read": "col.lag" }` marks a whole column (`col.` and the column id). A column is always
+    present: it is read, never added, removed or updated.
+- **`tree`**: `nodes` `{ id, label, sub?, kind?, tone?, parent?, parents?, collapsed?, initial? }`.
+  `parent` hangs a node under another; children keep declaration order. `kind` is a short word
+  drawn before the label (`OU`, `dir`). `update` can set `label`, `sub`, `tone`, `collapsed`
+  (true or false) and `parent`, which moves the node and its subtree: only to an id listed in the
+  node's `parents`, or back to the parent it was declared with. Lint rejects any other move, a
+  cycle (also one that only a sequence of moves makes), a move under an absent node, and an `add`
+  under an absent parent. Depth, indentation and connector lines are worked out. For the call, every
+  ancestor of a touched node is opened, even if it is `collapsed`; the reader can close one with
+  its twisty or Space, which wins for that call, and the closed node then says how many nodes it
+  hides and how many of them the call touches. A call that sets `collapsed: true` on a node and
+  also touches something inside it shows the node open for that call; the collapse applies from
+  the next. Absent nodes keep their row. Removing a node drops its changes, so a moved node comes
+  back where it was declared. The pane scrolls to the first touched node. Keys: Up, Down, Home and
+  End move between nodes, Enter selects, Space opens or closes; Left and Right are left to the
+  walkthrough.
 - **`code`**: `sources` `{ id, title, lang?, text }`. Mark lines with
   `{ "read": "sourceId", "lines": [3, [7, 9]] }`; line numbers start at 1 and `[7, 9]` is a range.
   Any effect on a source brings it to the front. Set `lang` (`js`, `python`, `sql`, `hcl`, ...) and

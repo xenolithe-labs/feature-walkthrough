@@ -299,7 +299,8 @@ export const tablePanel: PanelType<TableContent, ElementsState> = {
   id: 'table',
   schema: { content: TableContent },
   entities: entitiesOf,
-  // Only rows are present or absent; a column is always there to be marked.
+  // Only rows are present or absent; a column is always there to be marked, so it is not in the
+  // state (lint rejects adding or removing one).
   init: (content) => initElements(entitiesOf(content).filter((entity) => !isColumn(entity.id))),
   reduce: (state, effect) => reduceElements(state, effect),
   Component: TableView,

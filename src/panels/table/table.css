@@ -50,7 +50,7 @@
 
 /* A meter column: a bar and the number, in a box of fixed height so rows stay as they are. */
 .fw-table td.is-meter {
-  min-width: 11rem;
+  min-width: 8rem;
 }
 
 .fw-meter {

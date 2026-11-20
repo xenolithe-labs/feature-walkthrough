@@ -80,14 +80,15 @@ function TreeView({
     () => new Set([...state.present, ...current.removed]),
     [state.present, current.removed],
   );
+  const effects = ctx.current;
   const touchedIds = useMemo(
     () =>
       new Set(
-        ctx.current
+        effects
           .map((effect) => effectTarget(effect))
           .flatMap(({ verb, id }) => (verb === 'focus' ? [] : [id])),
       ),
-    [ctx.current],
+    [effects],
   );
 
   // What the reader opened or closed lasts for this call only, so a link to a call is the same
