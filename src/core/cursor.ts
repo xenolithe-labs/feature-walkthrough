@@ -9,6 +9,8 @@ export interface Cursor {
   sel?: string;
   /** The view the address asks for. Absent when the address says nothing about it. */
   view?: View;
+  /** Whether the address asks for motion on (`m=1`) or off (`m=0`). Absent when it says nothing. */
+  motion?: boolean;
 }
 
 /** How the panes are arranged: all at once in a grid, or a stage that follows the call. */
@@ -90,7 +92,7 @@ export function isLast(shape: Shape, s: number, c: number): boolean {
   return s === shape.length - 1 && c === (shape[s] ?? 1) - 1;
 }
 
-/** `#w=<id>&s=<step>&c=<call>[&sel=<entity>][&v=<view>]`, with step and call counted from 1. */
+/** `#w=<id>&s=<step>&c=<call>[&sel=<entity>][&v=<view>][&m=<0|1>]`, with step and call counted from 1. */
 export function encodeHash(cursor: Cursor): string {
   const params = new URLSearchParams();
   params.set('w', cursor.w);
@@ -98,6 +100,7 @@ export function encodeHash(cursor: Cursor): string {
   params.set('c', String(cursor.c + 1));
   if (cursor.sel !== undefined && cursor.sel !== '') params.set('sel', cursor.sel);
   if (cursor.view !== undefined) params.set('v', cursor.view);
+  if (cursor.motion !== undefined) params.set('m', cursor.motion ? '1' : '0');
   return `#${params.toString()}`;
 }
 
@@ -122,5 +125,7 @@ export function decodeHash(
   // The view does not depend on the walkthrough: a link can ask for it on any of them.
   const view = params.get('v');
   if (isView(view)) cursor.view = view;
+  const motion = params.get('m');
+  if (motion === '1' || motion === '0') cursor.motion = motion === '1';
   return cursor;
 }

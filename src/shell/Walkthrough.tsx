@@ -21,12 +21,18 @@ import {
   type Selection,
   type View,
   flatIndex,
+  isSpeed,
+  playDelay,
+  SPEEDS,
   totalCalls,
+  wordCount,
 } from '../core';
 import { Card } from './Card';
 import { Focus } from './Focus';
-import { useCursor, useTheme, useView, type Theme } from './hooks';
+import { useCursor, useMotion, useSpeed, useTheme, useView, type Theme } from './hooks';
+import { usePlay, useStepMotion } from './motion';
 import './shell.css';
+import './motion.css';
 
 export function Problems({ problems, title }: { problems: Problem[]; title: string }) {
   return (
@@ -78,17 +84,38 @@ function Shell({
     [choose, cursor, setCursor, walkthrough.id, s, c],
   );
 
+  const motion = useMotion(cursor.motion, walkthrough.source.layout.motion);
+  const toggleMotion = useCallback(() => {
+    motion.choose(!motion.on);
+    // A link that asked for motion is overruled by the reader's choice, not the other way round.
+    if (cursor.motion !== undefined) {
+      const rest = { ...cursor };
+      delete rest.motion;
+      setCursor(rest);
+    }
+  }, [motion, cursor, setCursor]);
+  // `m=0` in the address takes Play away too. Reduced motion only takes the transitions.
+  const playOffered = cursor.motion !== false;
+  const [speed, chooseSpeed] = useSpeed();
+
+  const root = useRef<HTMLDivElement | null>(null);
+  const at = flatIndex(shape, s, c);
+  const { moving, begin } = useStepMotion(root, motion.on, walkthrough.id, at);
   const go = useCallback(
-    (to: { s: number; c: number }) => setCursor({ ...cursor, w: walkthrough.id, ...to }),
-    [cursor, setCursor, walkthrough.id],
+    (to: { s: number; c: number }) => {
+      begin(flatIndex(shape, to.s, to.c));
+      setCursor({ ...cursor, w: walkthrough.id, ...to });
+    },
+    [begin, shape, cursor, setCursor, walkthrough.id],
   );
   const select = useCallback(
     (id: string | undefined) => {
       const next: Cursor = { w: walkthrough.id, s, c };
       if (cursor.view !== undefined) next.view = cursor.view;
+      if (cursor.motion !== undefined) next.motion = cursor.motion;
       setCursor(id === undefined ? next : { ...next, sel: id });
     },
-    [setCursor, walkthrough.id, s, c, cursor.view],
+    [setCursor, walkthrough.id, s, c, cursor.view, cursor.motion],
   );
   const selection: Selection = useMemo(() => ({ id: cursor.sel, select }), [cursor.sel, select]);
 
@@ -113,7 +140,26 @@ function Shell({
   const views = useMemo(() => folder.at(s, c), [folder, s, c]);
   const card = useMemo(() => buildCard(walkthrough, s, c, views), [walkthrough, s, c, views]);
   const focusId = folder.focusPane(s, c);
-  const root = useRef<HTMLDivElement | null>(null);
+  const delay = playDelay(
+    wordCount(
+      card.title,
+      card.text,
+      card.where,
+      ...card.sections.map((section) => (section.kind === 'text' ? section.text : undefined)),
+    ),
+    speed,
+  );
+  const advance = useCallback(() => go(nextCall(shape, s, c)), [go, shape, s, c]);
+  const restart = useCallback(() => go({ s: 0, c: 0 }), [go]);
+  const play = usePlay({
+    enabled: playOffered,
+    at,
+    atEnd: isLast(shape, s, c),
+    delay,
+    lastNext: ((n) => isLast(shape, n.s, n.c))(nextCall(shape, s, c)),
+    advance,
+    restart,
+  });
   // A row of steps that scrolls sideways keeps the current one in sight.
   useEffect(() => {
     const row = root.current?.querySelector<HTMLElement>('.fw-steps ol');
@@ -145,6 +191,8 @@ function Shell({
       data-step={s + 1}
       data-call={c + 1}
       data-view={view}
+      data-motion={motion.on ? 'on' : 'off'}
+      data-moving={moving}
     >
       <header className="fw-head">
         <div className="fw-head-text">
@@ -159,6 +207,7 @@ function Shell({
                     s: 0,
                     c: 0,
                     ...(cursor.view === undefined ? {} : { view: cursor.view }),
+                    ...(cursor.motion === undefined ? {} : { motion: cursor.motion }),
                   })
                 }
               >
@@ -197,6 +246,17 @@ function Shell({
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            className="fw-theme"
+            aria-pressed={motion.on}
+            disabled={motion.reduced || cursor.motion === false}
+            title="Short transitions that show what changed"
+            onClick={toggleMotion}
+          >
+            Motion
+            {motion.reduced ? ' (system off)' : cursor.motion === false ? ' (link off)' : ''}
+          </button>
           <button type="button" className="fw-theme" onClick={onToggleTheme}>
             {theme === 'dark' ? 'Light theme' : 'Dark theme'}
           </button>
@@ -259,6 +319,41 @@ function Shell({
         >
           →
         </button>
+        {playOffered && (
+          <div className="fw-play">
+            <button
+              type="button"
+              className="fw-play-button"
+              aria-keyshortcuts="Space"
+              title={play.playing ? 'Pause (Space)' : 'Play (Space)'}
+              onClick={play.toggle}
+            >
+              {play.playing ? 'Pause' : 'Play'}
+            </button>
+            <select
+              aria-label="Play speed"
+              value={speed}
+              onChange={(event) => isSpeed(event.target.value) && chooseSpeed(event.target.value)}
+            >
+              {SPEEDS.map((name) => (
+                <option key={name} value={name}>
+                  {name[0]!.toUpperCase() + name.slice(1)}
+                </option>
+              ))}
+            </select>
+            {play.playing && !play.held && (
+              <span
+                key={at}
+                className="fw-play-fill"
+                aria-hidden="true"
+                style={{ animationDuration: `${delay}ms` }}
+              />
+            )}
+            <span className="fw-visually-hidden" role="status">
+              {play.note}
+            </span>
+          </div>
+        )}
         <details
           className="fw-outline"
           ref={outline}
@@ -308,6 +403,7 @@ function Shell({
         </span>
         <span className="fw-hint">
           ← → one call · Shift ← → one step · click anything to follow it
+          {playOffered ? ' · Space plays' : ''}
         </span>
         <div
           className="fw-progress"
@@ -332,11 +428,12 @@ function Shell({
           views={views}
           selection={selection}
           theme={theme}
+          bodyProps={play.holdProps}
         >
           <Card card={card} selection={selection} selectedLabel={selectedLabel} compact />
         </Focus>
       ) : (
-        <div className="fw-body">
+        <div className="fw-body" {...play.holdProps}>
           <div className="fw-panes" data-count={visible.length}>
             {visible.map((pane) => {
               const view = views[pane.id]!;

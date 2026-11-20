@@ -7,3 +7,4 @@ export * from './fold';
 export * from './card';
 export * from './lint';
 export * from './stage';
+export * from './motion';

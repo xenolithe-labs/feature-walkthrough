@@ -183,4 +183,37 @@ describe('hash codec', () => {
     expect(decodeHash('w=first&s=2', walkthroughs)).toEqual({ w: 'first', s: 1, c: 0 });
     expect(decodeHash('#w=first', [])).toBeUndefined();
   });
+
+  it('writes motion after the view, and only when the address says something', () => {
+    expect(encodeHash({ w: 'first', s: 0, c: 0, motion: true })).toBe('#w=first&s=1&c=1&m=1');
+    expect(encodeHash({ w: 'first', s: 0, c: 0, motion: false })).toBe('#w=first&s=1&c=1&m=0');
+    expect(encodeHash({ w: 'first', s: 0, c: 1, view: 'focus', motion: true })).toBe(
+      '#w=first&s=1&c=2&v=focus&m=1',
+    );
+    expect(encodeHash({ w: 'first', s: 0, c: 0 })).not.toContain('m=');
+  });
+
+  it('reads motion, ignores anything but 0 and 1, and round trips it', () => {
+    expect(decodeHash('#w=first&m=1', walkthroughs)).toEqual({
+      w: 'first',
+      s: 0,
+      c: 0,
+      motion: true,
+    });
+    expect(decodeHash('#m=0', walkthroughs)).toEqual({ w: 'first', s: 0, c: 0, motion: false });
+    for (const bad of ['', '2', 'true', 'on', ' 1']) {
+      expect(decodeHash(`#w=first&m=${bad}`, walkthroughs)).toEqual({ w: 'first', s: 0, c: 0 });
+    }
+    // Like the view, it does not depend on the walkthrough, so a stale link keeps it.
+    expect(decodeHash('#w=nope&s=3&m=1', walkthroughs)).toEqual({
+      w: 'first',
+      s: 0,
+      c: 0,
+      motion: true,
+    });
+    for (const motion of [true, false]) {
+      const cursor = { w: 'second', s: 0, c: 3, sel: 'a b', view: 'focus' as const, motion };
+      expect(decodeHash(encodeHash(cursor), walkthroughs)).toEqual(cursor);
+    }
+  });
 });
