@@ -109,6 +109,14 @@ body {
   justify-content: space-between;
 }
 
+.fw-head-text {
+  min-width: 0;
+}
+
+.fw-picker {
+  display: block;
+}
+
 .fw-head h1 {
   margin: 0;
   font-size: 1.35rem;
@@ -122,7 +130,8 @@ body {
 }
 
 .fw-picker select {
-  max-width: 100%;
+  width: 100%;
+  max-width: 26rem;
   margin-bottom: 8px;
   padding: 4px 8px;
   border: 1px solid var(--fw-border);
@@ -156,13 +165,20 @@ body {
   margin-top: 14px;
 }
 
+.fw-steps li {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .fw-step {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 4px 8px;
   align-items: center;
   padding: 6px 12px 6px 6px;
   border: 1px solid var(--fw-border);
-  border-radius: 999px;
+  border-radius: 18px;
   background: var(--fw-surface);
   text-align: left;
 }

@@ -220,3 +220,133 @@ describe('diagram layout', () => {
     expect(estimateSize('x', 'y').height).toBeGreaterThan(estimateSize('x').height);
   });
 });
+
+describe('table, boxes and code panels', () => {
+  const walkthrough = (panes: unknown[], effects: Record<string, unknown[]> = {}) => ({
+    id: 'w',
+    title: 'W',
+    layout: { panes },
+    steps: [{ id: 's', title: 'S', calls: [{ id: 'c', label: 'C', effects }] }],
+  });
+  const rules = (value: unknown) => load(value).problems.map((item) => item.rule);
+
+  it('table: rows are present from the start, and cells must name declared columns', () => {
+    const pane = {
+      id: 't',
+      panel: 'table',
+      content: {
+        columns: [
+          { id: 'k', label: 'K' },
+          { id: 'v', label: 'V' },
+        ],
+        rows: [
+          { id: 'r1', cells: { k: 'a', v: '1' } },
+          { id: 'r2', initial: false, cells: { k: 'b' } },
+        ],
+      },
+    };
+    const good = load(
+      walkthrough([pane], {
+        t: [{ update: 'r1', fields: { v: '2', tone: 'warn' } }, { add: 'r2' }],
+      }),
+    );
+    expect(good.problems).toEqual([]);
+    const state = createFolder(good.walkthroughs[0]!).at(0, 0).t!.state as ElementsState;
+    expect(state.present).toEqual(['r1', 'r2']);
+    expect(state.patches.r1).toEqual({ v: '2', tone: 'warn' });
+
+    expect(rules(walkthrough([pane], { t: [{ update: 'r1', fields: { nope: 'x' } }] }))).toContain(
+      'table/unknown-column',
+    );
+    expect(rules(walkthrough([pane], { t: [{ read: 'r1', cells: ['nope'] }] }))).toContain(
+      'table/unknown-column',
+    );
+    expect(rules(walkthrough([pane], { t: [{ read: 'r2' }] }))).toContain('absent-element');
+  });
+
+  it('boxes: parents must exist and must not loop', () => {
+    const pane = (boxes: unknown[], edges: unknown[] = []) => ({
+      id: 'b',
+      panel: 'boxes',
+      content: { boxes, edges },
+    });
+    expect(
+      rules(
+        walkthrough([
+          pane(
+            [
+              { id: 'a', label: 'A' },
+              { id: 'b', label: 'B', parent: 'a' },
+            ],
+            [{ from: 'a', to: 'b' }],
+          ),
+        ]),
+      ),
+    ).toEqual([]);
+    expect(rules(walkthrough([pane([{ id: 'a', label: 'A', parent: 'zz' }])]))).toEqual([
+      'boxes/unknown-parent',
+    ]);
+    expect(
+      rules(
+        walkthrough([
+          pane([
+            { id: 'a', label: 'A', parent: 'b' },
+            { id: 'b', label: 'B', parent: 'a' },
+          ]),
+        ]),
+      ),
+    ).toContain('boxes/cycle');
+    expect(
+      rules(walkthrough([pane([{ id: 'a', label: 'A' }], [{ from: 'a', to: 'zz' }])])),
+    ).toEqual(['boxes/unknown-box']);
+  });
+
+  it('code: an effect brings its source forward, and lines must exist', () => {
+    const pane = {
+      id: 'c',
+      panel: 'code',
+      content: {
+        sources: [
+          { id: 'one', title: 'one', text: 'a\nb' },
+          { id: 'two', title: 'two', text: 'x' },
+        ],
+      },
+    };
+    const good = load(walkthrough([pane], { c: [{ read: 'two', lines: [1] }] }));
+    expect(good.problems).toEqual([]);
+    expect((createFolder(good.walkthroughs[0]!).at(0, 0).c!.state as ElementsState).focus).toBe(
+      'two',
+    );
+
+    expect(rules(walkthrough([pane], { c: [{ read: 'one', lines: [[1, 3]] }] }))).toEqual([
+      'code/line-out-of-range',
+    ]);
+    expect(
+      rules(
+        walkthrough([pane], { c: [{ update: 'one', fields: { text: 'a\nb\nc' }, lines: [3] }] }),
+      ),
+    ).toEqual([]);
+    expect(rules(walkthrough([pane], { c: [{ read: 'one', lines: ['x'] }] }))).toEqual(['schema']);
+  });
+
+  it('flow: everything is present from the start', () => {
+    const pane = {
+      id: 'f',
+      panel: 'flow',
+      content: {
+        nodes: [
+          { id: 'a', label: 'A', kind: 'decision' },
+          { id: 'b', label: 'B' },
+        ],
+        edges: [{ from: 'a', to: 'b' }],
+      },
+    };
+    const good = load(walkthrough([pane], { f: [{ read: 'a' }, { read: 'a.b' }] }));
+    expect(good.problems).toEqual([]);
+    expect(
+      rules(
+        walkthrough([{ ...pane, content: { ...pane.content, edges: [{ from: 'a', to: 'zz' }] } }]),
+      ),
+    ).toEqual(['flow/unknown-node']);
+  });
+});

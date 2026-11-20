@@ -39,15 +39,20 @@
 }
 
 .fw-node {
+  --node-border: var(--fw-border);
+  --node-bg: var(--fw-surface-2);
+  --node-width: 1.5px;
+  --node-style: solid;
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: center;
   width: 100%;
   height: 100%;
   padding: 4px 12px;
-  border: 1.5px solid var(--fw-border);
+  border: var(--node-width) var(--node-style) var(--node-border);
   border-radius: 8px;
-  background: var(--fw-surface-2);
+  background: var(--node-bg);
   color: var(--fw-text);
   text-align: center;
   line-height: 1.25;
@@ -55,6 +60,7 @@
 
 .fw-node-label,
 .fw-node-sub {
+  position: relative;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -69,13 +75,46 @@
   font-size: 11px;
 }
 
+.fw-node[data-kind='terminal'] {
+  border-radius: 999px;
+}
+
+/* A decision is a hexagon: the border is the shape itself, the fill sits inside it. */
+.fw-node[data-kind='decision'] {
+  --hex: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%);
+  padding: 4px 20px;
+  border: 0;
+  border-radius: 0;
+  background: var(--node-border);
+  clip-path: var(--hex);
+}
+
+.fw-node[data-kind='decision']::before {
+  content: '';
+  position: absolute;
+  inset: var(--node-width);
+  background: var(--node-bg);
+  clip-path: var(--hex);
+}
+
 .fw-node[data-tone='muted'] {
-  border-style: dashed;
+  --node-style: dashed;
 }
 
 .fw-node[data-tone='muted'] .fw-node-label {
   text-decoration: line-through;
   color: var(--fw-muted);
+}
+
+.fw-node[data-tone='warn'] {
+  --node-border: var(--fw-warn);
+  --node-style: dashed;
+  --node-width: 2px;
+}
+
+.fw-node[data-tone='good'] {
+  --node-border: var(--fw-good);
+  --node-width: 2px;
 }
 
 .fw-edge-hit {
@@ -114,28 +153,28 @@
 }
 
 .fw-diagram .react-flow__node.is-added .fw-node {
-  border-color: var(--fw-added);
-  border-width: 2.5px;
-  background: var(--fw-added-bg);
+  --node-border: var(--fw-added);
+  --node-bg: var(--fw-added-bg);
+  --node-width: 2.5px;
 }
 
 .fw-diagram .react-flow__node.is-updated .fw-node {
-  border-color: var(--fw-updated);
-  border-width: 2.5px;
-  background: var(--fw-updated-bg);
+  --node-border: var(--fw-updated);
+  --node-bg: var(--fw-updated-bg);
+  --node-width: 2.5px;
 }
 
 .fw-diagram .react-flow__node.is-read .fw-node {
-  border-color: var(--fw-read);
-  border-width: 2.5px;
-  background: var(--fw-read-bg);
+  --node-border: var(--fw-read);
+  --node-bg: var(--fw-read-bg);
+  --node-width: 2.5px;
 }
 
 .fw-diagram .react-flow__node.is-removed .fw-node {
-  border-color: var(--fw-removed);
-  border-style: dashed;
-  border-width: 2.5px;
-  background: var(--fw-removed-bg);
+  --node-border: var(--fw-removed);
+  --node-bg: var(--fw-removed-bg);
+  --node-width: 2.5px;
+  --node-style: dashed;
 }
 
 .fw-diagram .react-flow__edge.is-added {
@@ -171,6 +210,11 @@
 .fw-diagram .react-flow__node.is-selected .fw-node {
   outline: 3px solid var(--fw-select);
   outline-offset: 2px;
+}
+
+.fw-diagram .react-flow__node.is-selected .fw-node[data-kind='decision'] {
+  --node-border: var(--fw-select);
+  --node-width: 3.5px;
 }
 
 .fw-diagram .react-flow__edge.is-selected {
