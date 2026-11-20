@@ -193,7 +193,7 @@ export const consistentHashing = defineWalkthrough({
           from: 'node-13',
           to: 'node-6',
           text: `With replication ${REPLICATION} the next distinct node clockwise also holds the key. The walk passes 999, wraps to 0 and reaches node-6 at ${at('node-6')}.`,
-          where: `${DYNAMO} section 4.3 (the preference list holds the next nodes along the ring, as distinct physical nodes)`,
+          where: `${DYNAMO} section 4.3 (the preference list holds the next nodes along the ring, as distinct physical nodes); ${CASSANDRA} (replicas are chosen by walking the ring clockwise until enough distinct nodes are found)`,
           effects: {
             ring: [{ read: 'user-105' }, { read: 'node-6' }],
             owners: [{ read: 'user-105' }],
@@ -215,7 +215,6 @@ export const consistentHashing = defineWalkthrough({
           where: `${DYNAMO} section 4.2 (the departure or arrival of a node only affects its immediate neighbours)`,
           effects: {
             ring: [{ add: 'node-10' }],
-            owners: compare(before, joined),
           },
         },
         {
@@ -224,7 +223,7 @@ export const consistentHashing = defineWalkthrough({
           text: `${movedOnJoin.length} of ${KEY_NAMES.length} keys changed owner, all of them in node-10's arc. The table says the same: compare its two owner columns. The other keys keep their owner, though some now have a different replica, because node-10 is now the node after node-1.`,
           effects: {
             ring: [{ read: 'node-10' }, { read: 'node-13' }],
-            owners: movedOnJoin.map((name) => ({ read: keyId(name) })),
+            owners: compare(before, joined),
           },
         },
       ],
@@ -237,12 +236,18 @@ export const consistentHashing = defineWalkthrough({
         {
           id: 'down',
           label: 'node-6 goes down',
-          from: 'node-6',
-          to: 'client',
           text: `node-6 owned ${list(movedOnFailure)}. With node-6 skipped, the first healthy token at or after each of them is node-1 at ${at('node-1')}, so they move there. The dashed marks on the ring show the arc that node-1 now serves for node-6.`,
           where: `${DYNAMO} sections 4.5 and 4.6 (reads and writes use the first N healthy nodes of the preference list: a sloppy quorum with hinted handoff)`,
           effects: {
             ring: [{ update: 'node-6', fields: { state: 'down' } }],
+          },
+        },
+        {
+          id: 'down-owners',
+          label: 'Owners with node-6 down',
+          text: `The table compares the owners before and after: ${movedOnFailure.length} keys changed owner, all of them node-6's. The ring marks the same keys without being told.`,
+          effects: {
+            ring: [{ read: 'node-1' }],
             owners: compare(joined, failed),
           },
         },
@@ -252,7 +257,7 @@ export const consistentHashing = defineWalkthrough({
           from: 'client',
           to: 'node-1',
           text: `user:100 hashes to ${at('user:100')}. The walk reaches node-6 first, skips it because it is down, and stops at node-1, with node-10 as the replica.`,
-          where: `${DYNAMO} section 4.6; ${CASSANDRA} (replicas are distinct nodes found by walking the ring; hints are written for replicas that are down)`,
+          where: `${DYNAMO} section 4.6`,
           effects: {
             ring: [{ read: 'user-100' }],
             owners: [{ read: 'user-100' }],
@@ -264,6 +269,14 @@ export const consistentHashing = defineWalkthrough({
           text: 'The node is healthy again, so the keys it owns are owned by it again. This panel does not model how the data is handed back.',
           effects: {
             ring: [{ update: 'node-6', fields: { state: 'up' } }],
+          },
+        },
+        {
+          id: 'up-owners',
+          label: 'Owners with node-6 back',
+          text: 'The table is back to comparing the ring with node-6 down against the ring with it up: the same keys move again.',
+          effects: {
+            ring: [{ read: 'node-6' }],
             owners: compare(failed, joined),
           },
         },

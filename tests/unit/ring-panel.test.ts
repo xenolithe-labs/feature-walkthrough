@@ -265,9 +265,9 @@ describe('ring panel: an independent implementation agrees', () => {
       model.nodes.get('node-6')!.down = down;
       return model;
     };
-    scenarios['add'] = [build(false, false), build(true, false)];
-    scenarios['down'] = [build(true, false), build(true, true)];
-    scenarios['up'] = [build(true, true), build(true, false)];
+    scenarios['check'] = [build(false, false), build(true, false)];
+    scenarios['down-owners'] = [build(true, false), build(true, true)];
+    scenarios['up-owners'] = [build(true, true), build(true, false)];
     let compared = 0;
     walkthrough.steps.forEach((step, s) =>
       step.calls.forEach((call, c) => {
@@ -289,6 +289,13 @@ describe('ring panel: an independent implementation agrees', () => {
       }),
     );
     expect(compared).toBe(3 * content.keys.length);
+  });
+
+  it('does not count a key that is added in the call that moves the others', () => {
+    const before = { present: ['node-1', 'node-6', 'node-13'], patches: {} };
+    const after = { present: [...before.present, 'node-10', 'user-105'], patches: {} };
+    const moved = changesOf(content, before, after).map((change) => change.key);
+    expect(moved).not.toContain('user-105');
   });
 
   it('moves only the keys in one arc when the fourth node joins, and marks that arc', () => {

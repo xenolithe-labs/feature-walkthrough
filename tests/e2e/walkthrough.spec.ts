@@ -953,7 +953,7 @@ test('ring: a lookup draws the walk from the key to its owner and replica; a dow
   await expect(walk.locator('.fw-ring-badge-text')).toHaveText(['1', '2']);
   await expect(walk.locator('[data-visit="owner"]')).toHaveCount(1);
 
-  await open(page, '#w=consistent-hashing&s=4&c=2');
+  await open(page, '#w=consistent-hashing&s=4&c=3');
   const down = page.locator('[data-walk="user-100"]');
   await expect(down.locator('[data-visit="skipped"]')).toHaveCount(1);
   await expect(down.locator('.fw-ring-badge-text')).toHaveText(['×', '1', '2']);
@@ -1054,3 +1054,14 @@ test('ring: at phone width the ring is as wide as the pane and its labels do not
   expect(box.left).toBeGreaterThanOrEqual(0);
   expect(box.right).toBeLessThanOrEqual(390);
 });
+
+for (const cursor of ['s=3&c=1', 's=4&c=1']) {
+  test(`ring: on a phone the focus view stages the ring for the call that moves keys (${cursor})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, `#w=consistent-hashing&${cursor}&v=focus`);
+    await expect(page.locator('.fw-stage .fw-ring')).toBeVisible();
+    await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(3);
+  });
+}
