@@ -485,6 +485,226 @@ An effect on this panel takes the shared verbs plus these keys:
 }
 ```
 
+## Panel `payload`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "payloads": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sub": {
+            "type": "string"
+          },
+          "value": {},
+          "raw": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "default": "Raw",
+                "type": "string",
+                "minLength": 1
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": ["text"],
+            "additionalProperties": false
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "title", "value"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["payloads"],
+  "additionalProperties": false
+}
+```
+
+An effect on this panel takes the shared verbs plus these keys:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "add": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "update": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "read": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "remove": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "focus": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "set": {},
+    "fields": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}
+```
+
+## Panel `schema`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "tables": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sub": {
+            "type": "string"
+          },
+          "columns": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "key": {
+                  "type": "string",
+                  "maxLength": 4
+                },
+                "note": {
+                  "type": "string"
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "label"],
+        "additionalProperties": false
+      }
+    },
+    "relations": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["from", "to"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["tables"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
 ## Annotation `status`
 
 Walkthrough-level config, at `annotations.status`:
