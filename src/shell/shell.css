@@ -4,6 +4,10 @@
   --fw-surface: #ffffff;
   --fw-surface-2: #f0f2f5;
   --fw-border: #d5d9e0;
+  /* Borders that are the only outline of a control need 3:1 against the surface. */
+  --fw-control-border: #868f9f;
+  /* How strongly elements a call does not touch step back. Text must stay readable. */
+  --fw-faded-opacity: 0.68;
   --fw-text: #1b1f27;
   --fw-muted: #5a6372;
   --fw-added: #c2410c;
@@ -30,6 +34,7 @@
   --fw-surface: #1b2029;
   --fw-surface-2: #242a35;
   --fw-border: #363e4c;
+  --fw-control-border: #77818f;
   --fw-text: #e7eaf0;
   --fw-muted: #a0a9b8;
   --fw-added: #fb923c;
@@ -70,6 +75,8 @@ body {
   max-width: 1500px;
   margin: 0 auto;
   padding: 16px;
+  /* A long word or address breaks instead of pushing the page sideways. This is inherited. */
+  overflow-wrap: break-word;
 }
 
 .fw button,
@@ -143,7 +150,7 @@ body {
 .fw-copy {
   flex: none;
   padding: 3px 10px;
-  border: 1px solid var(--fw-border);
+  border: 1px solid var(--fw-control-border);
   border-radius: 999px;
   background: var(--fw-surface);
   font-size: 0.8rem;
@@ -183,6 +190,12 @@ body {
   text-align: left;
 }
 
+/* A long word in a step title breaks inside its button instead of widening the page. */
+.fw-step > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .fw-step[aria-current='step'] {
   border-color: var(--fw-select);
   background: var(--fw-select-bg);
@@ -206,17 +219,127 @@ body {
 
 /* Call navigation */
 .fw-nav {
+  /* Stays in reach while the panes and the card scroll underneath. */
+  position: sticky;
+  top: 0;
+  z-index: 6;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px 10px;
   align-items: center;
-  margin: 12px 0;
+  margin: 12px -4px;
+  padding: 8px 4px 0;
+  background: var(--fw-bg);
+}
+
+.fw-where {
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.fw-where-count {
+  color: var(--fw-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* How far through the whole walkthrough the reader is. */
+.fw-progress {
+  flex-basis: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--fw-border);
+  overflow: hidden;
+}
+
+.fw-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--fw-select);
+}
+
+.fw-outline {
+  position: relative;
+}
+
+.fw-outline > summary {
+  padding: 5px 12px;
+  border: 1px solid var(--fw-control-border);
+  border-radius: 16px;
+  background: var(--fw-surface);
+  font-size: 0.85rem;
+  list-style: none;
+  cursor: pointer;
+}
+
+.fw-outline > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fw-outline-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 7;
+  width: min(420px, calc(100vw - 32px));
+  max-height: min(60vh, 520px);
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--fw-control-border);
+  border-radius: var(--fw-radius);
+  background: var(--fw-surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  list-style: none;
+  overflow: auto;
+}
+
+.fw-outline-step {
+  margin: 8px 6px 2px;
+  color: var(--fw-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fw-outline-list ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fw-outline-call {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.fw-outline-call:hover {
+  background: var(--fw-surface-2);
+}
+
+.fw-outline-call[aria-current='true'] {
+  background: var(--fw-select-bg);
+  font-weight: 600;
+}
+
+.fw-outline-number {
+  flex: none;
+  width: 2.2em;
+  color: var(--fw-muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .fw-arrow {
   width: 36px;
   height: 32px;
-  border: 1px solid var(--fw-border);
+  border: 1px solid var(--fw-control-border);
   border-radius: var(--fw-radius);
   background: var(--fw-surface);
 }
@@ -224,21 +347,34 @@ body {
 .fw-dots {
   flex-wrap: wrap;
   align-items: center;
+  gap: 0;
 }
 
 .fw-dot {
-  display: block;
-  width: 14px;
-  height: 14px;
+  /* The target is 24px; the dot drawn inside it is 14px. */
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  border: 2px solid var(--fw-muted);
+  border: 0;
   border-radius: 50%;
   background: transparent;
 }
 
-.fw-dot[aria-current='true'] {
-  border-color: var(--fw-added);
-  background: var(--fw-added);
+.fw-dot::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border: 2px solid var(--fw-muted);
+  border-radius: 50%;
+}
+
+/* The position colour is the selection colour, not the colour of "added". */
+.fw-dot[aria-current='true']::before {
+  border-color: var(--fw-select);
+  background: var(--fw-select);
 }
 
 .fw-hint {
@@ -278,6 +414,31 @@ body {
   .fw-body {
     grid-template-columns: minmax(0, 1fr) 360px;
     align-items: start;
+  }
+
+  /* The card stays beside the panes while a tall column of them scrolls. */
+  .fw-card {
+    position: sticky;
+    top: 64px;
+    max-height: calc(100vh - 76px);
+    overflow: auto;
+  }
+}
+
+/* In one column the words of the call come first: after the panes they would be a long scroll
+   away from the buttons that move between calls. */
+@media (max-width: 1179px) {
+  .fw-card {
+    order: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fw *,
+  .fw *::before,
+  .fw *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -571,6 +732,11 @@ body {
 @media (max-width: 719px) {
   .fw-hint {
     display: none;
+  }
+  /* The panes are stacked, so with several of them the words of the call would be a long scroll
+     away: on a phone the card comes before them. */
+  .fw-card {
+    order: -1;
   }
   .fw-step-title {
     max-width: 14ch;

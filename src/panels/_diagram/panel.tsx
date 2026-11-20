@@ -14,6 +14,7 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
@@ -100,7 +101,7 @@ function DiagramPanelView({
   const nodes = useMemo<DiagramNode[]>(
     () =>
       content.nodes.map((node) => {
-        const patch = state.patches[node.id];
+        const patch = own(state.patches, node.id);
         return {
           id: node.id,
           ...sizes.get(node.id)!,

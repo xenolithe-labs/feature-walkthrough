@@ -4,12 +4,13 @@ export interface Ref {
   text?: string;
 }
 
+/** Only `$ref` and an optional text make a link. Anything else is an ordinary object. */
 export function isRef(value: unknown): value is Ref {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof (value as { $ref?: unknown }).$ref === 'string'
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  if (typeof item.$ref !== 'string') return false;
+  return Object.keys(item).every(
+    (key) => key === '$ref' || (key === 'text' && typeof item.text === 'string'),
   );
 }
 
@@ -24,10 +25,40 @@ export function members(value: unknown): [string, unknown][] {
   return Object.entries(value as Record<string, unknown>);
 }
 
-/** A path is keys and array positions joined by dots: "entries.1.hash". */
+/**
+ * A path is keys and array positions joined by dots: "entries.1.hash". A key that itself
+ * contains a dot or a backslash is written with a backslash in front of each of them: the key
+ * "a.b" under "meta" is the path "meta.a\.b". Paths without a backslash read as they always did.
+ */
+export function splitPath(path: string): string[] {
+  const keys: string[] = [];
+  let key = '';
+  for (let i = 0; i < path.length; i += 1) {
+    const char = path[i]!;
+    const after = path[i + 1];
+    if (char === '\\' && (after === '.' || after === '\\')) {
+      key += after;
+      i += 1;
+    } else if (char === '.') {
+      keys.push(key);
+      key = '';
+    } else {
+      key += char;
+    }
+  }
+  keys.push(key);
+  return keys;
+}
+
+/** The path of the member `key` of the value at `parent` ("" for the top level). */
+export function joinPath(parent: string, key: string): string {
+  const escaped = key.replace(/[\\.]/g, (char) => `\\${char}`);
+  return parent === '' ? escaped : `${parent}.${escaped}`;
+}
+
 export function hasPath(value: unknown, path: string): boolean {
   let at = value;
-  for (const key of path.split('.')) {
+  for (const key of splitPath(path)) {
     if (isLeaf(at)) return false;
     const found = members(at).find(([name]) => name === key);
     if (found === undefined) return false;
@@ -38,17 +69,23 @@ export function hasPath(value: unknown, path: string): boolean {
 
 /** A copy of `value` with the member at `path` replaced. The path must exist. */
 export function setPath(value: unknown, path: string, next: unknown): unknown {
-  const [key, ...rest] = path.split('.');
+  return setKeys(value, splitPath(path), next);
+}
+
+function setKeys(value: unknown, keys: string[], next: unknown): unknown {
+  const [key, ...rest] = keys;
   if (key === undefined || isLeaf(value)) return value;
-  const inner = (old: unknown) => (rest.length === 0 ? next : setPath(old, rest.join('.'), next));
+  const inner = (old: unknown) => (rest.length === 0 ? next : setKeys(old, rest, next));
   if (Array.isArray(value)) {
     return value.map((item, index) => (String(index) === key ? inner(item) : (item as unknown)));
   }
-  const copy: Record<string, unknown> = {};
-  for (const [name, item] of Object.entries(value as Record<string, unknown>)) {
-    copy[name] = name === key ? inner(item) : item;
-  }
-  return copy;
+  // Built from entries, so a key named "__proto__" stays an ordinary key.
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([name, item]) => [
+      name,
+      name === key ? inner(item) : item,
+    ]),
+  );
 }
 
 /** The declared value with a payload's patches applied, in the order they were made. */

@@ -18,9 +18,11 @@ import {
   type PanelType,
   type Problem,
   type Touched,
+  own,
 } from '../../core';
 import { exitPoint, type Box } from '../_diagram/Diagram';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
+import { useRevealTouched } from '../_shared/reveal';
 import './boxes.css';
 
 const BoxSchema = z.strictObject({
@@ -85,7 +87,7 @@ interface Shared {
 }
 
 function BoxView({ box, shared }: { box: BoxDecl; shared: Shared }) {
-  const patch = shared.state.patches[box.id];
+  const patch = own(shared.state.patches, box.id);
   const visible = shared.shown.has(box.id);
   const mark = markOf(box.id, shared.current);
   const children = shared.children.get(box.id) ?? [];
@@ -161,7 +163,7 @@ function BoxesView({
     return ids;
   }, [content, state.present, current]);
 
-  const frame = useRef<HTMLDivElement | null>(null);
+  const frame = useRevealTouched<HTMLDivElement>(ctx.call.id);
   const elements = useRef(new Map<string, HTMLDivElement>());
   const [rects, setRects] = useState<Rects>({});
 
@@ -187,7 +189,7 @@ function BoxesView({
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [content, state.patches]);
+  }, [content, state.patches, frame]);
 
   const selected = ctx.selection.id;
   const shared: Shared = {
@@ -282,9 +284,11 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
         });
         return;
       }
-      const seen = new Set([box.id]);
+      // A box is in a loop when following parents leads back to the box itself. A box that only
+      // sits inside a loop is not reported: fixing the loop fixes it.
+      const seen = new Set<string>();
       for (let up = byId.get(box.parent); up !== undefined; up = byId.get(up.parent ?? '')) {
-        if (seen.has(up.id)) {
+        if (up.id === box.id) {
           problems.push({
             severity: 'error',
             rule: 'boxes/cycle',
@@ -293,6 +297,7 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
           });
           break;
         }
+        if (seen.has(up.id)) break;
         seen.add(up.id);
       }
     });

@@ -32,7 +32,7 @@
 }
 
 .fw-schema-table.is-faded > .fw-schema-head {
-  opacity: 0.5;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-schema-table.is-added {
@@ -136,7 +136,7 @@
 }
 
 .fw-schema-column.is-faded {
-  opacity: 0.5;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-schema-column.is-added {
@@ -198,7 +198,7 @@
 }
 
 .fw-schema-relation.is-faded {
-  opacity: 0.4;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-schema-relation.is-added {

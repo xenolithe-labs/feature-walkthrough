@@ -331,3 +331,16 @@ test('git demo: a link in a payload selects the same commit in the graph, and ra
     /is-read/,
   );
 });
+
+test('the call list shows where the reader is and jumps to any call', async ({ page }) => {
+  await open(page, '#w=git-commit&s=1&c=1');
+  await expect(page.locator('.fw-where')).toContainText('Call 1 of 17');
+  await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
+
+  await page.locator('.fw-outline > summary').click();
+  await expect(page.locator('.fw-outline-call')).toHaveCount(17);
+  await page.locator('.fw-outline-call', { hasText: 'Write the commit' }).click();
+  await expect(page).toHaveURL(/#w=git-commit&s=3&c=4$/);
+  await expect(page.locator('.fw-where')).toContainText('Call 9 of 17 · Write the commit');
+  await expect(page.locator('.fw-outline-list')).toBeHidden();
+});

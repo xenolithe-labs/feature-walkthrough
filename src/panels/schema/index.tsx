@@ -19,8 +19,10 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
+import { useRevealTouched } from '../_shared/reveal';
 import './schema.css';
 
 const ColumnSchema = z.strictObject({
@@ -88,12 +90,19 @@ function entitiesOf(content: SchemaContent) {
   ];
 }
 
-/** The table an end of a relation belongs to: the end itself, or the part before the dot. */
+/**
+ * The table an end of a relation belongs to: the end itself, or the table whose id it starts
+ * with. Ids may contain dots, so the longest matching table wins.
+ */
 function tableOf(end: string, tables: ReadonlySet<string>): string | undefined {
   if (tables.has(end)) return end;
-  const dot = end.lastIndexOf('.');
-  const table = dot < 0 ? undefined : end.slice(0, dot);
-  return table !== undefined && tables.has(table) ? table : undefined;
+  let best: string | undefined;
+  for (const table of tables) {
+    if (end.startsWith(`${table}.`) && (best === undefined || table.length > best.length)) {
+      best = table;
+    }
+  }
+  return best;
 }
 
 interface Rect {
@@ -169,7 +178,7 @@ function SchemaView({
     return ids;
   }, [content, state.present, current]);
 
-  const frame = useRef<HTMLDivElement | null>(null);
+  const frame = useRevealTouched<HTMLDivElement>(ctx.call.id);
   const elements = useRef(new Map<string, HTMLElement>());
   const [rects, setRects] = useState<Record<string, Rect>>({});
   const register = (id: string) => (element: HTMLElement | null) => {
@@ -199,7 +208,7 @@ function SchemaView({
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [content, state.patches, shown]);
+  }, [content, state.patches, shown, frame]);
 
   const selected = ctx.selection.id;
   const toggle = (id: string) => ctx.selection.select(selected === id ? undefined : id);
@@ -210,7 +219,7 @@ function SchemaView({
     <div className="fw-schema" ref={frame}>
       <div className="fw-schema-tables">
         {content.tables.map((table) => {
-          const patch = state.patches[table.id];
+          const patch = own(state.patches, table.id);
           const visible = shown.has(table.id);
           return (
             <section
@@ -238,7 +247,7 @@ function SchemaView({
               {table.columns.map((column) => {
                 const id = `${table.id}.${column.id}`;
                 if (!shown.has(id)) return null;
-                const columnPatch = state.patches[id];
+                const columnPatch = own(state.patches, id);
                 const type = text(columnPatch?.type) ?? column.type;
                 const note = text(columnPatch?.note) ?? column.note;
                 return (

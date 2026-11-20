@@ -4,7 +4,8 @@
  * `content.payloads` lists structured values: a message, a token, a stored
  * object. A call can mark single fields by path,
  * `{ read: "commit", paths: ["tree", "parents.0"] }`, and change them,
- * `{ update: "index", fields: { "entries.1.hash": "f7a2…" } }`. A leaf written
+ * `{ update: "index", fields: { "entries.1.hash": "f7a2…" } }`. A dot inside a key is
+ * written `\.` in a path. A leaf written
  * as `{ "$ref": "<id>", "text": "…" }` is a link: choosing it selects that
  * element in every pane that has it. `raw` adds a second, plain-text view.
  */
@@ -23,9 +24,12 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
+  writtenEffects,
 } from '../../core';
 import { TONES, changesSection, toneOf } from '../_shared/changes';
-import { hasPath, isLeaf, isRef, members, patched, setPath } from './paths';
+import { revealScroll } from '../_shared/reveal';
+import { hasPath, isLeaf, isRef, joinPath, members, patched, setPath } from './paths';
 import './payload.css';
 
 const PayloadSchema = z.strictObject({
@@ -156,12 +160,12 @@ function Field({
         <span className="fw-pl-key">{name}</span>
         <span className="fw-pl-items">
           {members(value).map(([key, item]) => {
-            const inner = shared.marks.get(`${path}.${key}`);
+            const inner = shared.marks.get(joinPath(path, key));
             return (
               <span
                 key={key}
                 className={`fw-pl-item${inner === undefined ? '' : ` is-${inner}`}`}
-                data-path={`${path}.${key}`}
+                data-path={joinPath(path, key)}
                 data-mark={inner}
               >
                 <span className="fw-pl-key">{key}</span>
@@ -186,7 +190,7 @@ function Field({
               key={key}
               name={key}
               value={item}
-              path={`${path}.${key}`}
+              path={joinPath(path, key)}
               depth={depth + 1}
               shared={shared}
             />
@@ -224,10 +228,16 @@ function PayloadView({
     if (box === null || firstTouched === undefined || !current.any) return;
     const card = box.querySelector<HTMLElement>(`[data-entity="${CSS.escape(firstTouched)}"]`);
     if (card === null) return;
-    const top = card.offsetTop - box.offsetTop;
-    if (top < box.scrollTop || top + card.offsetHeight > box.scrollTop + box.clientHeight) {
-      box.scrollTop = Math.max(0, top - 8);
-    }
+    // Within a payload taller than the pane, the field the call marks matters more than the title.
+    const field = card.querySelector<HTMLElement>('[data-path][data-mark]');
+    const target = field ?? card;
+    const frame = box.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    const y = revealScroll(
+      { scroll: box.scrollTop, size: box.clientHeight },
+      { start: rect.top - frame.top + box.scrollTop, size: rect.height },
+    );
+    if (y !== undefined) box.scrollTop = y;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstTouched, ctx.call.id]);
 
@@ -235,7 +245,7 @@ function PayloadView({
     <div className="fw-payloads" ref={scroller}>
       {shown.length === 0 && <p className="fw-payloads-empty">Nothing here yet.</p>}
       {shown.map((payload) => {
-        const patch = state.patches[payload.id];
+        const patch = own(state.patches, payload.id);
         const value = patched(payload.value, patch);
         const marks = fieldMarks(ctx.current, payload.id);
         const mark = markOf(payload.id, current);
@@ -289,7 +299,14 @@ function PayloadView({
             ) : (
               <div className="fw-pl-children is-top">
                 {members(value).map(([key, item]) => (
-                  <Field key={key} name={key} value={item} path={key} depth={0} shared={shared} />
+                  <Field
+                    key={key}
+                    name={key}
+                    value={item}
+                    path={joinPath('', key)}
+                    depth={0}
+                    shared={shared}
+                  />
                 ))}
               </div>
             )}
@@ -300,12 +317,62 @@ function PayloadView({
   );
 }
 
+/**
+ * Links that will not work: an object that has `$ref` but is not a link (so it would be shown as
+ * an ordinary object), and a link to an element that no pane has.
+ */
+function badRefs(
+  value: unknown,
+  at: (string | number)[],
+  known: ReadonlySet<string> | undefined,
+): Problem[] {
+  if (value === null || typeof value !== 'object') return [];
+  if (isRef(value)) {
+    if (known === undefined || known.has(value.$ref)) return [];
+    return [
+      {
+        severity: 'error',
+        rule: 'payload/unknown-ref',
+        path: [...at, '$ref'],
+        message: `the link names "${value.$ref}", which is not an element in any pane`,
+      },
+    ];
+  }
+  if (!Array.isArray(value) && Object.hasOwn(value, '$ref')) {
+    return [
+      {
+        severity: 'error',
+        rule: 'payload/bad-ref',
+        path: at,
+        message: 'a link is { "$ref": "<element id>", "text": "<optional text>" } and nothing else',
+      },
+    ];
+  }
+  return members(value).flatMap(([key, item]) => badRefs(item, [...at, key], known));
+}
+
 export const payloadPanel: PanelType<PayloadContent, ElementsState> = {
   id: 'payload',
   schema: { content: PayloadContent, effect: PayloadEffect },
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
-  reduce: (state, effect) => reduceElements(state, effect),
+  // Replacing a field makes earlier changes inside it meaningless, so they are dropped. Without
+  // this an older change to "a.n" would be applied again on top of a newer value for "a".
+  reduce: (state, effect) => {
+    const id = effect.update;
+    const old = id === undefined ? undefined : own(state.patches, id);
+    if (id === undefined || effect.fields === undefined || old === undefined) {
+      return reduceElements(state, effect);
+    }
+    const replaced = Object.keys(effect.fields).filter((path) => path !== 'tone');
+    const kept = Object.fromEntries(
+      Object.entries(old).filter(([path]) => !replaced.some((top) => path.startsWith(`${top}.`))),
+    );
+    const patches = Object.fromEntries(
+      Object.entries(state.patches).map(([name, patch]) => [name, name === id ? kept : patch]),
+    );
+    return reduceElements({ ...state, patches }, effect);
+  },
   Component: PayloadView,
   cardSections: ({ content, current, pane }) =>
     changesSection(
@@ -313,17 +380,29 @@ export const payloadPanel: PanelType<PayloadContent, ElementsState> = {
       new Map(entitiesOf(content).map((entity) => [entity.id, entity.label])),
       current,
     ),
-  lint: (pane, walkthrough) => {
+  lint: (pane, walkthrough, known) => {
     const content = pane.content as PayloadContent;
     // The values as they stand at each call, so a path is checked against what is there by then.
-    const values = new Map(content.payloads.map((payload) => [payload.id, payload.value]));
+    const declared = new Map(content.payloads.map((payload) => [payload.id, payload.value]));
+    const values = new Map(declared);
     const raws = new Set(content.payloads.filter((p) => p.raw !== undefined).map((p) => p.id));
     const problems: Problem[] = [];
+    const index = walkthrough.layout.panes.findIndex((item) => item.id === pane.id);
+    content.payloads.forEach((payload, position) => {
+      const at = ['layout', 'panes', index, 'content', 'payloads', position, 'value'];
+      problems.push(...badRefs(payload.value, at, known));
+    });
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
-        (call.effects?.[pane.id] ?? []).forEach((effect, e) => {
-          const { id } = effectTarget(effect);
+        writtenEffects(call, pane.id).forEach((effect, e) => {
+          for (const [path, next] of Object.entries(effect.fields ?? {})) {
+            const at = ['steps', s, 'calls', c, 'effects', pane.id, e, 'fields', path];
+            if (path !== 'tone') problems.push(...badRefs(next, at, known));
+          }
+          const { verb, id } = effectTarget(effect);
           if (id === undefined || !values.has(id)) return;
+          // Removing a payload drops what was patched onto it, as the reducer does.
+          if (verb === 'remove') values.set(id, declared.get(id));
           const at = ['steps', s, 'calls', c, 'effects', pane.id, e];
           const missing = (path: string, where: (string | number)[]) =>
             problems.push({

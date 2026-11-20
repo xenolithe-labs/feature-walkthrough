@@ -58,7 +58,7 @@
 }
 
 .fw-table tr.is-faded {
-  opacity: 0.45;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-table tr.is-added {
@@ -73,6 +73,9 @@
 
 .fw-table tr.is-updated {
   border-left-color: var(--fw-updated);
+  /* The whole row is tinted, so a change that only sets a lasting tone still reads as changed.
+     The cells that changed carry a ring on top. */
+  background: color-mix(in srgb, var(--fw-updated-bg) 55%, transparent);
 }
 
 .fw-table tr.is-removed {

@@ -46,7 +46,10 @@ A file is a JSON config, or a JavaScript or TypeScript module whose default expo
 
 async function read(file: string): Promise<unknown> {
   const path = resolve(file);
-  if (path.endsWith('.json')) return JSON.parse(readFileSync(path, 'utf8'));
+  if (path.endsWith('.json')) {
+    // Some editors start a file with a byte order mark, which is not JSON.
+    return JSON.parse(readFileSync(path, 'utf8').replace(/^\uFEFF/, ''));
+  }
   // The query makes Node load the module again after it changes.
   const url = `${pathToFileURL(path).href}?t=${Date.now()}`;
   const module = (await import(url)) as { default?: unknown };

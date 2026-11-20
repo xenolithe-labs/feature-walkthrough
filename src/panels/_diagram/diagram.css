@@ -68,6 +68,13 @@
 
 .fw-node-label {
   font: 600 12.5px var(--fw-mono);
+  /* A long label wraps (see labelLines) up to three lines, then is cut. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .fw-node-sub {
@@ -149,7 +156,7 @@
 }
 
 .fw-diagram .is-faded {
-  opacity: 0.4;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-diagram .react-flow__node.is-added .fw-node {
@@ -220,4 +227,10 @@
 .fw-diagram .react-flow__edge.is-selected {
   opacity: 1;
   color: var(--fw-select);
+}
+
+/* A loop is a curve, so it must not be filled like a shape. */
+.fw-diagram path.fw-edge-line,
+.fw-diagram path.fw-edge-hit {
+  fill: none;
 }

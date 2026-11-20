@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildCard,
   clamp,
@@ -18,6 +18,8 @@ import {
   type Registry,
   type ResolvedWalkthrough,
   type Selection,
+  flatIndex,
+  totalCalls,
 } from '../core';
 import { Card } from './Card';
 import { useCursor, useTheme, type Theme } from './hooks';
@@ -98,6 +100,8 @@ function Shell({
   const views = useMemo(() => folder.at(s, c), [folder, s, c]);
   const card = useMemo(() => buildCard(walkthrough, s, c, views), [walkthrough, s, c, views]);
   const focusId = folder.focusPane(s, c);
+  const outline = useRef<HTMLDetailsElement | null>(null);
+  const [outlineOpen, setOutlineOpen] = useState(false);
   const step = walkthrough.steps[s]!;
   const call = step.calls[c]!;
   const visible = walkthrough.panes.filter((pane) => pane.role === 'fixed' || pane.id === focusId);
@@ -150,8 +154,8 @@ function Shell({
               >
                 <span className="fw-step-number">{index + 1}</span>
                 <span className="fw-step-title">{item.title}</span>
-                {stepChips(walkthrough, index).map((chip) => (
-                  <span key={chip.label} className={`fw-chip is-${chip.tone ?? 'neutral'}`}>
+                {stepChips(walkthrough, index).map((chip, position) => (
+                  <span key={position} className={`fw-chip is-${chip.tone ?? 'neutral'}`}>
                     {chip.label}
                   </span>
                 ))}
@@ -194,7 +198,66 @@ function Shell({
         >
           →
         </button>
-        <span className="fw-hint">← → one call · Shift ← → one step</span>
+        <details
+          className="fw-outline"
+          ref={outline}
+          onToggle={(event) => setOutlineOpen(event.currentTarget.open)}
+        >
+          <summary>All calls</summary>
+          {/* Built only while open: a long walkthrough has thousands of entries. */}
+          <ol className="fw-outline-list" aria-label="All calls" hidden={!outlineOpen}>
+            {(outlineOpen ? walkthrough.steps : []).map((item, stepIndex) => (
+              <li key={item.id}>
+                <p className="fw-outline-step">
+                  {stepIndex + 1}. {item.title}
+                </p>
+                <ol>
+                  {item.calls.map((entry, callIndex) => {
+                    const here = stepIndex === s && callIndex === c;
+                    return (
+                      <li key={entry.id}>
+                        <button
+                          type="button"
+                          className="fw-outline-call"
+                          aria-current={here ? 'true' : undefined}
+                          onClick={() => {
+                            go({ s: stepIndex, c: callIndex });
+                            outline.current?.removeAttribute('open');
+                            setOutlineOpen(false);
+                          }}
+                        >
+                          <span className="fw-outline-number">
+                            {flatIndex(shape, stepIndex, callIndex) + 1}
+                          </span>
+                          <span>{entry.label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </li>
+            ))}
+          </ol>
+        </details>
+        <span className="fw-where" aria-live="polite">
+          <span className="fw-where-count">
+            Call {flatIndex(shape, s, c) + 1} of {totalCalls(shape)}
+          </span>{' '}
+          · {call.label}
+        </span>
+        <span className="fw-hint">
+          ← → one call · Shift ← → one step · click anything to follow it
+        </span>
+        <div
+          className="fw-progress"
+          role="progressbar"
+          aria-label="Progress through the walkthrough"
+          aria-valuemin={1}
+          aria-valuemax={totalCalls(shape)}
+          aria-valuenow={flatIndex(shape, s, c) + 1}
+        >
+          <span style={{ width: `${((flatIndex(shape, s, c) + 1) / totalCalls(shape)) * 100}%` }} />
+        </div>
       </div>
 
       <div className="fw-body">

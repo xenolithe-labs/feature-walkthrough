@@ -23,7 +23,14 @@ import {
 import '@xyflow/react/dist/style.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { markOf, type Selection, type Touched } from '../../core';
-import { layout, pinned, type Direction, type LayoutNode, type Positions } from './layout';
+import {
+  chooseFit,
+  layout,
+  pinned,
+  type Direction,
+  type LayoutNode,
+  type Positions,
+} from './layout';
 import './diagram.css';
 
 export interface DiagramNode extends LayoutNode {
@@ -91,11 +98,49 @@ function boxOf(node: ReturnType<typeof useInternalNode>): Box | undefined {
   return { ...node.internals.positionAbsolute, width, height };
 }
 
+/** A loop from a box back to itself, drawn off its right-hand side. */
+function SelfLoop({ box, label, lane }: { box: Box; label: unknown; lane: number }) {
+  const x = box.x + box.width;
+  const top = box.y + box.height * 0.3;
+  const bottom = box.y + box.height * 0.7;
+  const out = 26 + lane * 12;
+  return (
+    <>
+      <path
+        className="fw-edge-hit"
+        d={`M${x},${top} C${x + out},${top - 6} ${x + out},${bottom + 6} ${x + 9},${bottom}`}
+      />
+      <path
+        className="fw-edge-line"
+        d={`M${x},${top} C${x + out},${top - 6} ${x + out},${bottom + 6} ${x + 9},${bottom}`}
+      />
+      <polygon
+        className="fw-edge-head"
+        points={`${x},${bottom} ${x + 10},${bottom - 4.5} ${x + 10},${bottom + 4.5}`}
+      />
+      {typeof label === 'string' && label !== '' && (
+        <text
+          className="fw-edge-label"
+          x={x + out * 0.75 + 4}
+          y={(top + bottom) / 2}
+          textAnchor="start"
+          dominantBaseline="central"
+        >
+          {label}
+        </text>
+      )}
+    </>
+  );
+}
+
 /** A straight edge between the borders of two boxes, wherever they are. */
-const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeProps) {
+const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }: EdgeProps) {
   const from = boxOf(useInternalNode(source));
   const to = boxOf(useInternalNode(target));
   if (from === undefined || to === undefined) return null;
+  // Which of several edges between the same two boxes, in the same direction, this one is.
+  const lane = typeof data?.lane === 'number' ? data.lane : 0;
+  if (source === target) return <SelfLoop box={from} label={label} lane={lane} />;
 
   const a = exitPoint(from, { x: to.x + to.width / 2, y: to.y + to.height / 2 });
   const b = exitPoint(to, { x: from.x + from.width / 2, y: from.y + from.height / 2 });
@@ -105,8 +150,10 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeP
   const uy = (b.y - a.y) / length;
   // Every edge runs a little to one side of the centre line, so that two
   // edges in opposite directions between the same boxes do not overlap.
-  const start = { x: a.x - uy * SIDE, y: a.y + ux * SIDE };
-  const end = { x: b.x - uy * SIDE, y: b.y + ux * SIDE };
+  // A second edge in the same direction runs further out again.
+  const side = SIDE + lane * 11;
+  const start = { x: a.x - uy * side, y: a.y + ux * side };
+  const end = { x: b.x - uy * side, y: b.y + ux * side };
   const base = { x: end.x - ux * 10, y: end.y - uy * 10 };
   const head = [
     `${end.x},${end.y}`,
@@ -187,9 +234,18 @@ function usePositions(
  * Keeps the view on the elements that are shown. Positions never change, so
  * the view only zooms and pans as the diagram grows or shrinks.
  */
-function Fit({ frame, shown }: { frame: React.RefObject<HTMLDivElement | null>; shown: string }) {
-  const { fitView } = useReactFlow();
-  const ready = useNodesInitialized();
+function Fit({
+  frame,
+  shown,
+  touched,
+}: {
+  frame: React.RefObject<HTMLDivElement | null>;
+  shown: string;
+  /** The shown nodes the current call touches, and the ends of the shown edges it touches. */
+  touched: string;
+}) {
+  const { fitView, getNodes, getNodesBounds } = useReactFlow();
+  const ready = useNodesInitialized({ includeHiddenNodes: true });
   const first = useRef(true);
   const [size, setSize] = useState(0);
 
@@ -206,16 +262,26 @@ function Fit({ frame, shown }: { frame: React.RefObject<HTMLDivElement | null>; 
 
   useEffect(() => {
     if (!ready) return;
-    const ids = shown === '' ? [] : shown.split('\n');
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const shownIds = shown === '' ? [] : shown.split('\n');
+    const element = frame.current;
+    let choice = chooseFit(shownIds, [], { width: 0, height: 0 }, { width: 0, height: 0 });
+    if (element !== null && shownIds.length > 0) {
+      // A big diagram fitted whole is too small to read: follow the call instead.
+      const shownSet = new Set(shownIds);
+      const bounds = getNodesBounds(getNodes().filter((node) => shownSet.has(node.id)));
+      const focus = touched === '' ? [] : touched.split('\n');
+      choice = chooseFit(shownIds, focus, bounds, element.getBoundingClientRect());
+    }
     void fitView({
-      ...(ids.length > 0 ? { nodes: ids.map((id) => ({ id })) } : {}),
-      maxZoom: 1.15,
+      ...(choice.ids.length > 0 ? { nodes: choice.ids.map((id) => ({ id })) } : {}),
+      maxZoom: choice.maxZoom,
+      minZoom: choice.minZoom,
       padding: '24px',
       duration: first.current || still ? 0 : 250,
     });
     first.current = false;
-  }, [ready, shown, size, fitView]);
+  }, [ready, shown, touched, size, fitView, getNodes, getNodesBounds, frame]);
 
   return null;
 }
@@ -269,6 +335,32 @@ export function Diagram({
     .filter((node) => shownIds.has(node.id))
     .map((node) => node.id)
     .join('\n');
+  // The nodes the call touches, the ends of the edges it touches, and the shown nodes next to them.
+  const touchedNodes = useMemo(() => {
+    const ids = new Set<string>();
+    const marks = [...current.added, ...current.updated, ...current.read, ...current.removed];
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    for (const id of marks) {
+      if (!shownIds.has(id)) continue;
+      if (nodeIds.has(id)) ids.add(id);
+    }
+    for (const edge of edges) {
+      if (marks.includes(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target)) {
+        ids.add(edge.source);
+        ids.add(edge.target);
+      }
+    }
+    const around = new Set(ids);
+    for (const edge of edges) {
+      if (!shownIds.has(edge.source) || !shownIds.has(edge.target)) continue;
+      if (ids.has(edge.source)) around.add(edge.target);
+      if (ids.has(edge.target)) around.add(edge.source);
+    }
+    return nodes
+      .filter((node) => around.has(node.id))
+      .map((node) => node.id)
+      .join('\n');
+  }, [nodes, edges, current, shownIds]);
 
   // Absent elements stay in the flow, invisible, so that positions are stable.
   const flowNodes = useMemo<Node[]>(() => {
@@ -285,23 +377,27 @@ export function Diagram({
     }));
   }, [positions, nodes, shownIds, current, selection.id]);
 
-  const flowEdges = useMemo<Edge[]>(
-    () =>
-      edges.map((edge) => {
-        // An edge shows only while both of its ends do.
-        const shown =
-          shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
-        return {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          type: edge.type ?? 'floating',
-          label: edge.label,
-          className: classOf(edge.id, shown, current, selection.id),
-        };
-      }),
-    [edges, shownIds, current, selection.id],
-  );
+  const flowEdges = useMemo<Edge[]>(() => {
+    // Edges that join the same two nodes in the same direction are counted, so each gets
+    // its own line instead of being drawn on top of the others.
+    const lanes = new Map<string, number>();
+    return edges.map((edge) => {
+      const pair = JSON.stringify([edge.source, edge.target]);
+      const lane = lanes.get(pair) ?? 0;
+      lanes.set(pair, lane + 1);
+      // An edge shows only while both of its ends do.
+      const shown = shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
+      return {
+        data: { lane },
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type ?? 'floating',
+        label: edge.label,
+        className: classOf(edge.id, shown, current, selection.id),
+      };
+    });
+  }, [edges, shownIds, current, selection.id]);
 
   const toggle = (id: string) => selection.select(selection.id === id ? undefined : id);
 
@@ -333,7 +429,7 @@ export function Diagram({
             onEdgeClick={(_, edge) => toggle(edge.id)}
           >
             <Controls showInteractive={false} />
-            <Fit frame={frame} shown={shownNodes} />
+            <Fit frame={frame} shown={shownNodes} touched={touchedNodes} />
           </ReactFlow>
         </ReactFlowProvider>
       )}

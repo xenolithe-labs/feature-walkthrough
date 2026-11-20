@@ -9,8 +9,10 @@ import { createRegistry } from '../../src/registry';
 describe('writing a config into the viewer page', () => {
   const page = `<head><title>x</title>${MARKER}</head><body></body>`;
   const read = (html: string): unknown => {
-    const script = /<script>window\.__FEATURE_WALKTHROUGH__ = (.*);<\/script>/s.exec(html);
-    return JSON.parse(script![1]!);
+    const script = /<script>window\.__FEATURE_WALKTHROUGH__ = JSON\.parse\((.*)\);<\/script>/s.exec(
+      html,
+    );
+    return JSON.parse(JSON.parse(script![1]!) as string);
   };
 
   it('round-trips the config', () => {

@@ -40,7 +40,7 @@
 }
 
 .fw-code-lines.has-marks .fw-code-line:not([data-mark]) {
-  opacity: 0.5;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-code-number {
@@ -75,4 +75,11 @@
   border-left-color: var(--fw-removed);
   background: var(--fw-removed-bg);
   text-decoration: line-through;
+}
+
+.fw-code-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--fw-muted);
+  font-size: 0.85rem;
 }

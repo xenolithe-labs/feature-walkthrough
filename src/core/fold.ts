@@ -73,6 +73,9 @@ export function createFolder(walkthrough: ResolvedWalkthrough): Folder {
     return snapshots[s]!;
   }
 
+  // States are never changed in place, so the last answer is safe to build on.
+  let last: { s: number; c: number; states: States } | undefined;
+
   function check(s: number, c: number): void {
     if (steps[s]?.calls[c] === undefined) {
       throw new RangeError(`no call at step ${s}, call ${c} in "${walkthrough.id}"`);
@@ -82,8 +85,13 @@ export function createFolder(walkthrough: ResolvedWalkthrough): Folder {
   return {
     at(s, c) {
       check(s, c);
-      let states = snapshot(s);
-      for (let i = 0; i <= c; i += 1) states = applyCall(panes, states, steps[s]!.calls[i]!);
+      // Moving forward inside a step continues from the last answer instead of replaying the step.
+      const resume = last !== undefined && last.s === s && last.c <= c;
+      let states = resume ? last!.states : snapshot(s);
+      for (let i = resume ? last!.c + 1 : 0; i <= c; i += 1) {
+        states = applyCall(panes, states, steps[s]!.calls[i]!);
+      }
+      last = { s, c, states };
       return views(walkthrough, states, s, c);
     },
 
