@@ -83,3 +83,79 @@
   color: var(--fw-muted);
   font-size: 0.85rem;
 }
+
+/* The current-line pointer: an arrow in the margin that stays until a call moves it. */
+.fw-code-line {
+  position: relative;
+}
+
+.fw-code-lines.has-marks .fw-code-line.is-at:not([data-mark]) {
+  opacity: 1;
+}
+
+.fw-code-line.is-at:not([data-mark]) {
+  background: var(--fw-surface-2);
+}
+
+.fw-code-line.is-at::before {
+  position: absolute;
+  left: 4px;
+  color: var(--fw-text);
+  content: '\25B6';
+  font-size: 0.7em;
+  line-height: 2.3;
+}
+
+.fw-code-line.is-at .fw-code-number {
+  color: var(--fw-text);
+  font-weight: 700;
+}
+
+/* A short label at the end of the current line, such as the loop count. */
+.fw-code-badge {
+  margin-left: 2em;
+  padding: 0 7px;
+  border: 1px solid var(--fw-muted);
+  border-radius: 999px;
+  color: var(--fw-muted);
+  font: 600 11px var(--fw-mono);
+  white-space: nowrap;
+}
+
+/* Part of a line that a call marks on its own. The line itself stays quiet. */
+.fw-code-expr {
+  padding: 1px 2px;
+  border-radius: 3px;
+  background: var(--fw-read-bg);
+  color: inherit;
+  box-shadow: 0 0 0 1.5px var(--fw-read);
+}
+
+.fw-code-expr.is-updated {
+  background: var(--fw-updated-bg);
+  box-shadow: 0 0 0 1.5px var(--fw-updated);
+}
+
+.fw-code-expr.is-added {
+  background: var(--fw-added-bg);
+  box-shadow: 0 0 0 1.5px var(--fw-added);
+}
+
+.fw-code-expr.is-removed {
+  background: var(--fw-removed-bg);
+  box-shadow: 0 0 0 1.5px var(--fw-removed);
+  text-decoration: line-through;
+}
+
+/* With part of the line marked, the line itself only gets a faint tint. */
+.fw-code-line.has-expr.is-read {
+  background: color-mix(in srgb, var(--fw-read-bg) 40%, transparent);
+}
+
+.fw-code-line.has-expr.is-updated {
+  background: color-mix(in srgb, var(--fw-updated-bg) 40%, transparent);
+}
+
+.fw-code-line.has-expr.is-added {
+  background: color-mix(in srgb, var(--fw-added-bg) 40%, transparent);
+}

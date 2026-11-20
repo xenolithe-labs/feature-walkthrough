@@ -1,6 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -113,6 +113,7 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | `code`     | Source text, with the lines in question   | sources                    | yes              |
 | `payload`  | Message and object bodies, field by field | payloads                   | yes              |
 | `schema`   | Tables or types, columns and relations    | tables, columns, relations | yes              |
+| `array`    | A row of cells with pointers and ranges   | cells, pointers, ranges    | cells            |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown.
@@ -130,6 +131,10 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 - **`code`**: `sources` `{ id, title, lang?, text }`. Mark lines with
   `{ "read": "sourceId", "lines": [3, [7, 9]] }`; line numbers start at 1 and `[7, 9]` is a range.
   Any effect on a source brings it to the front. Count the lines; lint rejects a line past the end.
+  Add `"expr": "a < b"` (or a list) to mark just that text inside the marked lines, and lint checks
+  it is really there. `{ "update": "src", "fields": { "at": 7, "badge": "run 3" } }` keeps a
+  current-line arrow in the margin, and a small label at the end of that line, until a later call
+  moves them; `"at": null` clears the arrow.
 
 - **`payload`**: `payloads` `{ id, title, sub?, value, raw? }`, where `value` is any JSON. Fields
   are addressed by dot path, with array positions as numbers: `entries.1.hash`. Mark fields with
@@ -144,6 +149,19 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   ends are a table id or a `table.column`. A relation without an `id` gets `from:to` (for example
   `order.user_id:user`). A relation may point back at its own table. `key` is a short badge such
   as `PK` or `FK`. Use `schema` for the shape of data and `table` for the rows.
+
+- **`array`**: `arrays` `{ id, cells: [3, "a"…], length?, label? }`, `pointers` `{ id, at?, array?,
+side?, label? }` and `ranges` `{ id, from, to, array?, dim?, label? }`. Cells are elements with the id
+  `array.index` (`a.3`). `read` marks a compare, `update` with `"fields": { "value": 9 }` marks a
+  write (a swap is two writes), `add` and `remove` grow and shrink it: `length` makes room for
+  slots that start empty and absent, so a queue or stack grows without anything moving. A pointer
+  moves with `{ "update": "lo", "fields": { "at": 4 } }`: nothing to clear. `at` is an index, one
+  past either end (`-1`, `length`), or `null` for nothing; off the ends it is drawn at the edge
+  with its value. A range is `from` to `to` inclusive, each an index or the id of a pointer to
+  follow, so a window needs no effects at all; `from` = `to` + 1 is empty. `dim` draws the cells
+  outside it dimmed. Give `array` on pointers and ranges when the pane has more than one array.
+  Pointers and ranges each get a track, so nothing moves when one appears. Tones (`warn`, `good`,
+  `muted`) work on cells, pointers and ranges.
 
 ### Panes that share a slot
 
@@ -184,3 +202,56 @@ import 'feature-walkthrough/style.css';
 `defineWalkthrough({...})` gives type checking for a config written in TypeScript and returns the
 same JSON. The JSON Schema of the shared shape is `npx feature-walkthrough schema`, or
 `feature-walkthrough/schema.json`.
+
+## Algorithms: record the run, do not write the trace
+
+For an algorithm, do not write the effects of a loop by hand. Run the real code with a `Recorder`
+and let it write the config; a hand-written trace can be wrong, a recorded one cannot disagree with
+the code. `Recorder` is exported from the package and has no dependency on React.
+
+```ts
+import { Recorder, stripHooks } from 'feature-walkthrough';
+
+const SOURCE = `function find(items, target) {
+  let lo = 0;
+  let hi = items.length - 1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (items[mid] === target) return mid;
+    if (items[mid] < target) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return -1;
+}`;
+
+const rec = new Recorder({
+  id: 'find',
+  title: 'Binary search',
+  source: { title: 'find.js', text: SOURCE },
+});
+const items = rec.array('items', [2, 5, 9, 14], {
+  pointers: ['lo', 'hi', 'mid'],
+  ranges: [{ id: 'window', from: 'lo', to: 'hi', dim: true }],
+});
+// ... run find(items, 9) with hooks in the body: rec.at(5, 'const mid'); rec.point('mid', mid); ...
+const config = rec.finish(); // plain JSON: steps, calls, effects, line marks
+```
+
+- `rec.array(id, data, { pointers, ranges, pane })` returns a real array to give the algorithm. Reading
+  `items[i]` records a compare, writing `items[i] = x` a write, `push` and `pop` add and remove
+  cells, with no call from the author. Changes before the first `at` are setup and become the
+  starting values. `rec.grid(...)` does the same for a table, `rec.vars(...)` is a table of
+  variables, `rec.stack(...)` is a call stack, `rec.pane(id, panel, content)` is any other pane
+  (then use `rec.read`, `rec.update`, `rec.tone`).
+- `rec.at(line, "text on that line", { label, text, expr, changes })` starts a call, one card, for
+  that line (or `[first, last]`). **The text is checked against the shown source and the call
+  throws if the line does not contain it**, so a wrong line number fails a test and cannot mislead a
+  reader. Every call gets the line mark, the current-line arrow and a `run n` / `depth n` label.
+- `rec.point(name, index)`, `rec.range(name, from, to)`, `rec.set(name, value)`, `rec.tone(...)`
+  say what a call does. `rec.enter(name, args)` and `rec.leave(result)` push and pop a stack frame.
+- Steps are author-marked with `rec.step("Round {n}")` (`{n}` counts), or with
+  `steps: "frames"` one step per function call. Put the recorder calls on lines that start with
+  `rec.`: `stripHooks(text)` removes them, which gives the source to show. Keep the algorithm in a
+  file next to the recorder calls and add a test that `stripHooks` of it equals the `source.text`
+  you pass, and that the final state of the walkthrough equals the algorithm's real result.
+  `src/walkthroughs/algorithms/` has four examples (binary search, quicksort, BFS, edit distance).

@@ -4,5 +4,6 @@
  * alongside it.
  */
 export * from './core';
+export * from './recorder';
 export { createRegistry } from './registry';
 export { Problems, Walkthrough } from './shell/Walkthrough';

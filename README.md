@@ -3,7 +3,7 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The engine, the page, eight panels and five demos work end to end.
+> **Status: early.** The engine, the page, nine panels and nine demos work end to end.
 
 | Panel      | Shows                                                              |
 | ---------- | ------------------------------------------------------------------ |
@@ -15,9 +15,12 @@ config; the engine shows it in coordinated panels and a details card, one call a
 | `code`     | Source text, with the lines a call is about                        |
 | `payload`  | Message and object bodies, with the fields a call reads or changes |
 | `schema`   | Tables or types, their columns and the relations between them      |
+| `array`    | Cells in a row, with the pointers and ranges that move over them   |
 
 Demos: OAuth 2.0 with PKCE, a spreadsheet recalculating, one React state update, a Terraform
-plan and apply, and what git stores on add, commit and push (with real object ids).
+plan and apply, and what git stores on add, commit and push (with real object ids). Four
+algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
+its call stack, breadth-first search and edit distance.
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 
@@ -53,6 +56,14 @@ The hosted page can also show any JSON config it is allowed to fetch: add `?src=
 agent the config, each panel's shapes and the write, lint, fix, show loop. Copy the folder into
 your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
 package.
+
+### Explaining an algorithm
+
+Do not write the steps of a loop by hand. Run the algorithm with a `Recorder`
+(`import { Recorder } from 'feature-walkthrough'`): arrays you give it record their own reads and
+writes, a few calls say which line is running and where a pointer is, and `finish()` returns the
+ordinary config. Every line number is checked against the displayed source, so a wrong one fails
+instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill.
 
 Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
 (`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>`), so any call can be linked to.
@@ -90,6 +101,7 @@ pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel r
 - `src/shell/` — the page around the panels.
 - `src/panels/`, `src/annotations/` — panel types and annotation plugins, registered in `src/registry.ts`.
 - `src/walkthroughs/` — the bundled demo configs.
+- `src/recorder/` — the trace recorder: run an algorithm, get a config. No React.
 - `cli/` — the `feature-walkthrough` command.
 - `skills/` — the skill for coding agents; `reference.md` in it is generated.
 

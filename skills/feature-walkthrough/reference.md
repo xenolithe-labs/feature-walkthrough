@@ -480,6 +480,21 @@ An effect on this panel takes the shared verbs plus these keys:
           }
         ]
       }
+    },
+    "expr": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      ]
     }
   }
 }
@@ -699,6 +714,165 @@ An effect on this panel takes the shared verbs plus these keys:
     }
   },
   "required": ["tables"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
+## Panel `array`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "arrays": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": ["string", "number"]
+            }
+          },
+          "length": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "cells"],
+        "additionalProperties": false
+      }
+    },
+    "pointers": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "array": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "at": {
+            "default": null,
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "side": {
+            "default": "below",
+            "type": "string",
+            "enum": ["above", "below"]
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    "ranges": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "array": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          },
+          "from": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              }
+            ]
+          },
+          "to": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+              }
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "dim": {
+            "default": false,
+            "type": "boolean"
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "from", "to"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["arrays"],
   "additionalProperties": false
 }
 ```
