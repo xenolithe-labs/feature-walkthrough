@@ -3,8 +3,15 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The core (config contract, cursor, fold, registry, card model, lint) is in
-> place with tests. The shell, the panels and the demo walkthroughs are next.
+> **Status: early.** The engine, the page, two panels (`sequence`, `graph`), the `status`
+> annotation and one demo (OAuth 2.0 with PKCE) work end to end. More panels and demos are next.
+
+Run `pnpm dev` to see the demo. To show your own flow, write a JSON config and open the page with
+`?src=<url of the config>`; if the config has problems, the page lists each one with its path.
+`src/walkthroughs/oauth-pkce.ts` is a complete example.
+
+Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
+(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>`), so any call can be linked to.
 
 ## The config
 
