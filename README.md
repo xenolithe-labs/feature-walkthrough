@@ -17,9 +17,40 @@ config; the engine shows it in coordinated panels and a details card, one call a
 Demos: OAuth 2.0 with PKCE, a spreadsheet recalculating, one React state update, and a
 Terraform plan and apply.
 
-Run `pnpm dev` to see the demo. To show your own flow, write a JSON config and open the page with
-`?src=<url of the config>`; if the config has problems, the page lists each one with its path.
-The files in `src/walkthroughs/` are complete examples.
+Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
+
+## Use it
+
+Write a JSON config, then:
+
+```sh
+npx feature-walkthrough flow.json                      # check it, then show it in the browser
+npx feature-walkthrough lint flow.json                 # check only; exits 1 on errors
+npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
+npx feature-walkthrough schema                         # the JSON Schema of a config
+```
+
+If the config has problems, `lint` prints each one with its path, and the page lists them too.
+[`skills/feature-walkthrough/example.json`](skills/feature-walkthrough/example.json) is a small
+complete config, and the files in `src/walkthroughs/` are larger ones.
+
+Inside a React app:
+
+```tsx
+import { Walkthrough, createRegistry } from 'feature-walkthrough';
+import 'feature-walkthrough/style.css';
+
+<Walkthrough config={config} registry={createRegistry()} />;
+```
+
+The hosted page can also show any JSON config it is allowed to fetch: add `?src=<url of the config>`.
+
+### For coding agents
+
+[`skills/feature-walkthrough/`](skills/feature-walkthrough/SKILL.md) is a skill that teaches an
+agent the config, each panel's shapes and the write, lint, fix, show loop. Copy the folder into
+your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
+package.
 
 Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
 (`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>`), so any call can be linked to.
@@ -45,9 +76,10 @@ pnpm dev                 # run the page
 pnpm test                # unit tests
 pnpm e2e                 # build, then browser tests (first: pnpm exec playwright install chromium)
 pnpm typecheck && pnpm lint
-pnpm build               # one self-contained dist/index.html
-pnpm walkthrough lint <file...>   # check JSON or TypeScript configs
-pnpm schema              # regenerate the JSON Schema
+pnpm build               # the viewer: one self-contained dist/viewer/index.html
+pnpm build:all           # the viewer, the library and the command line
+pnpm walkthrough <args>  # run the command line from source
+pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel reference
 ```
 
 ## Layout
@@ -56,6 +88,8 @@ pnpm schema              # regenerate the JSON Schema
 - `src/shell/` — the page around the panels.
 - `src/panels/`, `src/annotations/` — panel types and annotation plugins, registered in `src/registry.ts`.
 - `src/walkthroughs/` — the bundled demo configs.
+- `cli/` — the `feature-walkthrough` command.
+- `skills/` — the skill for coding agents; `reference.md` in it is generated.
 
 ## License
 
