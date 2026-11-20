@@ -4,6 +4,7 @@
  * config win; ELK is only loaded when something is not pinned.
  */
 import { hasGroups, layoutWithGroups, pinnedGroups } from './groups';
+import { treeLayout } from './tree-layout';
 
 export interface LayoutNode {
   id: string;
@@ -15,12 +16,18 @@ export interface LayoutNode {
   parent?: string | undefined;
   /** Every group the node may ever sit in; a position is reserved in each. */
   parents?: readonly string[] | undefined;
+  /** The ids of the node's slots, in order (record nodes); the tree layout uses them. */
+  slots?: readonly string[] | undefined;
 }
 
 export interface LayoutEdge {
   id: string;
   source: string;
   target: string;
+  /** The slot of `source` the edge leaves from, if it leaves from one. */
+  slot?: string | undefined;
+  /** False for an edge the tree layout must not treat as a parent-child link. */
+  tree?: boolean | undefined;
 }
 
 export type Direction = 'RIGHT' | 'DOWN';
@@ -29,6 +36,7 @@ export type Positions = Record<
   string,
   { x: number; y: number; width?: number | undefined; height?: number | undefined }
 >;
+export type LayoutMode = 'layered' | 'tree';
 
 const cache = new Map<string, Promise<Positions>>();
 
@@ -129,9 +137,11 @@ export function layout(
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
   direction: Direction,
+  mode: LayoutMode = 'layered',
 ): Promise<Positions> {
   const fixed = pinned(nodes);
   if (fixed !== undefined) return Promise.resolve(fixed);
+  if (mode === 'tree') return Promise.resolve(treeLayout(nodes, edges, direction));
   const key = JSON.stringify([direction, nodes, edges]);
   let result = cache.get(key);
   if (result === undefined && hasGroups(nodes)) {

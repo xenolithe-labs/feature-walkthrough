@@ -1,0 +1,167 @@
+/* Record nodes: a row or column of named slots. Slots are placed by absolute position (slots.ts). */
+.fw-record {
+  --node-border: var(--fw-border);
+  --node-width: 1.5px;
+  --node-style: solid;
+  position: relative;
+  color: var(--fw-text);
+  font-family: var(--fw-mono);
+}
+
+.fw-record-frame {
+  position: absolute;
+  inset: 0;
+  border: var(--node-width) var(--node-style) var(--node-border);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+.fw-record[data-tone='warn'] {
+  --node-border: var(--fw-warn);
+  --node-style: dashed;
+  --node-width: 2px;
+}
+
+.fw-record[data-tone='good'] {
+  --node-border: var(--fw-good);
+  --node-width: 2px;
+}
+
+.fw-record[data-tone='muted'] {
+  --node-style: dashed;
+}
+
+.fw-record[data-mark='added'] {
+  --node-border: var(--fw-added);
+  --node-width: 2.5px;
+}
+
+.fw-record[data-mark='updated'] {
+  --node-border: var(--fw-updated);
+  --node-width: 2.5px;
+}
+
+.fw-record[data-mark='read'] {
+  --node-border: var(--fw-read);
+  --node-width: 2.5px;
+}
+
+.fw-record[data-mark='removed'] {
+  --node-border: var(--fw-removed);
+  --node-width: 2.5px;
+  --node-style: dashed;
+}
+
+.fw-record-head {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px 8px 0 0;
+  background: var(--fw-surface-2);
+  color: var(--fw-muted);
+  font: 600 11px var(--fw-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fw-slot {
+  position: absolute;
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-left: 1px solid var(--fw-border);
+  background: var(--fw-surface);
+  font: 600 13px var(--fw-mono);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.fw-record[data-direction='column'] .fw-slot {
+  flex-direction: row;
+  justify-content: space-between;
+  padding: 0 10px 0 8px;
+  border-left: 0;
+  border-top: 1px solid var(--fw-border);
+}
+
+.fw-slot[data-first] {
+  border: 0 !important;
+}
+
+.fw-slot-name {
+  color: var(--fw-muted);
+  font: 10.5px var(--fw-mono);
+}
+
+.fw-slot-value {
+  min-height: 1em;
+  white-space: pre;
+}
+
+.fw-slot.is-absent {
+  visibility: hidden;
+}
+
+.fw-slot.is-added {
+  background: var(--fw-added-bg);
+  box-shadow: inset 0 0 0 2px var(--fw-added);
+}
+
+.fw-slot.is-updated {
+  background: var(--fw-updated-bg);
+  box-shadow: inset 0 0 0 2px var(--fw-updated);
+}
+
+.fw-slot.is-read {
+  background: var(--fw-read-bg);
+  box-shadow: inset 0 0 0 2px var(--fw-read);
+}
+
+.fw-slot.is-removed {
+  background: var(--fw-removed-bg);
+  box-shadow: inset 0 0 0 2px var(--fw-removed);
+}
+
+.fw-slot[data-tone='good'] {
+  box-shadow: inset 0 0 0 2px var(--fw-good);
+}
+
+.fw-slot[data-tone='warn'] {
+  box-shadow: inset 0 0 0 2px var(--fw-warn);
+}
+
+.fw-slot[data-tone='muted'] .fw-slot-value {
+  color: var(--fw-muted);
+  text-decoration: line-through;
+}
+
+.fw-slot.is-selected,
+.fw-slot:focus-visible {
+  outline: 3px solid var(--fw-select);
+  outline-offset: -3px;
+}
+
+.fw-record-head:focus-visible {
+  outline: 3px solid var(--fw-select);
+  outline-offset: -3px;
+}
+
+.fw-diagram .react-flow__node.is-selected .fw-record-frame {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 2px;
+}
+
+/* Pointers are what the reader follows, so they start out darker than an ordinary edge. */
+.fw-diagram .react-flow__edge:where(:has(.fw-slot-edge)) {
+  color: var(--fw-text);
+}
+
+.fw-slot-dot {
+  fill: currentColor;
+}

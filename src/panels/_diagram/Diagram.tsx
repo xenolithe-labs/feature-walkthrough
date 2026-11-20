@@ -33,6 +33,7 @@ import {
   layout,
   pinned,
   type Direction,
+  type LayoutMode,
   type LayoutNode,
   type Positions,
 } from './layout';
@@ -50,18 +51,26 @@ export interface DiagramNode extends LayoutNode {
   /** Drawn as a trust boundary or network zone (only meaningful for a node that holds others). */
   boundary?: boolean | undefined;
   icon?: ResolvedIcon | undefined;
+  /** Extra data for a custom node component, merged into the node's data. */
+  data?: Record<string, unknown>;
 }
 
 export interface DiagramEdge {
   id: string;
   source: string;
   target: string;
+  /** The slot of `source` the edge leaves from (record nodes); the tree layout reads it. */
+  slot?: string | undefined;
+  /** False: not a parent-child link, so the tree layout ignores it. */
+  tree?: boolean | undefined;
   label?: string | undefined;
   type?: string;
   /** Stroke width in pixels. */
   weight?: number | undefined;
   /** The boundary groups this edge crosses, derived from where its ends sit. */
   crosses?: readonly string[] | undefined;
+  /** Extra data for a custom edge component, merged into the edge's data. */
+  data?: Record<string, unknown>;
 }
 
 type BoxData = {
@@ -232,10 +241,11 @@ function usePositions(
   nodes: readonly DiagramNode[],
   edges: readonly DiagramEdge[],
   direction: Direction,
+  mode: LayoutMode,
 ): Positions | undefined {
   const key = JSON.stringify([
     direction,
-    nodes.map(({ id, width, height, x, y, parent, parents }) => [
+    nodes.map(({ id, width, height, x, y, parent, parents, slots }) => [
       id,
       width,
       height,
@@ -243,8 +253,16 @@ function usePositions(
       y ?? null,
       parent ?? null,
       parents ?? null,
+      slots ?? null,
     ]),
-    edges.map(({ id, source, target }) => [id, source, target]),
+    edges.map(({ id, source, target, slot, tree }) => [
+      id,
+      source,
+      target,
+      slot ?? null,
+      tree ?? null,
+    ]),
+    mode,
   ]);
   const [resolved, setResolved] = useState<{ key: string; positions: Positions } | undefined>();
 
@@ -252,11 +270,20 @@ function usePositions(
     let cancelled = false;
     const [, sizes, links] = JSON.parse(key) as [
       Direction,
-      [string, number, number, number | null, number | null, string | null, string[] | null][],
-      [string, string, string][],
+      [
+        string,
+        number,
+        number,
+        number | null,
+        number | null,
+        string | null,
+        string[] | null,
+        string[] | null,
+      ][],
+      [string, string, string, string | null, boolean | null][],
     ];
     void layout(
-      sizes.map(([id, width, height, x, y, parent, parents]) => ({
+      sizes.map(([id, width, height, x, y, parent, parents, slots]) => ({
         id,
         width,
         height,
@@ -264,16 +291,24 @@ function usePositions(
         y: y ?? undefined,
         parent: parent ?? undefined,
         parents: parents ?? undefined,
+        slots: slots ?? undefined,
       })),
-      links.map(([id, source, target]) => ({ id, source, target })),
+      links.map(([id, source, target, slot, tree]) => ({
+        id,
+        source,
+        target,
+        slot: slot ?? undefined,
+        tree: tree ?? undefined,
+      })),
       direction,
+      mode,
     ).then((positions) => {
       if (!cancelled) setResolved({ key, positions });
     });
     return () => {
       cancelled = true;
     };
-  }, [key, direction]);
+  }, [key, direction, mode]);
 
   return resolved?.key === key ? resolved.positions : pinned(nodes);
 }
@@ -344,6 +379,8 @@ export interface DiagramProps {
   selection: Selection;
   theme: 'light' | 'dark';
   direction?: Direction;
+  /** How nodes are placed: layered (the default) or as a tree. */
+  layout?: LayoutMode;
   label: string;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
@@ -373,13 +410,14 @@ export function Diagram({
   selection,
   theme,
   direction = 'RIGHT',
+  layout: mode = 'layered',
   label,
   nodeTypes,
   edgeTypes,
   call,
   reversed,
 }: DiagramProps) {
-  const positions = usePositions(nodes, edges, direction);
+  const positions = usePositions(nodes, edges, direction, mode);
   const frame = useRef<HTMLDivElement | null>(null);
   const allNodeTypes = useMemo(() => ({ ...BASE_NODE_TYPES, ...nodeTypes }), [nodeTypes]);
   const allEdgeTypes = useMemo(() => ({ ...BASE_EDGE_TYPES, ...edgeTypes }), [edgeTypes]);
@@ -467,6 +505,7 @@ export function Diagram({
         kind: node.kind,
         boundary: node.boundary,
         icon: node.icon,
+        ...node.data,
       };
       return {
         id: node.id,
@@ -502,6 +541,7 @@ export function Diagram({
           crosses: edge.crosses,
           pulse: shown && call !== undefined && current.read.has(edge.id) ? call : undefined,
           reverse: reversed?.has(edge.id) === true,
+          ...edge.data,
         },
         id: edge.id,
         source: edge.source,

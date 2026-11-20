@@ -172,6 +172,48 @@ Effects on this panel take the shared verbs only.
           "y": {
             "type": "number"
           },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "arrange": {
+            "type": "string",
+            "enum": ["row", "column"]
+          },
+          "head": {
+            "type": "boolean"
+          },
+          "names": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
           },
@@ -211,14 +253,17 @@ Effects on this panel take the shared verbs only.
           },
           "from": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "to": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "label": {
             "type": "string"
+          },
+          "tree": {
+            "type": "boolean"
           },
           "initial": {
             "type": "boolean"
@@ -237,6 +282,11 @@ Effects on this panel take the shared verbs only.
       "default": "RIGHT",
       "type": "string",
       "enum": ["RIGHT", "DOWN"]
+    },
+    "layout": {
+      "default": "layered",
+      "type": "string",
+      "enum": ["layered", "tree"]
     },
     "initial": {
       "default": false,
@@ -365,6 +415,48 @@ An effect on this panel takes the shared verbs plus these keys:
           "y": {
             "type": "number"
           },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "arrange": {
+            "type": "string",
+            "enum": ["row", "column"]
+          },
+          "head": {
+            "type": "boolean"
+          },
+          "names": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
           },
@@ -404,14 +496,17 @@ An effect on this panel takes the shared verbs plus these keys:
           },
           "from": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "to": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "label": {
             "type": "string"
+          },
+          "tree": {
+            "type": "boolean"
           },
           "initial": {
             "type": "boolean"
@@ -430,6 +525,11 @@ An effect on this panel takes the shared verbs plus these keys:
       "default": "DOWN",
       "type": "string",
       "enum": ["RIGHT", "DOWN"]
+    },
+    "layout": {
+      "default": "layered",
+      "type": "string",
+      "enum": ["layered", "tree"]
     },
     "initial": {
       "default": true,

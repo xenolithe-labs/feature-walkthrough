@@ -7,6 +7,9 @@ import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
 import { consistentHashing } from './consistent-hashing';
+import { bstInsertDemo } from './algorithms/bst-insert';
+import { hashTableDemo } from './algorithms/hash-table';
+import { reverseListDemo } from './algorithms/reverse-list';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
 import { kafkaBrokerFailure } from './kafka-broker-failure';
@@ -32,6 +35,9 @@ export const plainDemos: WalkthroughInput[] = [
   quicksortDemo,
   bfsDemo,
   editDistanceDemo,
+  reverseListDemo,
+  bstInsertDemo,
+  hashTableDemo,
   kafkaConsumerGroup,
   kafkaBrokerFailure,
   temporalHeartbeat,

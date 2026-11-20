@@ -12,6 +12,7 @@
  */
 import type { Effect, WalkthroughInput } from '../core';
 import { checkLines, type Lines } from './source';
+import { Records, type NodeOptions, type Pointee, type RecordsOptions } from './structures';
 
 export type Scalar = string | number;
 type Cell = Scalar | null | undefined;
@@ -179,6 +180,8 @@ export class Recorder {
   private readonly popped: number[] = [];
   private stepTitle: string | undefined;
   private manualStep = false;
+  private finished = false;
+  private heap: Records | undefined;
 
   constructor(private readonly options: RecorderOptions) {
     this.source = { id: 'source', ...options.source };
@@ -271,6 +274,37 @@ export class Recorder {
   pane(id: string, panel: string, content: unknown, options: ViewOptions = {}): void {
     this.beforeStart(`pane "${id}"`);
     this.register({ kind: 'pane', id, panel, content, options });
+  }
+
+  /**
+   * Linked data structures: a `graph` pane of record nodes whose pointer changes are recorded.
+   * See `Records`. The first one made is the one `node` and `ref` use.
+   */
+  records(id: string, options: RecordsOptions = {}): Records {
+    this.beforeStart(`records "${id}"`);
+    const records = new Records(this, id, options);
+    this.heap ??= records;
+    return records;
+  }
+
+  /** Tracks a plain object as a node of the first `records()` pane; returns the same object. */
+  node<T extends object>(item: T, options?: NodeOptions): T {
+    return this.structure().node(item, options);
+  }
+
+  /** Points a variable of a `vars` node of the first `records()` pane at a tracked object. */
+  ref(name: string, value: Pointee | string | number): void {
+    this.structure().ref(name, value);
+  }
+
+  /** `setup` before the first `at()`, `running` after it, `done` once `finish()` has been called. */
+  get phase(): 'setup' | 'running' | 'done' {
+    return this.finished ? 'done' : this.started ? 'running' : 'setup';
+  }
+
+  private structure(): Records {
+    if (this.heap === undefined) throw new Error('call records() before node() or ref()');
+    return this.heap;
   }
 
   // ---- Steps and calls ----
@@ -536,6 +570,7 @@ export class Recorder {
   /** The config. It is plain data and loads with no recorder present. */
   finish(): WalkthroughInput {
     if (this.steps.length === 0) throw new Error('nothing was recorded: call at() first');
+    this.finished = true;
     this.sealed = false;
     for (const [pane, effect] of this.queue.splice(0)) this.emit(pane, effect);
     for (const step of this.steps) {
