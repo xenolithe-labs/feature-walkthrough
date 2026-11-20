@@ -28,6 +28,7 @@ import { fieldProblems } from '../_shared/fields';
 import { useRevealTouched } from '../_shared/reveal';
 import { NODE_FIELDS, fieldKind, treeProblems } from './lint';
 import { treeRows } from './model';
+import { describeTree } from './describe';
 import './tree.css';
 
 const NodeSchema = z.strictObject({
@@ -224,6 +225,7 @@ export const treePanel: PanelType<TreeContent, ElementsState> = {
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeTree,
   Component: TreeView,
   cardSections: ({ content, current, pane }) =>
     changesSection(

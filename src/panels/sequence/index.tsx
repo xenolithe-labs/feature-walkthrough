@@ -45,6 +45,7 @@ import {
   messageShape,
   type MessageStyle,
 } from './layout';
+import { describeSequence } from './describe';
 import './sequence.css';
 
 const STYLES = ['call', 'reply', 'async', 'lost'] as const;
@@ -437,6 +438,7 @@ export const sequencePanel: PanelType<SequenceContent, ElementsState> = {
       lanesOf(content, walkthrough.lanes ?? []).map((lane) => ({ id: lane.id, initial: true })),
     ),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeSequence,
   Component: SequenceView,
   lint: (pane, walkthrough) => {
     const content = pane.content as SequenceContent;

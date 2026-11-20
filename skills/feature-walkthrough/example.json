@@ -1,7 +1,7 @@
 {
   "id": "cache-read",
   "title": "Reading through a cache",
-  "lead": "A service answers from its cache when it can, and fills the cache when it cannot.",
+  "lead": "A service answers from its cache when it can, and fills the cache when it cannot. Omitted: expiry and invalidation.",
   "lanes": [
     { "id": "client", "title": "Client" },
     { "id": "service", "title": "Service" },
@@ -72,6 +72,7 @@
           "from": "service",
           "to": "db",
           "request": { "lang": "sql", "text": "SELECT name FROM users WHERE id = 7" },
+          "text": "The database returns the name \"Ada\" for user 7.",
           "response": "{ name: \"Ada\" }",
           "effects": { "path": [{ "read": "cached.query" }, { "read": "query" }] }
         },
@@ -89,6 +90,7 @@
           "label": "200 OK",
           "from": "service",
           "to": "client",
+          "text": "The service answers with the name, and the next read of user 7 can use the cache.",
           "effects": { "path": [{ "read": "fill.reply" }, { "read": "reply" }] }
         }
       ]
@@ -96,13 +98,14 @@
     {
       "id": "hit",
       "title": "Second read: a hit",
+      "text": "The same user is asked for again.",
       "calls": [
         {
           "id": "get-2",
           "label": "GET /user/7",
           "from": "client",
           "to": "service",
-          "text": "This time the row is there. The database is not asked.",
+          "text": "This time user 7 is in the cache, and its hits go from 0 to 1. The database is not asked.",
           "effects": {
             "cache": [{ "update": "user-7", "fields": { "hits": "1" } }],
             "path": [{ "read": "get" }, { "read": "cached" }, { "read": "cached.reply" }]
@@ -113,6 +116,7 @@
           "label": "200 OK (from cache)",
           "from": "service",
           "to": "client",
+          "text": "The service answers \"Ada\" from the cached value, without touching the database.",
           "effects": {
             "cache": [{ "read": "user-7", "cells": ["value"] }],
             "path": [{ "read": "reply" }]

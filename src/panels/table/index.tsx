@@ -37,6 +37,7 @@ import {
   meterProblem,
   readMeter,
 } from './model';
+import { describeTable } from './describe';
 import './table.css';
 
 const TableContent = z.strictObject({
@@ -303,6 +304,7 @@ export const tablePanel: PanelType<TableContent, ElementsState> = {
   // state (lint rejects adding or removing one).
   init: (content) => initElements(entitiesOf(content).filter((entity) => !isColumn(entity.id))),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeTable,
   Component: TableView,
   cardSections: ({ content, current, pane }) =>
     changesSection(

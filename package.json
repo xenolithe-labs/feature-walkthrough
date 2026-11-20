@@ -28,6 +28,7 @@
     },
     "./style.css": "./dist/lib/style.css",
     "./schema.json": "./schema/walkthrough.schema.json",
+    "./check-result.schema.json": "./schema/check-result.schema.json",
     "./package.json": "./package.json"
   },
   "files": [

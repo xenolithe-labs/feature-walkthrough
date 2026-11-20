@@ -52,6 +52,7 @@ import {
   type EventDecl,
   type RuleDecl,
 } from './model';
+import { describeBus } from './describe';
 import './bus.css';
 
 const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'fields'];
@@ -551,6 +552,7 @@ export const busPanel: PanelType<BusContent, ElementsState> = {
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeBus,
   Component: BusView,
   cardSections,
   lint: (pane, walkthrough) => {
