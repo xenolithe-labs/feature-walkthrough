@@ -1,0 +1,117 @@
+/*
+ * Motion, opt in. Nothing here applies unless the root says `data-motion="on"`, and only the
+ * step that has just been taken sets `data-moving` ("a" or "b", alternating so that a CSS
+ * animation starts again on an element that was already marked). No rule changes the size or place
+ * of anything that is not itself changing: only opacity, `scale`, `translate`, and the left and
+ * width of things that are drawn on a line.
+ */
+.fw[data-motion='on'][data-moving='a'] {
+  --fw-anim: fw-a;
+  --fw-t: 0.22s;
+}
+
+.fw[data-motion='on'][data-moving='b'] {
+  --fw-anim: fw-b;
+  --fw-t: 0.22s;
+}
+
+@keyframes fw-a {
+  from {
+    opacity: var(--fw-from, 1);
+    scale: var(--fw-scale, 1);
+  }
+}
+
+@keyframes fw-b {
+  from {
+    opacity: var(--fw-from, 1);
+    scale: var(--fw-scale, 1);
+  }
+}
+
+/* What this call added fades in, and what it changed settles to its value. The diagram panels
+   have their own. Without `--fw-anim` (motion off, or a step taken in a hurry) the shorthand is
+   invalid and there is no animation. */
+.fw-pane:not([data-panel='graph'], [data-panel='flow']) .is-added {
+  --fw-from: 0;
+  animation: var(--fw-anim) var(--fw-t) ease-out;
+}
+
+.fw-pane:not([data-panel='graph'], [data-panel='flow']) .is-updated {
+  --fw-from: 0.35;
+  animation: var(--fw-anim) var(--fw-t) ease-out;
+}
+
+/* A key that changes owner pulses once. */
+.fw-ring-key.is-moved .fw-ring-key-dot {
+  --fw-from: 1;
+  --fw-scale: 2.2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: var(--fw-anim) var(--fw-t) ease-out;
+}
+
+/* A meter bar grows and shrinks. The "now" marker, spans and pointers slide in motion.ts. */
+.fw-meter-fill {
+  transition: width var(--fw-t, 0s) ease-out;
+}
+
+/* A pane swapped onto the stage fades in under its outline. */
+.fw[data-motion='on'][data-moving] .fw-stage-pane[data-swapped='true'] {
+  --fw-from: 0;
+  animation:
+    fw-arrive 1s ease-out,
+    var(--fw-anim) var(--fw-t) ease-out;
+}
+
+/* Off means off, for the diagram panels too: their own glide, fades and traffic dot. */
+.fw:not([data-motion='on']) .fw-diagram *,
+.fw:not([data-motion='on']) .fw-diagram *::before,
+.fw:not([data-motion='on']) .fw-diagram *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
+.fw:not([data-motion='on']) .fw-edge-dot {
+  display: none;
+}
+
+/* Play */
+.fw-play {
+  position: relative;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding-bottom: 3px;
+}
+
+.fw-play-button,
+.fw-play select {
+  padding: 3px 10px;
+  border: 1px solid var(--fw-control-border);
+  border-radius: 999px;
+  background: var(--fw-surface);
+  font-size: 0.8rem;
+}
+
+.fw-play-button {
+  min-width: 4.5em;
+}
+
+/* How long until the next call. */
+.fw-play-fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--fw-select);
+  transform-origin: left;
+  animation: fw-fill linear forwards;
+}
+
+@keyframes fw-fill {
+  from {
+    transform: scaleX(0);
+  }
+}

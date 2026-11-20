@@ -104,7 +104,25 @@ browser), a link can ask for one with `v=focus` or `v=grid`, and a config can se
 `layout.view`.
 
 Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
-(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>&v=<view>`), so any call can be linked to.
+(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>&v=<view>&m=<0|1>`), so any call can be linked to.
+
+**Motion** is off unless someone turns it on. With it on, a step of one call takes about 0.2 s to
+show what changed: a pointer slides to its new cell, a bracket grows, a "now" marker moves, a
+meter bar fills, something added fades in, a changed value settles. It never carries meaning on its
+own (every call looks the same at rest, and the colours and marks are the same with it off), the
+author scripts none of it, and a second step within a third of a second just snaps, so fast
+stepping is never slower. Turn it on with the Motion button in the header (kept per browser), with
+`m=1` in the address (`m=0` forces it off), or with `"layout": { "motion": true }` in the config.
+The address wins, then the reader's choice, then the config. A system that asks for reduced motion
+always wins: nothing moves.
+
+**Play** steps through the calls on its own, so a reader can watch a walkthrough run. It is in the
+navigation bar (Space also starts and stops it when focus is not in a control), with a speed of
+Slower, Normal or Faster. It stays on a call for a time that grows with the words on the card (about
+2.5 s plus a quarter of a second a word, between 3 and 15 s at Normal), waits while the pointer or
+focus is in the panes or the card, and stops on any key or click, when the tab is hidden and at the
+last call. A thin line under the button shows the time left. It works with motion off and with
+reduced motion (it just steps), and `m=0` takes it away. Screen readers are told only that it started or stopped.
 
 ## The config
 

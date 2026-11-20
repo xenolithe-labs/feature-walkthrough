@@ -420,6 +420,18 @@ and a link's `v=focus` or `v=grid` in the address override it. Because Focus fol
 write the effects of each call with care: a pane a call is about but has no effect on is not
 brought forward (a `read` is enough).
 
+### Motion and Play
+
+Motion is the reader's, and off by default: short transitions (about 0.2 s) that show what changed
+from the call before to this one. Nothing in the config scripts it, and nothing depends on it: it
+is derived from the effects, every call looks the same at rest, and meaning is never carried by
+motion alone. Set `"layout": { "motion": true }` to open with it on. A reader's own choice (the
+Motion button in the header) and a link's `m=1` or `m=0` override that, `m=0` also removes Play, and
+a system that asks for reduced motion always wins. A **Play** button in the navigation bar steps
+through the calls at a pace that follows the words on each card (Space starts and stops it). Write
+each card so it can be read in a few seconds; a long card makes Play slow, not stuck. Play adds no
+config.
+
 ### Annotations
 
 The `status` annotation puts a labelled chip on calls. Declare the statuses once at

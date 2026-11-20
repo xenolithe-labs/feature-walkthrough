@@ -5,6 +5,37 @@
  */
 import { useEffect, useRef } from 'react';
 
+/** The id the shell gives to the slides it starts (see shell/motion.ts). */
+export const SLIDE = 'fw-slide';
+
+/** Stops every slide under `root` where it is going. */
+export function cancelSlides(root: HTMLElement): void {
+  for (const animation of root.getAnimations({ subtree: true })) {
+    if (animation.id === SLIDE) animation.cancel();
+  }
+}
+
+/**
+ * Runs `measure` as if every slide under `box` had finished, then puts them back: a reader who
+ * steps with motion on is scrolled to the same place as one who steps with it off.
+ */
+function atRest<T>(box: HTMLElement, measure: () => T): T {
+  const slides = box.getAnimations({ subtree: true }).filter((item) => item.id === SLIDE);
+  const times = slides.map((item) => item.currentTime);
+  for (const item of slides) {
+    item.pause();
+    item.currentTime = item.effect?.getComputedTiming().endTime ?? 0;
+  }
+  try {
+    return measure();
+  } finally {
+    slides.forEach((item, index) => {
+      item.currentTime = times[index] ?? 0;
+      item.play();
+    });
+  }
+}
+
 /** One axis: where the visible window is and where the item is, in the same units. */
 export interface Span {
   start: number;
@@ -54,20 +85,22 @@ export function useRevealTouched<T extends HTMLElement>(
     if (box === null) return;
     const target = box.querySelector<HTMLElement>(TOUCHED_SELECTOR);
     if (target === null) return;
-    const frame = box.getBoundingClientRect();
-    const rect = target.getBoundingClientRect();
-    const covered =
-      inset === undefined ? 0 : (box.querySelector(inset)?.getBoundingClientRect().height ?? 0);
-    const y = revealScroll(
-      { scroll: box.scrollTop, size: box.clientHeight, inset: covered },
-      { start: rect.top - frame.top + box.scrollTop, size: rect.height },
-    );
-    if (y !== undefined) box.scrollTop = y;
-    const x = revealScroll(
-      { scroll: box.scrollLeft, size: box.clientWidth },
-      { start: rect.left - frame.left + box.scrollLeft, size: rect.width },
-    );
-    if (x !== undefined) box.scrollLeft = x;
+    atRest(box, () => {
+      const frame = box.getBoundingClientRect();
+      const rect = target.getBoundingClientRect();
+      const covered =
+        inset === undefined ? 0 : (box.querySelector(inset)?.getBoundingClientRect().height ?? 0);
+      const y = revealScroll(
+        { scroll: box.scrollTop, size: box.clientHeight, inset: covered },
+        { start: rect.top - frame.top + box.scrollTop, size: rect.height },
+      );
+      if (y !== undefined) box.scrollTop = y;
+      const x = revealScroll(
+        { scroll: box.scrollLeft, size: box.clientWidth },
+        { start: rect.left - frame.left + box.scrollLeft, size: rect.width },
+      );
+      if (x !== undefined) box.scrollLeft = x;
+    });
   }, [key, inset]);
   return ref;
 }

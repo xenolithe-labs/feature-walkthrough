@@ -59,6 +59,8 @@ interface FocusProps {
   views: PaneViews;
   selection: Selection;
   theme: 'light' | 'dark';
+  /** Handlers for the element around the stage and the card (Play holds while they are in use). */
+  bodyProps?: React.HTMLAttributes<HTMLDivElement>;
   /** The card, which sits beside (or above) the stage. */
   children: React.ReactNode;
 }
@@ -76,6 +78,7 @@ export function Focus({
   views,
   selection,
   theme,
+  bodyProps,
   children,
 }: FocusProps) {
   const [stageBox, size] = useBoxSize<HTMLDivElement>();
@@ -108,7 +111,7 @@ export function Focus({
       : plan.visible.find((pane) => pane.id === plan.swappedIn)?.title;
 
   return (
-    <div className="fw-body fw-focus-body">
+    <div className="fw-body fw-focus-body" {...bodyProps}>
       <div className="fw-workspace">
         <div className="fw-rail-wrap">
           <ul className="fw-rail" aria-label="Panes: what this call does to each">
