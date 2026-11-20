@@ -24,7 +24,9 @@ plan and apply (the change as a diff, the plan and apply output as a transcript)
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
 its call stack, breadth-first search and edit distance. Three event-driven demos: a Kafka consumer
 group that loses a consumer, a Temporal Activity that misses a heartbeat and is retried, and
-EventBridge rules that start a Step Functions execution.
+EventBridge rules that start a Step Functions execution. Two more: a Kafka broker that fails
+(leader election from the in-sync replicas, then a leadership rebalance), and an AWS API call
+evaluated against service control policies inherited down an organisation.
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 

@@ -71,10 +71,15 @@ for (const walkthrough of walkthroughs) {
     // move by design, but the cells they move over must not. The event slots and offsets of a
     // bus and the instants and ticks of a timeline have fixed places too: they are measured from
     // the scrolling content they sit in, which a reveal may scroll.
+    // The rows of a table are included when a table pane is always on the page (not one that
+    // shares a slot, which is not there at the first call). They are measured from the table.
+    const fixedTable = walkthrough.layout.panes.some(
+      (pane) => pane.panel === 'table' && pane.role !== 'focus',
+    );
     const places = () =>
       page
         .locator(
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick',
+          `.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick${fixedTable ? ', .fw-table tbody tr' : ''}`,
         )
         .evaluateAll((nodes) =>
           nodes.map((node) => {
@@ -83,7 +88,7 @@ for (const walkthrough of walkthroughs) {
             }
             const box = node.getBoundingClientRect();
             const pane = (
-              node.closest('.fw-bus-grid, .fw-tl-inner') ?? node.closest('.fw-pane')!
+              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-table') ?? node.closest('.fw-pane')!
             ).getBoundingClientRect();
             return [
               node.getAttribute('data-entity') ?? node.textContent,
@@ -886,6 +891,8 @@ test('focus view: the marked items of every staged pane are in view, small or la
     '#w=bfs&s=2&c=4',
     '#w=quicksort&s=5&c=3',
     '#w=react-render&s=2&c=2',
+    '#w=kafka-broker-failure&s=3&c=1',
+    '#w=aws-scp-inheritance&s=2&c=1',
   ];
   for (const size of [
     { width: 1440, height: 900 },
@@ -1060,4 +1067,94 @@ test('code and sequence additions fit a phone in both views, with no sideways pa
       expect(overflow, `${hash} ${view}`).toBeLessThanOrEqual(0);
     }
   }
+});
+test('table: legend tones, group headers, a meter and a marked column, with rows that keep their height', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=kafka-broker-failure&s=1&c=1');
+  const table = page.locator('.fw-pane[data-panel="table"]');
+  // Headers keep the case they were written in.
+  await expect(table.locator('thead th').first()).toHaveText('Partition');
+  // Two group headers span the table, and they are not elements.
+  await expect(table.locator('tr.fw-table-group th')).toHaveText([
+    'Topic orders',
+    'Topic payments',
+  ]);
+  await expect(table.locator('tr.fw-table-group th').first()).toHaveAttribute('colspan', '6');
+  // A cell whose text is a legend value has that tone, and the legend is under the table.
+  await expect(table.locator('tr[data-entity="orders-0"] td[data-column="b1"]')).toHaveAttribute(
+    'data-cell-tone',
+    'good',
+  );
+  await expect(table.locator('.fw-table-legend li')).toHaveCount(4);
+  // A meter shows the number and a warning past its threshold.
+  const lag = (id: string) => table.locator(`tr[data-entity="${id}"] td[data-column="lag"]`);
+  await expect(lag('orders-1')).toHaveAttribute('data-warn', 'true');
+  await expect(lag('orders-0')).not.toHaveAttribute('data-warn', 'true');
+  await expect(lag('orders-1').locator('[role="meter"]')).toHaveAttribute('aria-valuenow', '38');
+  // The marked column: its header and cells, and the rows do not fade.
+  await expect(table.locator('th[data-entity="col.b2"]')).toHaveAttribute('data-col-mark', 'read');
+  await expect(table.locator('tr[data-entity="orders-0"] td[data-column="b2"]')).toHaveClass(
+    /is-col-hit/,
+  );
+  await expect(table.locator('tr[data-entity="orders-0"]')).not.toHaveClass(/is-faded/);
+
+  const heights = () =>
+    table
+      .locator('tbody tr')
+      .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+  const before = await heights();
+  for (let step = 1; step < 10; step += 1) await page.keyboard.press('ArrowRight');
+  expect(await heights()).toEqual(before);
+  // The column header is a selectable element: it selects across panes.
+  await table.locator('th[data-entity="col.b2"]').click();
+  await expect(page).toHaveURL(/sel=col\.b2/);
+  expect(errors).toEqual([]);
+});
+
+test('tree: ancestors open for the call, the reader can close one, Up and Down move, and Right still steps the call', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // Sandbox is collapsed until a call touches something inside it.
+  await open(page, '#w=aws-scp-inheritance&s=1&c=1');
+  const tree = page.locator('.fw-pane[data-panel="tree"]');
+  const row = (id: string) => tree.locator(`[role="treeitem"][data-entity="${id}"]`);
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'false');
+  await expect(row('ou-sandbox').locator('.fw-tree-hidden')).toHaveText('4 hidden');
+  await expect(row('acct-sandbox')).toHaveCount(0);
+
+  await page.keyboard.press('ArrowRight');
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'true');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-mark', 'read');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-depth', '3');
+
+  // Enter selects across panes.
+  await row('acct-sandbox').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=acct-sandbox/);
+
+  // The reader closes Sandbox: it says it hides what the call touches.
+  await row('ou-sandbox').locator('.fw-tree-twisty').click();
+  await expect(row('ou-sandbox').locator('.fw-tree-hidden')).toContainText('1 touched');
+
+  // Up and Down move between nodes; Left and Right are not taken by the tree.
+  await row('root').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(row('p-root-full')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(row('acct-mgmt')).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(row('root')).toBeFocused();
+  expect(await position(page)).toBe('2.1');
+  await page.keyboard.press('ArrowRight');
+  expect(await position(page)).toBe('3.1');
+  await page.keyboard.press('ArrowLeft');
+  expect(await position(page)).toBe('2.1');
+  // The move: the account is now one level up, and absent or closed nodes keep the rows they had.
+  await page.goto('/#w=aws-scp-inheritance&s=5&c=1');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-depth', '2');
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'false');
+  expect(errors).toEqual([]);
 });

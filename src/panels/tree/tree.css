@@ -1,0 +1,175 @@
+.fw-tree-scroll {
+  max-height: 520px;
+  overflow: auto;
+}
+
+/* One fixed row height, so that a longer label or a new badge cannot move the rows below. */
+.fw-tree {
+  --fw-tree-row: 28px;
+  --fw-tree-step: 20px;
+  min-width: max-content;
+  padding: 4px 0;
+  font-size: 0.85rem;
+}
+
+.fw-tree-row {
+  display: flex;
+  align-items: center;
+  height: var(--fw-tree-row);
+  padding-right: 10px;
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.fw-tree-row:focus-visible {
+  outline-offset: -2px;
+}
+
+/* Absent nodes keep their row, so that no row moves when another appears. */
+.fw-tree-row.is-absent {
+  visibility: hidden;
+}
+
+.fw-tree-row.is-faded {
+  opacity: var(--fw-faded-opacity);
+}
+
+.fw-tree-row.is-added {
+  border-left-color: var(--fw-added);
+  background: var(--fw-added-bg);
+}
+
+.fw-tree-row.is-read {
+  border-left-color: var(--fw-read);
+  background: var(--fw-read-bg);
+}
+
+.fw-tree-row.is-updated {
+  border-left-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+}
+
+.fw-tree-row.is-removed {
+  border-left-color: var(--fw-removed);
+  background: var(--fw-removed-bg);
+  text-decoration: line-through;
+}
+
+.fw-tree-row.is-selected {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--fw-select);
+}
+
+/* A closed node that holds something the call touched is faded like the rest, unless it says so. */
+.fw-tree-row.has-hidden-touched {
+  opacity: 1;
+  border-left-color: var(--fw-updated);
+}
+
+/* Connector lines: one cell per level, drawn from the middle of the cell. */
+.fw-tree-guide {
+  position: relative;
+  flex: none;
+  align-self: stretch;
+  width: var(--fw-tree-step);
+}
+
+.fw-tree-guide.is-pass::before,
+.fw-tree-guide.is-tee::before,
+.fw-tree-guide.is-elbow::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--fw-control-border);
+}
+
+.fw-tree-guide.is-elbow::before {
+  bottom: 50%;
+}
+
+.fw-tree-guide.is-tee::after,
+.fw-tree-guide.is-elbow::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid var(--fw-control-border);
+}
+
+.fw-tree-twisty {
+  flex: none;
+  width: 18px;
+  text-align: center;
+  color: var(--fw-muted);
+  user-select: none;
+}
+
+.fw-tree-twisty.is-branch {
+  cursor: pointer;
+}
+
+.fw-tree-kind {
+  flex: none;
+  margin-right: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--fw-border);
+  border-radius: 4px;
+  font-family: var(--fw-mono);
+  font-size: 0.7rem;
+  line-height: 16px;
+  color: var(--fw-muted);
+}
+
+.fw-tree-label {
+  font-weight: 600;
+}
+
+.fw-tree-sub {
+  margin-left: 8px;
+  color: var(--fw-muted);
+  font-size: 0.78rem;
+}
+
+.fw-tree-hidden {
+  margin-left: 10px;
+  padding: 0 7px;
+  border-radius: 9px;
+  border: 1px solid var(--fw-border);
+  background: var(--fw-surface-2);
+  color: var(--fw-muted);
+  font-size: 0.72rem;
+  line-height: 16px;
+}
+
+.fw-tree-hidden[data-touched] {
+  border-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+  color: var(--fw-text);
+  font-weight: 700;
+}
+
+.fw-tree-row[data-tone='warn'] .fw-tree-label {
+  color: var(--fw-warn);
+}
+
+.fw-tree-row[data-tone='warn'] .fw-tree-label::after {
+  content: ' •';
+  font-weight: 700;
+}
+
+.fw-tree-row[data-tone='good'] .fw-tree-label {
+  color: var(--fw-good);
+}
+
+.fw-tree-row[data-tone='muted'] {
+  color: var(--fw-muted);
+}
+
+.fw-tree-row[data-tone='muted'] .fw-tree-label {
+  font-weight: 400;
+}
