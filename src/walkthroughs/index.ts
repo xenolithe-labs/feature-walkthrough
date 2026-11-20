@@ -9,6 +9,7 @@ import { gitCommit } from './git-commit';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
 import { oauthPkce } from './oauth-pkce';
 import { reactRender } from './react-render';
+import { retryBackoff } from './retry-backoff';
 import { spreadsheet } from './spreadsheet';
 import { temporalHeartbeat } from './temporal-heartbeat';
 import { terraformApply } from './terraform-apply';
@@ -16,6 +17,7 @@ import { terraformApply } from './terraform-apply';
 /** The demos as written, before syntax colours are added. */
 export const plainDemos: WalkthroughInput[] = [
   oauthPkce,
+  retryBackoff,
   spreadsheet,
   reactRender,
   terraformApply,
@@ -51,8 +53,14 @@ function coloured(walkthrough: WalkthroughInput): WalkthroughInput {
           content: {
             ...content,
             sources: content.sources.map((source) => {
-              const tokens = stored[colourKey(walkthrough.id, pane.id, source.id)];
-              return tokens === undefined ? source : { ...source, tokens };
+              const key = colourKey(walkthrough.id, pane.id, source.id);
+              const tokens = stored[key];
+              const baseTokens = stored[`${key}#base`];
+              return {
+                ...source,
+                ...(tokens === undefined ? {} : { tokens }),
+                ...(baseTokens === undefined ? {} : { baseTokens }),
+              };
             }),
           },
         };

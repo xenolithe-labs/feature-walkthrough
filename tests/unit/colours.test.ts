@@ -131,9 +131,27 @@ describe('the bundled demos', () => {
     const sources = all.flatMap((walkthrough) =>
       walkthrough.layout.panes
         .filter((pane) => pane.panel === 'code')
-        .flatMap((pane) => (pane.content as { sources: { tokens?: unknown }[] }).sources),
+        .flatMap(
+          (pane) =>
+            (
+              pane.content as {
+                sources: {
+                  tokens?: unknown;
+                  base?: string;
+                  baseTokens?: unknown;
+                  transcript?: unknown;
+                }[];
+              }
+            ).sources,
+        ),
     );
     expect(sources.length).toBeGreaterThan(0);
-    expect(sources.every((source) => source.tokens !== undefined)).toBe(true);
+    // A transcript is output, not source text: it is shown plain.
+    const code = sources.filter((source) => source.transcript === undefined);
+    expect(code.every((source) => source.tokens !== undefined)).toBe(true);
+    // A diff has colours for its removed lines too.
+    const diffs = sources.filter((source) => source.base !== undefined);
+    expect(diffs.length).toBeGreaterThan(0);
+    expect(diffs.every((source) => source.baseTokens !== undefined)).toBe(true);
   });
 });

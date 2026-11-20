@@ -3,24 +3,24 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The engine, the page, eleven panels and thirteen demos work end to end.
+> **Status: early.** The engine, the page, eleven panels and fourteen demos work end to end.
 
-| Panel      | Shows                                                               |
-| ---------- | ------------------------------------------------------------------- |
-| `sequence` | Lanes and the messages between them                                 |
-| `graph`    | Nodes and relationships that appear as calls add them               |
-| `flow`     | A chart of steps and decisions that calls walk through              |
-| `boxes`    | Boxes within boxes: components, modules, call frames                |
-| `table`    | Rows of data, with the rows and cells a call reads or changes       |
-| `code`     | Source text, with the lines a call is about                         |
-| `payload`  | Message and object bodies, with the fields a call reads or changes  |
-| `schema`   | Tables or types, their columns and the relations between them       |
-| `array`    | Cells in a row, with the pointers and ranges that move over them    |
-| `bus`      | Events in topics, queues and buses, with offsets, lag and rules     |
-| `timeline` | Rows along a time axis: heartbeats, timeouts, retries, a `now` mark |
+| Panel      | Shows                                                                |
+| ---------- | -------------------------------------------------------------------- |
+| `sequence` | Lanes and messages, with loop/alt/opt/par frames and notes           |
+| `graph`    | Nodes and relationships that appear as calls add them                |
+| `flow`     | A chart of steps and decisions that calls walk through               |
+| `boxes`    | Boxes within boxes: components, modules, call frames                 |
+| `table`    | Rows of data, with the rows and cells a call reads or changes        |
+| `code`     | Source text with marked lines, as a diff, or as a growing transcript |
+| `payload`  | Message and object bodies, with the fields a call reads or changes   |
+| `schema`   | Tables or types, their columns and the relations between them        |
+| `array`    | Cells in a row, with the pointers and ranges that move over them     |
+| `bus`      | Events in topics, queues and buses, with offsets, lag and rules      |
+| `timeline` | Rows along a time axis: heartbeats, timeouts, retries, a `now` mark  |
 
-Demos: OAuth 2.0 with PKCE, a spreadsheet recalculating, one React state update, a Terraform
-plan and apply, and what git stores on add, commit and push (with real object ids). Four
+Demos: OAuth 2.0 with PKCE (with an `alt` frame for a failed check), a client retrying with backoff (`loop`, `par`, a lost message), a spreadsheet recalculating, one React state update, a Terraform
+plan and apply (the change as a diff, the plan and apply output as a transcript), and what git stores on add, commit and push (with real object ids). Four
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
 its call stack, breadth-first search and edit distance. Three event-driven demos: a Kafka consumer
 group that loses a consumer, a Temporal Activity that misses a heartbeat and is retried, and
