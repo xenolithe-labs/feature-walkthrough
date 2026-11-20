@@ -8,19 +8,16 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# One deployment at a time. A newer push waits for the one in progress instead of cancelling it,
+# so a deployment is never cut off half way; runs still waiting behind it are dropped.
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -30,9 +27,33 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist/viewer
+
+  # A separate job, as GitHub's own Pages workflows have it. Deploying in the same job, a second
+  # after the upload, sometimes asked for the artifact before it could be found
+  # ("No artifacts named github-pages were found").
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: first
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - name: Wait before one more try
+        if: steps.first.outcome == 'failure'
+        run: sleep 20
+      - id: second
+        if: steps.first.outcome == 'failure'
+        uses: actions/deploy-pages@v5
       - id: deploy
-        uses: actions/deploy-pages@v4
+        name: Report the address
+        run: echo "page_url=${{ steps.first.outputs.page_url || steps.second.outputs.page_url }}" >> "$GITHUB_OUTPUT"

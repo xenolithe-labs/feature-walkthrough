@@ -12,7 +12,10 @@ export default defineConfig({
     cssCodeSplit: false,
     lib: { entry: 'src/index.ts', formats: ['es'], fileName: 'index', cssFileName: 'style' },
     rollupOptions: {
-      external: (id) => external.some((name) => id === name || id.startsWith(`${name}/`)),
+      // A dependency's stylesheet is not left as an import: it goes into style.css with the
+      // rest, so the built library is plain JavaScript that Node can load too.
+      external: (id) =>
+        !id.endsWith('.css') && external.some((name) => id === name || id.startsWith(`${name}/`)),
     },
   },
 });

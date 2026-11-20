@@ -25,6 +25,14 @@ git tag v0.2.0 && git push origin v0.2.0    # once it is on main
 To rehearse without staging, run the workflow by hand from the Actions tab and leave "dry run"
 ticked.
 
+## Before a release
+
+`pnpm release:check` does what the release workflow will do, and a little more, on your machine:
+the checks, the full build, the browser tests, and a dry run of the publish that prints the
+package's size and file count. Then try the package as a user would: `pnpm pack`, install the
+tarball in an empty folder, and run `npx feature-walkthrough` there. Update `CHANGELOG.md` and the
+version in `package.json` in the same commit.
+
 ## One-time setup
 
 Do these once, in order, signed in to npm as an owner of the package with two-factor
