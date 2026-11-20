@@ -5,3 +5,10 @@ test-results/
 playwright-report/
 *.tsbuildinfo
 .DS_Store
+
+# Secrets. The mapping names the owner's 1Password vault and items, so it stays local;
+# scripts/secrets/mapping.example.tsv is the tracked template.
+scripts/secrets/mapping.tsv
+.env
+.env.*
+.npmrc

@@ -1,0 +1,64 @@
+name: Release
+
+# Stages a new version on npm when a version tag is pushed. No npm token is stored anywhere:
+# npm trusts this workflow through OpenID Connect, and a maintainer approves the staged version
+# with their second factor before it goes live. See docs/release.md.
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build and pack, but do not stage
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      # Lets this run prove to npm which repository and workflow it is. This replaces a token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: Check that the tag matches the package version
+        if: github.event_name == 'push'
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::the tag is $GITHUB_REF_NAME but package.json says $version"
+            exit 1
+          fi
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build:all
+      - name: Show what the package will contain
+        run: npm pack --dry-run --ignore-scripts
+      - name: Use an npm that supports staged publishing
+        run: npm install -g npm@^11.15.0
+      - name: Stage the version for approval
+        if: github.event_name == 'push' || inputs.dry_run == false
+        # The build ran above, so the package's own scripts are skipped here.
+        # npm attaches a provenance statement by itself when it trusts the workflow.
+        run: npm stage publish --ignore-scripts
+      - name: Say what happens next
+        if: github.event_name == 'push' || inputs.dry_run == false
+        run: |
+          echo "Staged. A maintainer now approves it on npmjs.com (Staged Packages) or with 'npm stage approve <stage-id>'." >> "$GITHUB_STEP_SUMMARY"
