@@ -5,7 +5,6 @@
  */
 import { z } from 'zod';
 import { IdSchema, own, type ElementsState } from '../../core';
-import { TONES } from '../_shared/changes';
 
 /** What happened to an event. Drawn as a glyph, so that it does not rely on colour. */
 export const EVENT_STATES = ['delivered', 'acked', 'failed', 'dead', 'none'] as const;
@@ -92,7 +91,8 @@ export type EventDecl = ChannelDecl['events'][number];
 export type CursorDecl = ChannelDecl['cursors'][number];
 export type RuleDecl = ChannelDecl['rules'][number];
 
-export type ElementKind = 'channel' | 'event' | 'producer' | 'consumer' | 'cursor' | 'rule' | 'target';
+export type ElementKind =
+  'channel' | 'event' | 'producer' | 'consumer' | 'cursor' | 'rule' | 'target';
 
 export interface Located {
   id: string;
@@ -126,16 +126,40 @@ export function elementsOf(content: BusContent): Located[] {
       });
     }
     for (const producer of channel.producers) {
-      out.push({ id: producer.id, kind: 'producer', channel, label: producer.label ?? producer.id, initial: initial(producer.initial) });
+      out.push({
+        id: producer.id,
+        kind: 'producer',
+        channel,
+        label: producer.label ?? producer.id,
+        initial: initial(producer.initial),
+      });
     }
     for (const consumer of channel.consumers) {
-      out.push({ id: consumer.id, kind: 'consumer', channel, label: consumer.label ?? consumer.id, initial: initial(consumer.initial) });
+      out.push({
+        id: consumer.id,
+        kind: 'consumer',
+        channel,
+        label: consumer.label ?? consumer.id,
+        initial: initial(consumer.initial),
+      });
     }
     for (const cursor of channel.cursors) {
-      out.push({ id: cursor.id, kind: 'cursor', channel, label: cursor.id, initial: initial(cursor.initial) });
+      out.push({
+        id: cursor.id,
+        kind: 'cursor',
+        channel,
+        label: cursor.id,
+        initial: initial(cursor.initial),
+      });
     }
     for (const rule of channel.rules) {
-      out.push({ id: rule.id, kind: 'rule', channel, label: rule.label ?? rule.id, initial: initial(rule.initial) });
+      out.push({
+        id: rule.id,
+        kind: 'rule',
+        channel,
+        label: rule.label ?? rule.id,
+        initial: initial(rule.initial),
+      });
       for (const target of rule.targets) {
         out.push({
           id: target.id,
@@ -213,7 +237,9 @@ export function lagOf(channel: ChannelDecl, cursor: CursorDecl, state: ElementsS
 
 export function eventState(event: EventDecl, patches: Patches): EventState | undefined {
   const patched = own(patches, event.id)?.state;
-  return typeof patched === 'string' && patched !== 'none' && EVENT_STATES.includes(patched as never)
+  return typeof patched === 'string' &&
+    patched !== 'none' &&
+    EVENT_STATES.includes(patched as never)
     ? (patched as EventState)
     : undefined;
 }
@@ -248,7 +274,8 @@ export function patternProblems(
         if (isScalar(item)) return;
         const keys = isPlain(item) ? Object.keys(item) : [];
         const operator = keys[0];
-        const operand = operator === undefined ? undefined : (item as Record<string, unknown>)[operator];
+        const operand =
+          operator === undefined ? undefined : (item as Record<string, unknown>)[operator];
         const ok =
           keys.length === 1 &&
           ((operator === 'prefix' && typeof operand === 'string') ||
@@ -286,7 +313,10 @@ function matchesValue(want: unknown, found: unknown): boolean {
  * pattern must match (AND), and a field matches when any of its listed values does (OR). A
  * missing field matches only `{ "exists": false }`.
  */
-export function patternMatches(pattern: Record<string, unknown>, data: Record<string, unknown>): boolean {
+export function patternMatches(
+  pattern: Record<string, unknown>,
+  data: Record<string, unknown>,
+): boolean {
   return Object.entries(pattern).every(([key, want]) => {
     const found = own(data, key);
     if (isPlain(want)) {

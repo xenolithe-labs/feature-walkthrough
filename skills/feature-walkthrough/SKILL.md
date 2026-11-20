@@ -1,6 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -118,17 +118,19 @@ graph). Selecting it in one pane then selects it in the other.
 
 Exact shapes are in [`reference.md`](reference.md), generated from the lint schemas.
 
-| Panel      | Use it for                                | Elements                   | Present at start |
-| ---------- | ----------------------------------------- | -------------------------- | ---------------- |
-| `sequence` | Messages between lanes over time          | lanes, calls               | lanes            |
-| `graph`    | Things and relationships that build up    | nodes, edges               | no               |
-| `flow`     | A flow chart that calls walk through      | nodes, edges               | yes              |
-| `boxes`    | Nesting: modules, components, frames      | boxes, edges               | yes              |
-| `table`    | Rows of data that calls read and change   | rows                       | yes              |
-| `code`     | Source text, with the lines in question   | sources                    | yes              |
-| `payload`  | Message and object bodies, field by field | payloads                   | yes              |
-| `schema`   | Tables or types, columns and relations    | tables, columns, relations | yes              |
-| `array`    | A row of cells with pointers and ranges   | cells, pointers, ranges    | cells            |
+| Panel      | Use it for                                   | Elements                                                        | Present at start |
+| ---------- | -------------------------------------------- | --------------------------------------------------------------- | ---------------- |
+| `sequence` | Messages between lanes over time             | lanes, calls                                                    | lanes            |
+| `graph`    | Things and relationships that build up       | nodes, edges                                                    | no               |
+| `flow`     | A flow chart that calls walk through         | nodes, edges                                                    | yes              |
+| `boxes`    | Nesting: modules, components, frames         | boxes, edges                                                    | yes              |
+| `table`    | Rows of data that calls read and change      | rows                                                            | yes              |
+| `code`     | Source text, with the lines in question      | sources                                                         | yes              |
+| `payload`  | Message and object bodies, field by field    | payloads                                                        | yes              |
+| `schema`   | Tables or types, columns and relations       | tables, columns, relations                                      | yes              |
+| `array`    | A row of cells with pointers and ranges      | cells, pointers, ranges                                         | cells            |
+| `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
+| `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown.
@@ -177,6 +179,35 @@ side?, label? }` and `ranges` `{ id, from, to, array?, dim?, label? }`. Cells ar
   outside it dimmed. Give `array` on pointers and ranges when the pane has more than one array.
   Pointers and ranges each get a track, so nothing moves when one appears. Tones (`warn`, `good`,
   `muted`) work on cells, pointers and ranges.
+
+- **`bus`**: `channels` `{ id, kind, partitions?, events, producers, consumers, cursors, rules }`.
+  `kind` is `topic` (a log: events have offsets), `queue` or `bus`. Everything is nested in its
+  channel. Events `{ id, label?, partition?, data? }` are listed in the order they reach the
+  channel; they start absent and `add` publishes one, so offsets never move (lint rejects
+  publishing out of order). An event's `fields.state` is `delivered`, `acked`, `failed` or `dead`
+  (`none` clears it). Consumers `{ id, group?, sub? }` and producers take `fields.state` as free
+  text. A cursor `{ id, partition?, group?, owner?, at }` is a group's committed offset in one
+  partition, the offset of the **next** event to read: `update` with `fields.at` moves it and
+  `fields.owner` (a consumer id, or `null`) hands the partition over, which is a rebalance. Lag is
+  worked out as the end of the partition minus `at`: never write it. A rule `{ id, pattern?,
+targets }` on a `bus` has an event pattern (field: list of values; nested objects; the operators
+  `prefix`, `anything-but`, `exists`); the panel matches it against the `data` of the events the
+  call touches and shows which rules matched. All fields must match, any value of a field may.
+  Lint warns when a call invokes a target whose rule does not match the event in that call.
+- **`timeline`**: `axis` `{ unit, from?, to, tick, pxPerUnit? }`, `rows` `{ id, label?, sub? }`,
+  `instants` `{ id, row, at, kind?: heartbeat|event, state? }`, `spans` `{ id, row, from, to,
+kind?: run|wait|lease, state? }` and `limits` `{ id, row, after, from, reset?, until?, by? }`.
+  Times are numbers in the axis unit. The marker `now` is an element: `{ "update": "now",
+"fields": { "at": 12 } }` moves it forward (never back). Instants and spans show once their
+  time has come, so each call that moves `now` plays time forward and what it reveals is marked as
+  added. `state` is `ok`, `late`, `missed`, `failed`, `retried` (`none` clears). A limit is drawn on
+  the axis and its outcome is worked out, not written. With `reset` it is a silence limit (a
+  heartbeat timeout): no more than `after` without an instant of that kind, counted from `from`
+  (a time, an instant, or a span's start) until `until`; the gap that crosses it is drawn and the
+  instant that ends it is `late`. Without `reset` it is one deadline `after` from `from`, met by
+  `by` or by the end of the span `from` names. Lint rejects an instant on an unknown row, a span
+  that ends before it starts, times off the axis, and a call that touches something that has not
+  happened yet at that call.
 
 ### Panes that share a slot
 

@@ -35,24 +35,25 @@ function config(content: unknown, calls: Effects[] = [{}]): WalkthroughInput {
   };
 }
 
-const base: Record<string, unknown> & { instants: unknown[]; spans: unknown[]; limits: unknown[] } = {
-  axis: { unit: 's', to: 60, tick: 10 },
-  rows: [{ id: 'w' }, { id: 'v' }],
-  spans: [
-    { id: 'run', row: 'w', from: 0, to: 25 },
-    { id: 'next', row: 'v', from: 30, to: 50, kind: 'wait' },
-  ],
-  instants: [
-    { id: 'h1', row: 'w', at: 5, kind: 'heartbeat' },
-    { id: 'h2', row: 'w', at: 10, kind: 'heartbeat' },
-    { id: 'h3', row: 'w', at: 24, kind: 'heartbeat' },
-    { id: 'ev', row: 'v', at: 35 },
-  ],
-  limits: [
-    { id: 'silence', row: 'w', after: 10, from: 'run', reset: 'heartbeat', label: 'timeout' },
-    { id: 'deadline', row: 'w', after: 20, from: 'run' },
-  ],
-};
+const base: Record<string, unknown> & { instants: unknown[]; spans: unknown[]; limits: unknown[] } =
+  {
+    axis: { unit: 's', to: 60, tick: 10 },
+    rows: [{ id: 'w' }, { id: 'v' }],
+    spans: [
+      { id: 'run', row: 'w', from: 0, to: 25 },
+      { id: 'next', row: 'v', from: 30, to: 50, kind: 'wait' },
+    ],
+    instants: [
+      { id: 'h1', row: 'w', at: 5, kind: 'heartbeat' },
+      { id: 'h2', row: 'w', at: 10, kind: 'heartbeat' },
+      { id: 'h3', row: 'w', at: 24, kind: 'heartbeat' },
+      { id: 'ev', row: 'v', at: 35 },
+    ],
+    limits: [
+      { id: 'silence', row: 'w', after: 10, from: 'run', reset: 'heartbeat', label: 'timeout' },
+      { id: 'deadline', row: 'w', after: 20, from: 'run' },
+    ],
+  };
 
 const load = (value: WalkthroughInput) => loadConfig(value, createRegistry());
 const rules = (value: WalkthroughInput) =>
@@ -82,7 +83,9 @@ describe('timeline panel: what is visible at now', () => {
 
   it('instants appear when their time has come', () => {
     const { state, parsed, now } = view(10);
-    expect(parsed.instants.filter((item) => instantShown(item, state, now)).map((item) => item.id)).toEqual(['h1', 'h2']);
+    expect(
+      parsed.instants.filter((item) => instantShown(item, state, now)).map((item) => item.id),
+    ).toEqual(['h1', 'h2']);
   });
 
   it('a span grows with now and is open until it ends', () => {
@@ -110,7 +113,18 @@ describe('timeline panel: what is visible at now', () => {
   });
 
   it('remembers where now was even if a call moves it twice', () => {
-    const { state, parsed } = at(base, [{ tl: [{ update: 'now', fields: { at: 6 } }, { update: 'now', fields: { at: 12 } }] }], 0);
+    const { state, parsed } = at(
+      base,
+      [
+        {
+          tl: [
+            { update: 'now', fields: { at: 6 } },
+            { update: 'now', fields: { at: 12 } },
+          ],
+        },
+      ],
+      0,
+    );
     expect([...revealed(parsed, state, 'c1', 12)]).toEqual(['h1', 'h2']);
   });
 });
@@ -118,7 +132,12 @@ describe('timeline panel: what is visible at now', () => {
 describe('timeline panel: limits', () => {
   const limit = (id: string, time: number, content: unknown = base) => {
     const { state, parsed } = at(content, moves(time), 0);
-    return evaluateLimit(parsed, parsed.limits.find((item) => item.id === id)!, state, time);
+    return evaluateLimit(
+      parsed,
+      parsed.limits.find((item) => item.id === id)!,
+      state,
+      time,
+    );
   };
 
   it('a silence limit follows the last heartbeat', () => {
@@ -147,7 +166,9 @@ describe('timeline panel: limits', () => {
     expect(view.limitAt).toBe(34);
     const { state, parsed } = at(base, moves(24), 0);
     expect([...lateInstants(parsed, state, 24)]).toEqual(['h3']);
-    expect(stateOf(parsed.instants[2]!, state.patches, lateInstants(parsed, state, 24))).toBe('late');
+    expect(stateOf(parsed.instants[2]!, state.patches, lateInstants(parsed, state, 24))).toBe(
+      'late',
+    );
   });
 
   it('a heartbeat on time is not late', () => {
@@ -168,7 +189,9 @@ describe('timeline panel: limits', () => {
         { id: 'h2', row: 'w', at: 10, kind: 'heartbeat' },
         { id: 'h3', row: 'w', at: 20, kind: 'heartbeat' },
       ],
-      limits: [{ id: 'silence', row: 'w', after: 10, from: 'run', reset: 'heartbeat', until: 'run' }],
+      limits: [
+        { id: 'silence', row: 'w', after: 10, from: 'run', reset: 'heartbeat', until: 'run' },
+      ],
     };
     // The span ends at 25, the last heartbeat is at 20: the limit would only run out at 30.
     expect(limit('silence', 24, content).status).toBe('pending');
@@ -213,9 +236,26 @@ describe('timeline panel: limits', () => {
 
 describe('timeline panel: label levels', () => {
   it('puts a label that would overlap on a lower level, and keeps clear ones on the first', () => {
-    expect(stagger([{ x: 10, width: 30 }, { x: 60, width: 30 }])).toEqual([0, 0]);
-    expect(stagger([{ x: 10, width: 30 }, { x: 20, width: 30 }, { x: 30, width: 30 }])).toEqual([0, 1, 2]);
-    expect(stagger([{ x: 10, width: 30 }, { x: 20, width: 30 }, { x: 70, width: 30 }])).toEqual([0, 1, 0]);
+    expect(
+      stagger([
+        { x: 10, width: 30 },
+        { x: 60, width: 30 },
+      ]),
+    ).toEqual([0, 0]);
+    expect(
+      stagger([
+        { x: 10, width: 30 },
+        { x: 20, width: 30 },
+        { x: 30, width: 30 },
+      ]),
+    ).toEqual([0, 1, 2]);
+    expect(
+      stagger([
+        { x: 10, width: 30 },
+        { x: 20, width: 30 },
+        { x: 70, width: 30 },
+      ]),
+    ).toEqual([0, 1, 0]);
   });
 });
 
@@ -225,38 +265,79 @@ describe('timeline panel: lint', () => {
   });
 
   it('timeline/duplicate-element, including the reserved id now', () => {
-    expect(rules(config({ ...base, rows: [{ id: 'w' }, { id: 'w' }] }))).toContain('error timeline/duplicate-element');
-    expect(rules(config({ ...base, rows: [{ id: 'now' }] }))).toContain('error timeline/duplicate-element');
+    expect(rules(config({ ...base, rows: [{ id: 'w' }, { id: 'w' }] }))).toContain(
+      'error timeline/duplicate-element',
+    );
+    expect(rules(config({ ...base, rows: [{ id: 'now' }] }))).toContain(
+      'error timeline/duplicate-element',
+    );
   });
 
   it('timeline/unknown-row: an instant, a span and a limit', () => {
-    expect(rules(config({ ...base, instants: [{ id: 'x', row: 'zz', at: 1 }] }))).toContain('error timeline/unknown-row');
-    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'zz', from: 1, to: 2 }] }))).toContain('error timeline/unknown-row');
-    expect(rules(config({ ...base, limits: [{ id: 'x', row: 'zz', after: 1, from: 1 }] }))).toContain('error timeline/unknown-row');
+    expect(rules(config({ ...base, instants: [{ id: 'x', row: 'zz', at: 1 }] }))).toContain(
+      'error timeline/unknown-row',
+    );
+    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'zz', from: 1, to: 2 }] }))).toContain(
+      'error timeline/unknown-row',
+    );
+    expect(
+      rules(config({ ...base, limits: [{ id: 'x', row: 'zz', after: 1, from: 1 }] })),
+    ).toContain('error timeline/unknown-row');
   });
 
   it('timeline/bad-span: a span that ends before it starts', () => {
-    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'w', from: 9, to: 3 }] }))).toContain('error timeline/bad-span');
+    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'w', from: 9, to: 3 }] }))).toContain(
+      'error timeline/bad-span',
+    );
   });
 
   it('timeline/out-of-axis: instants, spans, limits and now', () => {
-    expect(rules(config({ ...base, instants: [{ id: 'x', row: 'w', at: 99 }] }))).toContain('error timeline/out-of-axis');
-    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'w', from: -1, to: 3 }] }))).toContain('error timeline/out-of-axis');
-    expect(rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 99 }] }))).toContain('error timeline/out-of-axis');
+    expect(rules(config({ ...base, instants: [{ id: 'x', row: 'w', at: 99 }] }))).toContain(
+      'error timeline/out-of-axis',
+    );
+    expect(rules(config({ ...base, spans: [{ id: 'x', row: 'w', from: -1, to: 3 }] }))).toContain(
+      'error timeline/out-of-axis',
+    );
+    expect(
+      rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 99 }] })),
+    ).toContain('error timeline/out-of-axis');
     expect(rules(config({ ...base, now: 99 }))).toContain('error timeline/out-of-axis');
   });
 
   it('timeline/unknown-ref: a limit that names something that is not an instant or span', () => {
     for (const key of ['from', 'until', 'by']) {
-      const limits = [{ id: 'x', row: 'w', after: 1, from: 'run', reset: 'heartbeat', [key]: 'zz', ...(key === 'by' ? { reset: undefined } : {}) }];
+      const limits = [
+        {
+          id: 'x',
+          row: 'w',
+          after: 1,
+          from: 'run',
+          reset: 'heartbeat',
+          [key]: 'zz',
+          ...(key === 'by' ? { reset: undefined } : {}),
+        },
+      ];
       expect(rules(config({ ...base, limits }))).toContain('error timeline/unknown-ref');
     }
-    expect(rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 'w' }] }))).toContain('error timeline/unknown-ref');
+    expect(
+      rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 'w' }] })),
+    ).toContain('error timeline/unknown-ref');
   });
 
   it('timeline/bad-limit: until without reset, by with reset', () => {
-    expect(rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 'run', until: 'run' }] }))).toContain('error timeline/bad-limit');
-    expect(rules(config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 'run', reset: 'heartbeat', by: 'h1' }] }))).toContain('error timeline/bad-limit');
+    expect(
+      rules(
+        config({ ...base, limits: [{ id: 'x', row: 'w', after: 1, from: 'run', until: 'run' }] }),
+      ),
+    ).toContain('error timeline/bad-limit');
+    expect(
+      rules(
+        config({
+          ...base,
+          limits: [{ id: 'x', row: 'w', after: 1, from: 'run', reset: 'heartbeat', by: 'h1' }],
+        }),
+      ),
+    ).toContain('error timeline/bad-limit');
   });
 
   it('timeline/now-backwards', () => {
@@ -266,30 +347,53 @@ describe('timeline panel: lint', () => {
 
   it('timeline/not-yet: touching what has not happened at that call', () => {
     expect(rules(config(base, [{ tl: [{ read: 'ev' }] }]))).toContain('error timeline/not-yet');
-    expect(rules(config(base, [{ tl: [{ update: 'next', fields: { state: 'ok' } }] }]))).toContain('error timeline/not-yet');
-    expect(rules(config(base, [{ tl: [{ update: 'now', fields: { at: 36 } }, { read: 'ev' }] }]))).toEqual([]);
+    expect(rules(config(base, [{ tl: [{ update: 'next', fields: { state: 'ok' } }] }]))).toContain(
+      'error timeline/not-yet',
+    );
+    expect(
+      rules(config(base, [{ tl: [{ update: 'now', fields: { at: 36 } }, { read: 'ev' }] }])),
+    ).toEqual([]);
     // The order in the call counts.
-    expect(rules(config(base, [{ tl: [{ read: 'ev' }, { update: 'now', fields: { at: 36 } }] }]))).toContain('error timeline/not-yet');
+    expect(
+      rules(config(base, [{ tl: [{ read: 'ev' }, { update: 'now', fields: { at: 36 } }] }])),
+    ).toContain('error timeline/not-yet');
   });
 
   it('timeline/unknown-field, bad-field, bad-tone', () => {
     const fields = (id: string, f: Record<string, unknown>) =>
-      rules(config(base, [{ tl: [{ update: 'now', fields: { at: 30 } }, { update: id, fields: f }] }]));
+      rules(
+        config(base, [
+          {
+            tl: [
+              { update: 'now', fields: { at: 30 } },
+              { update: id, fields: f },
+            ],
+          },
+        ]),
+      );
     expect(fields('h1', { at: 3 })).toContain('error timeline/unknown-field');
     expect(fields('silence', { state: 'ok' })).toContain('error timeline/unknown-field');
     expect(fields('h1', { state: 'bad' })).toContain('error timeline/bad-field');
     expect(fields('h1', { label: 4 })).toContain('error timeline/bad-field');
     expect(fields('h1', { tone: 'red' })).toContain('error timeline/bad-tone');
     expect(fields('h1', { state: 'failed', tone: 'warn' })).toEqual([]);
-    expect(rules(config(base, [{ tl: [{ update: 'now', fields: { at: 99 } }] }]))).toContain('error timeline/bad-field');
-    expect(rules(config(base, [{ tl: [{ update: 'now', fields: { at: '9' } }] }]))).toContain('error timeline/bad-field');
+    expect(rules(config(base, [{ tl: [{ update: 'now', fields: { at: 99 } }] }]))).toContain(
+      'error timeline/bad-field',
+    );
+    expect(rules(config(base, [{ tl: [{ update: 'now', fields: { at: '9' } }] }]))).toContain(
+      'error timeline/bad-field',
+    );
   });
 
   it('timeline/unknown-key', () => {
-    expect(rules(config(base, [{ tl: [{ read: 'run', paths: ['x'] }] }]))).toContain('warning timeline/unknown-key');
+    expect(rules(config(base, [{ tl: [{ read: 'run', paths: ['x'] }] }]))).toContain(
+      'warning timeline/unknown-key',
+    );
   });
 
   it('rejects an axis that ends before it starts', () => {
-    expect(rules(config({ ...base, axis: { unit: 's', from: 10, to: 5, tick: 1 } }))).toContain('error schema');
+    expect(rules(config({ ...base, axis: { unit: 's', from: 10, to: 5, tick: 1 } }))).toContain(
+      'error schema',
+    );
   });
 });

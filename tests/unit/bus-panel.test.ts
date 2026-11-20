@@ -95,17 +95,31 @@ describe('bus panel: elements', () => {
   it('declares every element, and events start absent', () => {
     const pane = load(config(topic)).walkthroughs[0]!.panes[0]!;
     expect(pane.entities.map((entity) => entity.id)).toEqual([
-      't', 'a', 'b', 'c', 'd', 'prod', 'k1', 'k2', 'g-p0',
+      't',
+      'a',
+      'b',
+      'c',
+      'd',
+      'prod',
+      'k1',
+      'k2',
+      'g-p0',
     ]);
     expect(pane.entities.filter((entity) => entity.initial).map((entity) => entity.id)).toEqual([
-      't', 'prod', 'k1', 'k2', 'g-p0',
+      't',
+      'prod',
+      'k1',
+      'k2',
+      'g-p0',
     ]);
   });
 
   it('the reducer is the shared one: add publishes, remove takes away', () => {
     const { state } = stateAt(topic, [{ bus: [{ add: 'a' }] }, { bus: [{ remove: 'a' }] }], 0);
     expect(state.present).toContain('a');
-    expect(stateAt(topic, [{ bus: [{ add: 'a' }] }, { bus: [{ remove: 'a' }] }], 1).state.present).not.toContain('a');
+    expect(
+      stateAt(topic, [{ bus: [{ add: 'a' }] }, { bus: [{ remove: 'a' }] }], 1).state.present,
+    ).not.toContain('a');
   });
 });
 
@@ -188,13 +202,20 @@ describe('bus panel: event patterns', () => {
 
   it('works out which rules match an event', () => {
     const channel = BusContent.parse(bus).channels[0]!;
-    expect(matchingRules(channel, channel.events[0]!).map((rule) => rule.id)).toEqual(['r-placed', 'r-shop']);
+    expect(matchingRules(channel, channel.events[0]!).map((rule) => rule.id)).toEqual([
+      'r-placed',
+      'r-shop',
+    ]);
     expect(matchingRules(channel, channel.events[1]!).map((rule) => rule.id)).toEqual(['r-shop']);
   });
 
   it('reports what it cannot evaluate', () => {
-    expect(patternProblems({ a: [{ suffix: 'x' }], b: 'x', c: [], d: { e: [{ prefix: 4 }] } })).toHaveLength(4);
-    expect(patternProblems({ a: ['x', 1, null, true, { prefix: 'p' }, { exists: true }] })).toEqual([]);
+    expect(
+      patternProblems({ a: [{ suffix: 'x' }], b: 'x', c: [], d: { e: [{ prefix: 4 }] } }),
+    ).toHaveLength(4);
+    expect(patternProblems({ a: ['x', 1, null, true, { prefix: 'p' }, { exists: true }] })).toEqual(
+      [],
+    );
   });
 });
 
@@ -210,7 +231,9 @@ describe('bus panel: lint', () => {
   });
 
   it('bus/duplicate-element: one id twice, even across channels', () => {
-    expect(rules(config(withChannel({ producers: [{ id: 'a' }] })))).toContain('error bus/duplicate-element');
+    expect(rules(config(withChannel({ producers: [{ id: 'a' }] })))).toContain(
+      'error bus/duplicate-element',
+    );
   });
 
   it('bus/unknown-partition: an event, a cursor, a missing or surplus partition', () => {
@@ -218,17 +241,21 @@ describe('bus panel: lint', () => {
     expect(bad([{ id: 'a', partition: 'p9' }])).toContain('error bus/unknown-partition');
     expect(bad([{ id: 'a' }])).toContain('error bus/unknown-partition');
     expect(
-      rules(config(withChannel({ cursors: [{ id: 'g-p0', partition: 'zz', owner: null, at: 0 }] }))),
+      rules(
+        config(withChannel({ cursors: [{ id: 'g-p0', partition: 'zz', owner: null, at: 0 }] })),
+      ),
     ).toContain('error bus/unknown-partition');
     expect(
-      rules(config({ channels: [{ id: 'q', kind: 'queue', events: [{ id: 'm', partition: 'p0' }] }] })),
+      rules(
+        config({ channels: [{ id: 'q', kind: 'queue', events: [{ id: 'm', partition: 'p0' }] }] }),
+      ),
     ).toContain('error bus/unknown-partition');
   });
 
   it('bus/partitions-not-topic', () => {
-    expect(
-      rules(config({ channels: [{ id: 'q', kind: 'queue', partitions: ['p0'] }] })),
-    ).toContain('error bus/partitions-not-topic');
+    expect(rules(config({ channels: [{ id: 'q', kind: 'queue', partitions: ['p0'] }] }))).toContain(
+      'error bus/partitions-not-topic',
+    );
   });
 
   it('bus/cursor-not-topic', () => {
@@ -239,7 +266,9 @@ describe('bus panel: lint', () => {
 
   it('bus/offset-out-of-range: declared and updated', () => {
     expect(
-      rules(config(withChannel({ cursors: [{ id: 'g-p0', partition: 'p0', owner: null, at: 4 }] }))),
+      rules(
+        config(withChannel({ cursors: [{ id: 'g-p0', partition: 'p0', owner: null, at: 4 }] })),
+      ),
     ).toContain('error bus/offset-out-of-range');
     const update = rules(config(topic, [{ bus: [{ update: 'g-p0', fields: { at: 4 } }] }]));
     expect(update).toContain('error bus/bad-field');
@@ -248,17 +277,19 @@ describe('bus panel: lint', () => {
 
   it('bus/unknown-owner: declared and updated', () => {
     expect(
-      rules(config(withChannel({ cursors: [{ id: 'g-p0', partition: 'p0', owner: 'ghost', at: 0 }] }))),
+      rules(
+        config(withChannel({ cursors: [{ id: 'g-p0', partition: 'p0', owner: 'ghost', at: 0 }] })),
+      ),
     ).toContain('error bus/unknown-owner');
-    expect(rules(config(topic, [{ bus: [{ update: 'g-p0', fields: { owner: 'ghost' } }] }]))).toContain(
-      'error bus/bad-field',
-    );
+    expect(
+      rules(config(topic, [{ bus: [{ update: 'g-p0', fields: { owner: 'ghost' } }] }])),
+    ).toContain('error bus/bad-field');
   });
 
   it('bus/rule-not-bus', () => {
-    expect(
-      rules(config(withChannel({ rules: [{ id: 'r' }] }))),
-    ).toContain('error bus/rule-not-bus');
+    expect(rules(config(withChannel({ rules: [{ id: 'r' }] })))).toContain(
+      'error bus/rule-not-bus',
+    );
   });
 
   it('bus/bad-pattern', () => {

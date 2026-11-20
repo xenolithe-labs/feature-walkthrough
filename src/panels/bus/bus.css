@@ -264,21 +264,23 @@
   text-decoration: line-through;
 }
 
-[data-tone='good']:is(.fw-bus-title, .fw-bus-party, .fw-bus-rule, .fw-bus-event, .fw-bus-cursor):not(
-    .is-added,
-    .is-updated,
-    .is-read,
-    .is-removed
-  ) {
+[data-tone='good']:is(
+    .fw-bus-title,
+    .fw-bus-party,
+    .fw-bus-rule,
+    .fw-bus-event,
+    .fw-bus-cursor
+  ):not(.is-added, .is-updated, .is-read, .is-removed) {
   border-color: var(--fw-good);
 }
 
-[data-tone='warn']:is(.fw-bus-title, .fw-bus-party, .fw-bus-rule, .fw-bus-event, .fw-bus-cursor):not(
-    .is-added,
-    .is-updated,
-    .is-read,
-    .is-removed
-  ) {
+[data-tone='warn']:is(
+    .fw-bus-title,
+    .fw-bus-party,
+    .fw-bus-rule,
+    .fw-bus-event,
+    .fw-bus-cursor
+  ):not(.is-added, .is-updated, .is-read, .is-removed) {
   border-color: var(--fw-warn);
   border-style: dashed;
 }

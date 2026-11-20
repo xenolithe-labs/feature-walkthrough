@@ -66,22 +66,30 @@ for (const walkthrough of walkthroughs) {
     page,
   }) => {
     // Graph and flow nodes, and the cells and index labels of an array. Pointers and ranges
-    // move by design, but the cells they move over must not.
+    // move by design, but the cells they move over must not. The event slots and offsets of a
+    // bus and the instants and ticks of a timeline have fixed places too: they are measured from
+    // the scrolling content they sit in, which a reveal may scroll.
     const places = () =>
-      page.locator('.react-flow__node, .fw-array-cell, .fw-array-index').evaluateAll((nodes) =>
-        nodes.map((node) => {
-          if (node.classList.contains('react-flow__node')) {
-            return [node.getAttribute('data-id'), (node as HTMLElement).style.transform];
-          }
-          const box = node.getBoundingClientRect();
-          const pane = node.closest('.fw-pane')!.getBoundingClientRect();
-          return [
-            node.getAttribute('data-entity') ?? node.textContent,
-            Math.round(box.left - pane.left),
-            Math.round(box.top - pane.top),
-          ];
-        }),
-      );
+      page
+        .locator(
+          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick',
+        )
+        .evaluateAll((nodes) =>
+          nodes.map((node) => {
+            if (node.classList.contains('react-flow__node')) {
+              return [node.getAttribute('data-id'), (node as HTMLElement).style.transform];
+            }
+            const box = node.getBoundingClientRect();
+            const pane = (
+              node.closest('.fw-bus-grid, .fw-tl-inner') ?? node.closest('.fw-pane')!
+            ).getBoundingClientRect();
+            return [
+              node.getAttribute('data-entity') ?? node.textContent,
+              Math.round(box.left - pane.left),
+              Math.round(box.top - pane.top),
+            ];
+          }),
+        );
     await open(page, `#w=${walkthrough.id}`);
     const before = await places();
     expect(before.length).toBeGreaterThan(0);
@@ -424,4 +432,123 @@ test('algorithm demos: a call stack, a queue and a table follow the code', async
   await expect(page.locator('.fw-table tr[data-entity="dp-r4"] td[data-column="c4"]')).toHaveText(
     '2',
   );
+});
+
+test('bus: a consumer group has offsets, lag and an owner, and an event can be chosen with the keyboard', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // c1 has committed offset 2 in p0, which has three events.
+  await open(page, '#w=kafka-consumer-group&s=3&c=2');
+  await expect(page.locator('.fw-bus-cursor[data-entity="billing-p0"]')).toHaveAttribute(
+    'aria-label',
+    /committed offset 2, end 3, lag 1, owner c1/,
+  );
+  // Events that are not published yet keep their slot but are not shown.
+  await expect(page.locator('.fw-bus-event[data-entity="e5"]')).toHaveAttribute(
+    'data-mark',
+    'absent',
+  );
+  await expect(page.locator('.fw-bus-event[data-entity="e4"]')).toHaveAttribute(
+    'aria-label',
+    /delivered, offset 2/,
+  );
+  await page.locator('.fw-bus-event[data-entity="e4"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=e4/);
+  await expect(page.locator('.fw-bus-event[data-entity="e4"]')).toHaveClass(/is-selected/);
+
+  // After the rebalance c2 owns p0 and the committed offset has not moved.
+  await page.goto('/#w=kafka-consumer-group&s=6&c=1');
+  await expect(page.locator('.fw-bus-cursor[data-entity="billing-p0"]')).toHaveAttribute(
+    'aria-label',
+    /committed offset 2, end 5, lag 3, owner c2/,
+  );
+  await expect(page.locator('.fw-bus-party[data-entity="c1"]')).toHaveAttribute(
+    'aria-label',
+    /stopped/,
+  );
+  expect(errors).toEqual([]);
+});
+
+test('bus: the panel shows which rules matched an event', async ({ page }) => {
+  await open(page, '#w=eventbridge-routing&s=2&c=1');
+  await expect(page.locator('.fw-bus-rule[data-entity="r-order"] .fw-bus-match')).toContainText(
+    'matches OrderPlaced',
+  );
+  await expect(page.locator('.fw-bus-rule[data-entity="r-vip"] .fw-bus-match')).toContainText(
+    'matches OrderPlaced',
+  );
+  await expect(page.locator('.fw-bus-rule[data-entity="r-refund"] .fw-bus-match')).toContainText(
+    'no match',
+  );
+  // The same id in the bus and in the payload pane: choosing it in one selects it in the other.
+  await page.locator('.fw-bus-event[data-entity="e1"]').click();
+  await expect(page.locator('.fw-bus-event[data-entity="e1"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('.fw-pane[data-panel="payload"] .is-selected').first()).toBeVisible();
+});
+
+test('timeline: now moves forward, the future is hidden, and a missed heartbeat shows', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // 20 s: eight seconds of silence, the limit (22 s) is still ahead.
+  await open(page, '#w=temporal-heartbeat&s=3&c=2');
+  await expect(page.locator('.fw-tl-now')).toHaveAttribute('aria-label', 'now: 20 s');
+  await expect(page.locator('.fw-tl-limit[data-entity="hbt1"]')).toHaveAttribute(
+    'data-status',
+    'pending',
+  );
+  await expect(page.locator('.fw-tl-instant[data-entity="hb3"]')).toHaveAttribute(
+    'data-mark',
+    /^(?!absent)/,
+  );
+  await expect(page.locator('.fw-tl-instant[data-entity="hb4"]')).toHaveAttribute(
+    'data-mark',
+    'absent',
+  );
+  await expect(page.locator('.fw-tl-span[data-entity="a2"]')).toHaveAttribute(
+    'data-mark',
+    'absent',
+  );
+
+  // 22 s: the limit ran out.
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-tl-now')).toHaveAttribute('aria-label', 'now: 22 s');
+  await expect(page.locator('.fw-tl-limit[data-entity="hbt1"]')).toHaveAttribute(
+    'data-status',
+    'missed',
+  );
+  await expect(page.locator('.fw-tl-instant[data-entity="timeout"]')).toHaveAttribute(
+    'data-mark',
+    'added',
+  );
+
+  // Attempt 2 completes: both of its limits held.
+  await page.goto('/#w=temporal-heartbeat&s=5&c=3');
+  await expect(page.locator('.fw-tl-limit[data-entity="hbt2"]')).toHaveAttribute(
+    'data-status',
+    'met',
+  );
+
+  // An instant can be chosen with the keyboard.
+  await page.locator('.fw-tl-instant[data-entity="hb4"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=hb4/);
+  await expect(page.locator('.fw-tl-instant[data-entity="hb4"]')).toHaveClass(/is-selected/);
+  expect(errors).toEqual([]);
+});
+
+test('timeline: a narrow screen scrolls the axis inside the pane, not the page', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '#w=temporal-heartbeat&s=5&c=3');
+  const sizes = await page.locator('.fw-tl-scroll').evaluate((box) => ({
+    inner: box.scrollWidth,
+    outer: box.clientWidth,
+    page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+  expect(sizes.inner).toBeGreaterThan(sizes.outer);
+  expect(sizes.page).toBe(0);
 });

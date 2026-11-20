@@ -4,7 +4,14 @@
  * instants are late. No React, no CSS.
  */
 import { z } from 'zod';
-import { IdSchema, effectTarget, own, reduceElements, type Effect, type ElementsState } from '../../core';
+import {
+  IdSchema,
+  effectTarget,
+  own,
+  reduceElements,
+  type Effect,
+  type ElementsState,
+} from '../../core';
 import { TONES } from '../_shared/changes';
 
 /** `late` is also worked out: an instant that arrives after a limit ran out is late. */
@@ -124,10 +131,26 @@ export function entitiesOf(content: TimelineContent) {
   const initial = (own1: boolean | undefined) => own1 ?? content.initial;
   return [
     { id: NOW, label: 'now', initial: true },
-    ...content.rows.map((row) => ({ id: row.id, label: row.label ?? row.id, initial: initial(row.initial) })),
-    ...content.instants.map((item) => ({ id: item.id, label: item.label ?? item.id, initial: initial(item.initial) })),
-    ...content.spans.map((item) => ({ id: item.id, label: item.label ?? item.id, initial: initial(item.initial) })),
-    ...content.limits.map((item) => ({ id: item.id, label: item.label ?? item.id, initial: initial(item.initial) })),
+    ...content.rows.map((row) => ({
+      id: row.id,
+      label: row.label ?? row.id,
+      initial: initial(row.initial),
+    })),
+    ...content.instants.map((item) => ({
+      id: item.id,
+      label: item.label ?? item.id,
+      initial: initial(item.initial),
+    })),
+    ...content.spans.map((item) => ({
+      id: item.id,
+      label: item.label ?? item.id,
+      initial: initial(item.initial),
+    })),
+    ...content.limits.map((item) => ({
+      id: item.id,
+      label: item.label ?? item.id,
+      initial: initial(item.initial),
+    })),
   ];
 }
 
@@ -218,7 +241,12 @@ export function evaluateLimit(
     const end = endRef === undefined ? undefined : refTime(content, endRef, 'end');
     if (end !== undefined && end <= now) {
       if (end <= limitAt) {
-        return { status: 'met', limitAt, segments: [{ from: start, to: end, kind: 'met' }], late: [] };
+        return {
+          status: 'met',
+          limitAt,
+          segments: [{ from: start, to: end, kind: 'met' }],
+          late: [],
+        };
       }
       const byInstant = content.instants.find((item) => item.id === limit.by);
       return {
@@ -242,7 +270,12 @@ export function evaluateLimit(
         late: [],
       };
     }
-    return { status: 'pending', limitAt, segments: [{ from: start, to: limitAt, kind: 'pending' }], late: [] };
+    return {
+      status: 'pending',
+      limitAt,
+      segments: [{ from: start, to: limitAt, kind: 'pending' }],
+      late: [],
+    };
   }
 
   const until = limit.until === undefined ? undefined : refTime(content, limit.until, 'end');
@@ -288,7 +321,11 @@ export function evaluateLimit(
 }
 
 /** Every instant that is late: the late ones of every limit. */
-export function lateInstants(content: TimelineContent, state: ElementsState, now: number): Set<string> {
+export function lateInstants(
+  content: TimelineContent,
+  state: ElementsState,
+  now: number,
+): Set<string> {
   const late = new Set<string>();
   for (const limit of content.limits) {
     for (const id of evaluateLimit(content, limit, state, now).late) late.add(id);
@@ -323,8 +360,10 @@ export function revealed(
   if (state.moved?.call !== callId) return out;
   const from = state.moved.from;
   const fresh = (time: number) => time > from && time <= now;
-  for (const item of content.instants) if (isPresent(state, item.id) && fresh(item.at)) out.add(item.id);
-  for (const item of content.spans) if (isPresent(state, item.id) && fresh(item.from)) out.add(item.id);
+  for (const item of content.instants)
+    if (isPresent(state, item.id) && fresh(item.at)) out.add(item.id);
+  for (const item of content.spans)
+    if (isPresent(state, item.id) && fresh(item.from)) out.add(item.id);
   for (const item of content.limits) {
     const start = refTime(content, item.from, 'start');
     if (isPresent(state, item.id) && start !== undefined && fresh(start)) out.add(item.id);

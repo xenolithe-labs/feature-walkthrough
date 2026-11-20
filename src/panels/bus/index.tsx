@@ -241,7 +241,10 @@ function Cursor({
       extra={words}
     >
       <span>
-        {ownerName} <span className="fw-bus-lag" data-lag={lag > 0 ? 'some' : 'none'}>lag {lag}</span>
+        {ownerName}{' '}
+        <span className="fw-bus-lag" data-lag={lag > 0 ? 'some' : 'none'}>
+          lag {lag}
+        </span>
       </span>
     </Item>
   );
@@ -279,7 +282,11 @@ function Lanes({ channel, shared }: { channel: ChannelDecl; shared: Shared }) {
     });
     if (events.length === 0) {
       cells.push(
-        <div key={`e-${lane ?? ''}`} className="fw-bus-empty" style={{ gridColumn: 2, gridRow: eventRow }} />,
+        <div
+          key={`e-${lane ?? ''}`}
+          className="fw-bus-empty"
+          style={{ gridColumn: 2, gridRow: eventRow }}
+        />,
       );
     }
     row += 1;
@@ -316,7 +323,11 @@ function Lanes({ channel, shared }: { channel: ChannelDecl; shared: Shared }) {
   const style = { '--n': slots } as CSSProperties;
   return (
     <div className="fw-bus-scroll">
-      <div className="fw-bus-grid" style={style} data-partitioned={channel.partitions !== undefined || undefined}>
+      <div
+        className="fw-bus-grid"
+        style={style}
+        data-partitioned={channel.partitions !== undefined || undefined}
+      >
         {cells}
       </div>
     </div>
@@ -327,7 +338,9 @@ function matchLine(rule: RuleDecl, channel: ChannelDecl, shared: Shared): string
   const subjects = shared.subjects.get(channel.id) ?? [];
   if (subjects.length === 0) return undefined;
   const matched = subjects.filter((event) => matchingRules(channel, event).includes(rule));
-  return matched.length === 0 ? 'no match' : `matches ${matched.map((event) => event.label ?? event.id).join(', ')}`;
+  return matched.length === 0
+    ? 'no match'
+    : `matches ${matched.map((event) => event.label ?? event.id).join(', ')}`;
 }
 
 function Rule({ rule, channel, shared }: { rule: RuleDecl; channel: ChannelDecl; shared: Shared }) {
@@ -443,7 +456,9 @@ function subjectsOf(content: BusContent, current: Touched): Map<string, EventDec
       channel.id,
       channel.events.filter(
         (event) =>
-          current.added.has(event.id) || current.read.has(event.id) || current.updated.has(event.id),
+          current.added.has(event.id) ||
+          current.read.has(event.id) ||
+          current.updated.has(event.id),
       ),
     );
   }
@@ -515,7 +530,10 @@ function cardSections({
       const matched = events.filter((event) => matchingRules(channel, event).includes(rule));
       rows.push({
         key: `rule ${rule.label ?? rule.id}`,
-        value: matched.length === 0 ? 'no match' : `matches ${matched.map((event) => event.label ?? event.id).join(', ')}`,
+        value:
+          matched.length === 0
+            ? 'no match'
+            : `matches ${matched.map((event) => event.label ?? event.id).join(', ')}`,
       });
     }
   }
@@ -557,12 +575,24 @@ export const busPanel: PanelType<BusContent, ElementsState> = {
       const at = [...where, 'channels', c];
       const partitions = channel.partitions ?? [];
       if (channel.kind !== 'topic' && partitions.length > 0) {
-        error('partitions-not-topic', [...at, 'partitions'], `only a topic has partitions; "${channel.id}" is a ${channel.kind}`);
+        error(
+          'partitions-not-topic',
+          [...at, 'partitions'],
+          `only a topic has partitions; "${channel.id}" is a ${channel.kind}`,
+        );
       }
-      const checkPartition = (partition: string | undefined, path: (string | number)[], what: string) => {
+      const checkPartition = (
+        partition: string | undefined,
+        path: (string | number)[],
+        what: string,
+      ) => {
         if (partitions.length === 0) {
           if (partition !== undefined) {
-            error('unknown-partition', path, `${what} names partition "${partition}", but "${channel.id}" has no partitions`);
+            error(
+              'unknown-partition',
+              path,
+              `${what} names partition "${partition}", but "${channel.id}" has no partitions`,
+            );
           }
         } else if (partition === undefined || !partitions.includes(partition)) {
           error(
@@ -578,26 +608,49 @@ export const busPanel: PanelType<BusContent, ElementsState> = {
       channel.cursors.forEach((cursor, k) => {
         const path = [...at, 'cursors', k];
         if (channel.kind !== 'topic') {
-          error('cursor-not-topic', path, `"${cursor.id}": only a topic has a committed offset; "${channel.id}" is a ${channel.kind}`);
+          error(
+            'cursor-not-topic',
+            path,
+            `"${cursor.id}": only a topic has a committed offset; "${channel.id}" is a ${channel.kind}`,
+          );
           return;
         }
         checkPartition(cursor.partition, [...path, 'partition'], `cursor "${cursor.id}"`);
         const size = laneEvents(channel, cursor.partition).length;
         if (cursor.at < 0 || cursor.at > size) {
-          error('offset-out-of-range', [...path, 'at'], `cursor "${cursor.id}" is at ${cursor.at}; the partition has ${size} events, so the offset is 0 to ${size}`);
+          error(
+            'offset-out-of-range',
+            [...path, 'at'],
+            `cursor "${cursor.id}" is at ${cursor.at}; the partition has ${size} events, so the offset is 0 to ${size}`,
+          );
         }
-        if (cursor.owner !== null && !channel.consumers.some((consumer) => consumer.id === cursor.owner)) {
-          error('unknown-owner', [...path, 'owner'], `cursor "${cursor.id}" is owned by "${cursor.owner}", which is not a consumer of "${channel.id}"`);
+        if (
+          cursor.owner !== null &&
+          !channel.consumers.some((consumer) => consumer.id === cursor.owner)
+        ) {
+          error(
+            'unknown-owner',
+            [...path, 'owner'],
+            `cursor "${cursor.id}" is owned by "${cursor.owner}", which is not a consumer of "${channel.id}"`,
+          );
         }
       });
       channel.rules.forEach((rule, r) => {
         const path = [...at, 'rules', r];
         if (channel.kind !== 'bus') {
-          error('rule-not-bus', path, `"${rule.id}": rules belong on a bus; "${channel.id}" is a ${channel.kind}`);
+          error(
+            'rule-not-bus',
+            path,
+            `"${rule.id}": rules belong on a bus; "${channel.id}" is a ${channel.kind}`,
+          );
         }
         if (rule.pattern !== undefined) {
           for (const issue of patternProblems(rule.pattern)) {
-            error('bad-pattern', [...path, 'pattern', ...issue.path], `rule "${rule.id}": ${issue.message}`);
+            error(
+              'bad-pattern',
+              [...path, 'pattern', ...issue.path],
+              `rule "${rule.id}": ${issue.message}`,
+            );
           }
         }
       });
@@ -651,11 +704,19 @@ export const busPanel: PanelType<BusContent, ElementsState> = {
         effects.forEach((effect, e) => {
           const { verb, id } = effectTarget(effect);
           const item = id === undefined ? undefined : byId.get(id);
-          if (item?.kind !== 'target' || item.rule === undefined || verb === 'remove' || verb === 'focus') return;
+          if (
+            item?.kind !== 'target' ||
+            item.rule === undefined ||
+            verb === 'remove' ||
+            verb === 'focus'
+          )
+            return;
           const rule = item.rule;
           const sameChannel = events.filter((found) => found.channel === item.channel);
           if (sameChannel.length === 0) return;
-          if (!sameChannel.some((found) => matchingRules(found.channel, found.event).includes(rule))) {
+          if (
+            !sameChannel.some((found) => matchingRules(found.channel, found.event).includes(rule))
+          ) {
             problems.push({
               severity: 'warning',
               rule: 'bus/unmatched-delivery',
@@ -687,13 +748,17 @@ export const busPanel: PanelType<BusContent, ElementsState> = {
           const cursor = item.channel.cursors.find((other) => other.id === id);
           if (field === 'at') {
             const size = laneEvents(item.channel, cursor?.partition).length;
-            return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= size
+            return typeof value === 'number' &&
+              Number.isInteger(value) &&
+              value >= 0 &&
+              value <= size
               ? null
               : `a committed offset is a whole number from 0 to ${size} (the events in the partition); got ${JSON.stringify(value)}`;
           }
           if (field === 'owner') {
             return value === null ||
-              (typeof value === 'string' && item.channel.consumers.some((consumer) => consumer.id === value))
+              (typeof value === 'string' &&
+                item.channel.consumers.some((consumer) => consumer.id === value))
               ? null
               : `an owner is a consumer of "${item.channel.id}", or null; got ${JSON.stringify(value)}`;
           }

@@ -2,7 +2,8 @@ import { defineWalkthrough } from '../core';
 
 const FAILURES = 'https://docs.temporal.io/encyclopedia/detecting-activity-failures';
 const RETRY = 'https://docs.temporal.io/encyclopedia/retry-policies';
-const STEP_FUNCTIONS = 'https://docs.aws.amazon.com/step-functions/latest/apireference/API_SendTaskHeartbeat.html';
+const STEP_FUNCTIONS =
+  'https://docs.aws.amazon.com/step-functions/latest/apireference/API_SendTaskHeartbeat.html';
 
 /**
  * A Temporal Activity that heartbeats, goes quiet, is timed out and retried. Names, counts and

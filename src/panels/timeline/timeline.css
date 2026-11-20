@@ -164,7 +164,11 @@
 }
 
 .fw-tl-span[data-kind='wait'] {
-  background: repeating-linear-gradient(135deg, var(--fw-surface-2) 0 5px, var(--fw-surface) 5px 10px);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fw-surface-2) 0 5px,
+    var(--fw-surface) 5px 10px
+  );
   color: var(--fw-muted);
 }
 
@@ -419,7 +423,12 @@
   text-decoration: line-through;
 }
 
-:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit)[class*='is-']:not(.is-idle, .is-faded, .is-absent, .is-selected) {
+:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit)[class*='is-']:not(
+    .is-idle,
+    .is-faded,
+    .is-absent,
+    .is-selected
+  ) {
   outline: 2.5px solid var(--mark, transparent);
   outline-offset: 1px;
   background-color: var(--mark-bg, inherit);

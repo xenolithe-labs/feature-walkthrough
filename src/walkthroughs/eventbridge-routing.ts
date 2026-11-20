@@ -120,7 +120,12 @@ export const eventbridgeRouting = defineWalkthrough({
           text: 'order-placed wants source shop.orders and detail-type OrderPlaced. vip-orders looks only at detail.tier. refunds wants a different detail-type.',
           where: `${RULES}; ${BUS}`,
           effects: {
-            bus: [{ read: 'default' }, { read: 'r-order' }, { read: 'r-vip' }, { read: 'r-refund' }],
+            bus: [
+              { read: 'default' },
+              { read: 'r-order' },
+              { read: 'r-vip' },
+              { read: 'r-refund' },
+            ],
           },
         },
       ],
@@ -151,7 +156,8 @@ export const eventbridgeRouting = defineWalkthrough({
           id: 'start',
           label: 'order-placed starts the state machine',
           text: 'The target is a Step Functions state machine, which EventBridge lists as an asynchronous target: it does not wait for the execution to finish.',
-          where: 'https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html (Step Functions state machine, ASYNC)',
+          where:
+            'https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-targets.html (Step Functions state machine, ASYNC)',
           effects: {
             bus: [
               { update: 'e1', fields: { state: 'delivered' } },
@@ -194,7 +200,12 @@ export const eventbridgeRouting = defineWalkthrough({
           label: 'The retry succeeds and the order ships',
           text: 'The execution carries on to Ship and ends in Succeed.',
           effects: {
-            machine: [{ read: 'charge.ship' }, { read: 'ship' }, { read: 'ship.done' }, { read: 'done' }],
+            machine: [
+              { read: 'charge.ship' },
+              { read: 'ship' },
+              { read: 'ship.done' },
+              { read: 'done' },
+            ],
             bus: [{ update: 'sfn', fields: { state: 'execution succeeded', tone: 'good' } }],
           },
         },

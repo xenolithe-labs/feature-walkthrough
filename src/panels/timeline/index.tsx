@@ -128,7 +128,9 @@ function Button({
       data-entity={id}
       data-mark={visible ? mark : 'absent'}
       data-tone={toneOf(patch?.tone, undefined)}
-      {...Object.fromEntries(Object.entries(data ?? {}).map(([key, value]) => [`data-${key}`, value]))}
+      {...Object.fromEntries(
+        Object.entries(data ?? {}).map(([key, value]) => [`data-${key}`, value]),
+      )}
       role="button"
       tabIndex={visible ? 0 : -1}
       aria-hidden={visible ? undefined : true}
@@ -155,7 +157,15 @@ function limitWords(shared: Shared, limit: LimitDecl, view: LimitView): string {
   return `runs out at ${timeText(content, view.limitAt ?? 0)}`;
 }
 
-function Row({ row, shared, levelsFor }: { row: TimelineContent['rows'][number]; shared: Shared; levelsFor: Map<string, number> }) {
+function Row({
+  row,
+  shared,
+  levelsFor,
+}: {
+  row: TimelineContent['rows'][number];
+  shared: Shared;
+  levelsFor: Map<string, number>;
+}) {
   const { content, state, now } = shared;
   const instants = content.instants.filter((item) => item.row === row.id);
   const spans = content.spans.filter((item) => item.row === row.id);
@@ -166,7 +176,11 @@ function Row({ row, shared, levelsFor }: { row: TimelineContent['rows'][number];
   const height = top + 46 + limits.length * 20 + 6;
   const name = nameOf(shared, row.id, row.label);
   return (
-    <div className="fw-tl-row" style={{ height, '--top': `${top}px` } as CSSProperties} data-row={row.id}>
+    <div
+      className="fw-tl-row"
+      style={{ height, '--top': `${top}px` } as CSSProperties}
+      data-row={row.id}
+    >
       <Button
         shared={shared}
         id={row.id}
@@ -237,7 +251,10 @@ function Row({ row, shared, levelsFor }: { row: TimelineContent['rows'][number];
             const shown = view.status !== 'hidden';
             const first = view.segments[0];
             const lastSegment = view.segments.at(-1);
-            const anchor = first === undefined ? refTime(content, limit.from, 'start') ?? content.axis.from : first.from;
+            const anchor =
+              first === undefined
+                ? (refTime(content, limit.from, 'start') ?? content.axis.from)
+                : first.from;
             const flip = shared.pct(anchor) > 55;
             const words = limitWords(shared, limit, view);
             return (
@@ -314,7 +331,8 @@ function TimelineView({
   const units = axis.to - axis.from;
   const now = nowOf(content, state.patches);
   const plotPx = Math.max(width - LABEL - PAD * 2, units * axis.pxPerUnit);
-  const pct = (time: number) => (Math.min(Math.max(time, axis.from), axis.to) - axis.from) / units * 100;
+  const pct = (time: number) =>
+    ((Math.min(Math.max(time, axis.from), axis.to) - axis.from) / units) * 100;
   const selected = ctx.selection.id;
   const shared: Shared = {
     content,
@@ -354,7 +372,13 @@ function TimelineView({
       <div className="fw-tl-scroll" ref={scroll}>
         <div
           className="fw-tl-inner"
-          style={{ width: `${LABEL + PAD * 2 + plotPx}px`, '--label': `${LABEL}px`, '--pad': `${PAD}px` } as CSSProperties}
+          style={
+            {
+              width: `${LABEL + PAD * 2 + plotPx}px`,
+              '--label': `${LABEL}px`,
+              '--pad': `${PAD}px`,
+            } as CSSProperties
+          }
         >
           <div className="fw-tl-overlay" aria-hidden="true">
             {ticks.map((tick) => (
@@ -449,9 +473,19 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
       problems.push({ severity: 'error', rule: `timeline/${rule}`, path, message });
 
     const kinds = new Map<string, 'now' | 'row' | 'instant' | 'span' | 'limit'>([[NOW, 'now']]);
-    const declare = (id: string, kind: 'row' | 'instant' | 'span' | 'limit', path: (string | number)[]) => {
+    const declare = (
+      id: string,
+      kind: 'row' | 'instant' | 'span' | 'limit',
+      path: (string | number)[],
+    ) => {
       if (kinds.has(id)) {
-        error('duplicate-element', path, id === NOW ? `"${NOW}" is the time marker of every timeline` : `"${id}" is declared twice in this pane`);
+        error(
+          'duplicate-element',
+          path,
+          id === NOW
+            ? `"${NOW}" is the time marker of every timeline`
+            : `"${id}" is declared twice in this pane`,
+        );
       } else {
         kinds.set(id, kind);
       }
@@ -464,11 +498,20 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
 
     const inAxis = (time: number, path: (string | number)[], what: string) => {
       if (time < axis.from || time > axis.to) {
-        error('out-of-axis', path, `${what} is ${time}, outside the axis (${axis.from} to ${axis.to} ${axis.unit})`);
+        error(
+          'out-of-axis',
+          path,
+          `${what} is ${time}, outside the axis (${axis.from} to ${axis.to} ${axis.unit})`,
+        );
       }
     };
     const checkRow = (row: string, path: (string | number)[], what: string) => {
-      if (!rowIds.has(row)) error('unknown-row', [...path, 'row'], `${what} is on row "${row}", which is not in this pane`);
+      if (!rowIds.has(row))
+        error(
+          'unknown-row',
+          [...path, 'row'],
+          `${what} is on row "${row}", which is not in this pane`,
+        );
     };
     if (content.now !== undefined) inAxis(content.now, [...where, 'now'], 'now');
     content.instants.forEach((item, i) => {
@@ -480,7 +523,11 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
       const path = [...where, 'spans', i];
       checkRow(item.row, path, `span "${item.id}"`);
       if (item.to < item.from) {
-        error('bad-span', path, `span "${item.id}" ends (${item.to}) before it starts (${item.from})`);
+        error(
+          'bad-span',
+          path,
+          `span "${item.id}" ends (${item.to}) before it starts (${item.from})`,
+        );
       }
       inAxis(item.from, [...path, 'from'], `span "${item.id}" start`);
       inAxis(item.to, [...path, 'to'], `span "${item.id}" end`);
@@ -492,17 +539,29 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
         if (typeof ref === 'number') {
           inAxis(ref, [...path, key], `limit "${limit.id}" ${key}`);
         } else if (kinds.get(ref) !== 'instant' && kinds.get(ref) !== 'span') {
-          error('unknown-ref', [...path, key], `limit "${limit.id}" ${key} names "${ref}", which is not an instant or a span in this pane`);
+          error(
+            'unknown-ref',
+            [...path, key],
+            `limit "${limit.id}" ${key} names "${ref}", which is not an instant or a span in this pane`,
+          );
         }
       };
       point(limit.from, 'from');
       if (limit.until !== undefined) point(limit.until, 'until');
       if (limit.by !== undefined) point(limit.by, 'by');
       if (limit.reset === undefined && limit.until !== undefined) {
-        error('bad-limit', [...path, 'until'], `limit "${limit.id}" has "until" but no "reset": only a silence limit stops at "until"`);
+        error(
+          'bad-limit',
+          [...path, 'until'],
+          `limit "${limit.id}" has "until" but no "reset": only a silence limit stops at "until"`,
+        );
       }
       if (limit.reset !== undefined && limit.by !== undefined) {
-        error('bad-limit', [...path, 'by'], `limit "${limit.id}" has both "reset" and "by": a silence limit has no "by"`);
+        error(
+          'bad-limit',
+          [...path, 'by'],
+          `limit "${limit.id}" has both "reset" and "by": a silence limit has no "by"`,
+        );
       }
       if (limit.reset === undefined && limit.by === undefined && typeof limit.from !== 'string') {
         // a deadline from a bare time with nothing that can meet it still works: it runs out.
@@ -541,7 +600,11 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
             const moveTo = effect.fields?.at;
             if (typeof moveTo === 'number') {
               if (moveTo < now) {
-                error('now-backwards', [...at, 'fields', 'at'], `now cannot go back: it is ${now} ${axis.unit} and this moves it to ${moveTo}`);
+                error(
+                  'now-backwards',
+                  [...at, 'fields', 'at'],
+                  `now cannot go back: it is ${now} ${axis.unit} and this moves it to ${moveTo}`,
+                );
               } else {
                 now = moveTo;
               }
@@ -549,7 +612,11 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
           } else if (verb === 'read' || verb === 'update') {
             const time = id === undefined ? undefined : timeOf(id);
             if (time !== undefined && time > now) {
-              error('not-yet', [...at, verb], `"${id}" is at ${time} ${axis.unit}, but now is ${now} ${axis.unit} in this call: move now first`);
+              error(
+                'not-yet',
+                [...at, verb],
+                `"${id}" is at ${time} ${axis.unit}, but now is ${now} ${axis.unit} in this call: move now first`,
+              );
             }
           }
         });
