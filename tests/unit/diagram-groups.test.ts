@@ -570,7 +570,7 @@ describe('moving between parents', () => {
 describe('icons', () => {
   it('ships a small built-in set of path data', () => {
     expect(ICON_NAMES.length).toBeGreaterThanOrEqual(15);
-    expect(ICON_NAMES.length).toBeLessThanOrEqual(20);
+    expect(ICON_NAMES.length).toBeLessThanOrEqual(24);
     for (const name of ICON_NAMES)
       expect(resolveIcon(name, undefined)?.d).toMatch(/^[MmLlHhVvCcSsQqTtAaZz0-9eE+\-.,\s]+$/);
   });

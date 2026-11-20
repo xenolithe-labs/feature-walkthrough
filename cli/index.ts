@@ -30,6 +30,7 @@ register(
   )}`,
 );
 const { createRegistry } = await import('../src/registry');
+const { layoutProblems } = await import('../src/panels/_diagram/layout-lint');
 
 const USAGE = `Usage:
   feature-walkthrough <file>                 check the config, then show it in the browser
@@ -62,7 +63,10 @@ async function read(file: string): Promise<unknown> {
 }
 
 /** Reads and checks one file, printing its problems. */
-async function check(file: string): Promise<{ ok: boolean; config?: unknown }> {
+async function check(
+  file: string,
+  withLayout = false,
+): Promise<{ ok: boolean; config?: unknown }> {
   let config: unknown;
   try {
     config = await read(file);
@@ -72,8 +76,13 @@ async function check(file: string): Promise<{ ok: boolean; config?: unknown }> {
     );
     return { ok: false };
   }
-  const result = loadConfig(config, createRegistry());
-  for (const problem of result.problems) console.error(`${file}: ${formatProblem(problem)}`);
+  const registry = createRegistry();
+  const result = loadConfig(config, registry);
+  // Layout feedback runs the real layout, which is asynchronous, so it is not part of loadConfig.
+  const layout = withLayout && result.ok ? await layoutProblems(config, registry) : [];
+  for (const problem of [...result.problems, ...layout]) {
+    console.error(`${file}: ${formatProblem(problem)}`);
+  }
   if (result.ok) console.error(`${file}: ok (${result.walkthroughs.length} walkthrough(s))`);
   return { ok: result.ok, config };
 }
@@ -94,7 +103,7 @@ async function lint(files: string[]): Promise<number> {
     return 2;
   }
   let failed = false;
-  for (const file of files) if (!(await check(file)).ok) failed = true;
+  for (const file of files) if (!(await check(file, true)).ok) failed = true;
   return failed ? 1 : 0;
 }
 

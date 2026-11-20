@@ -25,13 +25,14 @@ const graph = (content: object, calls = [call('k')]) =>
 const node = (id: string, extra: object = {}) => ({ id, label: id.toUpperCase(), ...extra });
 
 async function lines(page: Page, edgeId: string) {
-  return page
-    .locator(`.react-flow__edge[data-id="${edgeId}"] .fw-edge-line`)
-    .evaluateAll((all) =>
-      all.map((line) =>
+  return page.locator(`.react-flow__edge[data-id="${edgeId}"] .fw-edge-line`).evaluateAll((all) =>
+    all.map(
+      (line) =>
+        // A routed edge is a path (its `d`); a straight one is a line (its end points).
+        line.getAttribute('d') ??
         ['x1', 'y1', 'x2', 'y2'].map((a) => Number(line.getAttribute(a)).toFixed(2)).join(','),
-      ),
-    );
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -183,9 +184,10 @@ test.describe('graph edges', () => {
     expect(await at('b')).toContain('translate(400px, 300px)');
   });
 
-  // DEFECT: a node with only `x` (or only `y`) counts as unpinned, the whole pane goes to ELK, and the
-  // half pin is dropped without a lint message (src/panels/_diagram/layout.ts pinned / withElk).
-  test.fail('a node pinned in x only keeps its x', async ({ page }) => {
+  // Was a pinned defect (a node with only `x` went to ELK and its pin was dropped silently). Now a
+  // pin on one axis is kept, the layout places the rest round it, and a pin the layout cannot use
+  // (groups, grid, tree, hub) is reported by lint as graph/pin-ignored.
+  test('a node pinned in x only keeps its x', async ({ page }) => {
     await openConfig(
       page,
       'halfpin',

@@ -141,7 +141,6 @@ export function hubLayout(
   // Each side as a tree growing to the right of the hub, then the left one mirrored.
   const hubCx = hub.width / 2;
   const placed = new Map<string, { x: number; y: number }>();
-  let hubY = 0;
   for (const side of ['right', 'left'] as const) {
     const set = members[side];
     const subset = nodes.filter((node) => set.has(node.id));
@@ -154,7 +153,6 @@ export function hubLayout(
     );
     const hubAt = sub[hub.id]!;
     const shiftY = -(hubAt.y + hub.height / 2);
-    if (side === 'right') hubY = 0;
     for (const node of subset) {
       const at = sub[node.id]!;
       const cy = at.y + shiftY;
@@ -167,7 +165,6 @@ export function hubLayout(
       }
     }
   }
-  void hubY;
 
   // Other trees (roots that are not the hub) go in a row beneath, left to right.
   let floor = -Infinity;
@@ -185,11 +182,9 @@ export function hubLayout(
       { levelGap: HUB_GAPS.level, siblingGap: HUB_GAPS.sibling, forestGap: HUB_GAPS.forest },
     );
     let low = Infinity;
-    let high = -Infinity;
     let right = -Infinity;
     for (const node of subset) {
       low = Math.min(low, sub[node.id]!.y);
-      high = Math.max(high, sub[node.id]!.y + node.height);
       right = Math.max(right, sub[node.id]!.x + node.width);
     }
     for (const node of subset) {
@@ -199,15 +194,13 @@ export function hubLayout(
       });
     }
     along += right + HUB_GAPS.forest;
-    void high;
   }
 
   let minX = Infinity;
   let minY = Infinity;
-  for (const [id, at] of placed) {
+  for (const at of placed.values()) {
     minX = Math.min(minX, at.x);
     minY = Math.min(minY, at.y);
-    void id;
   }
   placed.set(hub.id, placed.get(hub.id) ?? { x: 0, y: -hub.height / 2 });
   for (const [id, at] of placed) positions[id] = { x: at.x - minX, y: at.y - minY };

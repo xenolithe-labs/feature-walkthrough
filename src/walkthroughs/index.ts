@@ -7,6 +7,7 @@ import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
 import { consistentHashing } from './consistent-hashing';
+import { dependencyVulnerability } from './dependency-vulnerability';
 import { bstInsertDemo } from './algorithms/bst-insert';
 import { hashTableDemo } from './algorithms/hash-table';
 import { reverseListDemo } from './algorithms/reverse-list';
@@ -47,6 +48,7 @@ export const plainDemos: WalkthroughInput[] = [
   jweCompact,
   consistentHashing,
   awsVpcRequest,
+  dependencyVulnerability,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */
