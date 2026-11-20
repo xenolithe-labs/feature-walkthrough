@@ -1,4 +1,7 @@
 .fw-table-scroll {
+  /* Positioned, so that text hidden for screen readers inside a cell is clipped with the table
+     when it scrolls sideways, and cannot widen the page. */
+  position: relative;
   max-height: 520px;
   overflow: auto;
 }

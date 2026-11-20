@@ -176,9 +176,14 @@ function SequenceView({
   useEffect(() => {
     const box = scroller.current;
     if (box === null || currentY === undefined) return;
-    const y = currentY - ROW / 2;
-    if (y < box.scrollTop || y + ROW > box.scrollTop + box.clientHeight) {
-      box.scrollTop = Math.max(0, y - box.clientHeight / 2);
+    // The lane names sit above the drawing and stay in view while it scrolls, so the drawing
+    // starts below them and they cover the top of what is visible.
+    const header = box.querySelector('svg')?.getBoundingClientRect().top;
+    const covered =
+      header === undefined ? 0 : header - box.getBoundingClientRect().top + box.scrollTop;
+    const y = covered + currentY - ROW / 2;
+    if (y < box.scrollTop + covered || y + ROW > box.scrollTop + box.clientHeight) {
+      box.scrollTop = Math.max(0, y - covered - (box.clientHeight - covered) / 2);
     }
   }, [currentY]);
 

@@ -152,3 +152,36 @@ Did "better on substance, longer per card" repeat? In weaker form: the total fel
 | Checklist items that cannot fail once the procedure is followed                                                    | Deferred | Four trials have all been on subjects without messages; trial 5 onwards will show which items a message subject needs                                                                                 |
 
 The rewrite's changes that were exercised here all worked: a call is one idea and not one line (the most useful rule after sizing), the recap in a step's last call, the old value only when it meant something. Nothing that was cut in the rewrite was missed.
+
+### Trial 5: OAuth 2.0 with PKCE
+
+The first trial on a subject made of messages between actors. Verdict from the trial: better on the question the walkthrough is for, narrower in coverage.
+
+|                           | Before                    | After                            |
+| ------------------------- | ------------------------- | -------------------------------- |
+| Calls / steps             | 20 / 5                    | 13 / 4                           |
+| Words of card text, total | 445                       | 265                              |
+| Mean per card             | 22.3                      | 20.4                             |
+| Step text, total          | 89                        | 44                               |
+| State view                | A graph of nine artefacts | A table of who holds which value |
+
+The redone walkthrough is about one question, why a stolen code is useless: a malicious app is an actor, it sends the stolen code with the challenge in the verifier's place, the server computes a real, wrong hash, and the request is refused. The verifier and challenge are the specification's own example values, and a test recomputes both hashes. Gone, and declared as left out: `state`, consent, using and refreshing the token.
+
+For the first time the mean words per card went down, and the trial measured why: the mean rose only 1.9 words across the two cold reads (18.5, 19.5, 20.4), because the three-way sort of unstated changes sent most of them to a view (16 of 29) or declined them (8 of 29) instead of adding words.
+
+Checking the facts found five things in the earlier version that the specifications do not support, among them a "pending authorization" record that the cited section does not describe, and an error arrow that went to the legitimate app where the text said it was the thief's.
+
+| Finding                                                                                                                                                                            | Decision | Change                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Walk the main path uninterrupted" conflicts with "the run is the one that carries the test question" when that run is the failing one, and nothing covered state that accumulates | Accepted | The run that carries the question is walked first, and it may be the failing one; if a path uses something up, show first the path that leaves shared state as it was |
+| Nothing says what the state of a protocol is                                                                                                                                       | Accepted | New rule: usually who knows what; an empty cell is state, and can be relied on                                                                                        |
+| The sort of unstated changes lacks a case for things on the cut list, and the next reader lists again what was left to a view                                                      | Accepted | Fourth case added, with the warning not to add it back                                                                                                                |
+| Both cold readers read the prediction question twice, in the middle of the narration                                                                                               | Accepted | It goes last in the call, set apart                                                                                                                                   |
+| Checklist 21 does not fit a protocol whose messages are specification examples                                                                                                     | Accepted | Code from a real run; computed values checked by a test                                                                                                               |
+| The good and bad example in section 1 was this demo's own question, so that rule was not independently tested here                                                                 | Accepted | The example now uses a subject that is not a bundled demo                                                                                                             |
+| Worked example A's order (success, then replay) fails when the credential is single-use                                                                                            | Accepted | One sentence added, pointing at the branches rule                                                                                                                     |
+| "Each message in a sequence is its own call" gives some thin cards                                                                                                                 | Kept     | Merging messages hides order, which is what a sequence is for                                                                                                         |
+
+Parts of the skill exercised for the first time, by the trial's account: pairing a sequence with a state view (the design itself), labelling relations (cheap, and it shaped the two call names that carry the contrast), branches and errors (useful, and the part most in need of repair, now repaired), worked example A (its shape transferred; its order did not).
+
+The trial also found a fault in the viewer: the sequence pane could leave the newest message under the fold, because its scroll check ignored the lane names that stay in view above the drawing. Fixed with this revision.
