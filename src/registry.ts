@@ -2,6 +2,7 @@ import { statusAnnotation } from './annotations/status';
 import { Registry } from './core';
 import { arrayPanel } from './panels/array';
 import { boxesPanel } from './panels/boxes';
+import { busPanel } from './panels/bus';
 import { codePanel } from './panels/code';
 import { flowPanel } from './panels/flow';
 import { graphPanel } from './panels/graph';
@@ -9,6 +10,7 @@ import { payloadPanel } from './panels/payload';
 import { schemaPanel } from './panels/schema';
 import { sequencePanel } from './panels/sequence';
 import { tablePanel } from './panels/table';
+import { timelinePanel } from './panels/timeline';
 
 /**
  * The panel types and annotation plugins this build ships with.
@@ -25,5 +27,7 @@ export function createRegistry(): Registry {
     .registerPanel(payloadPanel)
     .registerPanel(schemaPanel)
     .registerPanel(arrayPanel)
+    .registerPanel(busPanel)
+    .registerPanel(timelinePanel)
     .registerAnnotation(statusAnnotation);
 }

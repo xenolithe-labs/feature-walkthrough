@@ -33,3 +33,23 @@ export function toneOf(patched: unknown, declared: string | undefined): string |
 }
 
 export const TONES = ['muted', 'warn', 'good', 'none'] as const;
+
+/**
+ * Card labels by element id, where two elements that would share a label get their ids added.
+ * The card keys its list by label, so a repeated label would repeat a key.
+ */
+export function uniqueLabels(
+  entities: readonly { id: string; label?: string | undefined }[],
+): Map<string, string> {
+  const counts = new Map<string, number>();
+  for (const entity of entities) {
+    const label = entity.label ?? entity.id;
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  return new Map(
+    entities.map((entity) => {
+      const label = entity.label ?? entity.id;
+      return [entity.id, (counts.get(label) ?? 0) > 1 ? `${label} (${entity.id})` : label];
+    }),
+  );
+}

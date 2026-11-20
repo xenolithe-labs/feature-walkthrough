@@ -924,6 +924,461 @@ Effects on this panel take the shared verbs only.
 
 Effects on this panel take the shared verbs only.
 
+## Panel `bus`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "channels": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "default": "topic",
+            "type": "string",
+            "enum": ["topic", "queue", "bus"]
+          },
+          "partitions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          },
+          "events": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "partition": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "data": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "producers": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "sub": {
+                  "type": "string"
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "consumers": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "sub": {
+                  "type": "string"
+                },
+                "initial": {
+                  "type": "boolean"
+                },
+                "group": {
+                  "type": "string"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "cursors": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "partition": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "group": {
+                  "type": "string"
+                },
+                "owner": {
+                  "default": null,
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "at": {
+                  "default": 0,
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "rules": {
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "pattern": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "targets": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "sub": {
+                        "type": "string"
+                      },
+                      "initial": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["id"],
+                    "additionalProperties": false
+                  }
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["channels"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
+## Panel `timeline`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "axis": {
+      "type": "object",
+      "properties": {
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "default": 0,
+          "type": "number"
+        },
+        "to": {
+          "type": "number"
+        },
+        "tick": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "pxPerUnit": {
+          "default": 8,
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": ["unit", "to", "tick"],
+      "additionalProperties": false
+    },
+    "now": {
+      "type": "number"
+    },
+    "rows": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "sub": {
+            "type": "string"
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id"],
+        "additionalProperties": false
+      }
+    },
+    "instants": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "row": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "at": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "default": "event",
+            "type": "string",
+            "enum": ["heartbeat", "event"]
+          },
+          "state": {
+            "type": "string",
+            "enum": ["ok", "late", "missed", "failed", "retried"]
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "row", "at"],
+        "additionalProperties": false
+      }
+    },
+    "spans": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "row": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "from": {
+            "type": "number"
+          },
+          "to": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string"
+          },
+          "kind": {
+            "default": "run",
+            "type": "string",
+            "enum": ["run", "wait", "lease"]
+          },
+          "state": {
+            "type": "string",
+            "enum": ["ok", "late", "missed", "failed", "retried"]
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "row", "from", "to"],
+        "additionalProperties": false
+      }
+    },
+    "limits": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "row": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "after": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "from": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+              }
+            ]
+          },
+          "reset": {
+            "type": "string",
+            "enum": ["heartbeat", "event"]
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+              }
+            ]
+          },
+          "by": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "row", "after", "from"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["axis", "rows"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
 ## Annotation `status`
 
 Walkthrough-level config, at `annotations.status`:

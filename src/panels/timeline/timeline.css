@@ -1,0 +1,459 @@
+.fw-tl {
+  min-width: 0;
+  padding: 12px;
+}
+
+/* The axis scrolls sideways inside the pane, with the row names kept in view. */
+.fw-tl-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.fw-tl-inner {
+  position: relative;
+  min-width: 100%;
+}
+
+.fw-tl-axis,
+.fw-tl-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--label) minmax(0, 1fr);
+}
+
+.fw-tl-axis {
+  height: 44px;
+  border-bottom: 1.5px solid var(--fw-border);
+}
+
+.fw-tl-row {
+  border-bottom: 1px solid var(--fw-border);
+}
+
+.fw-tl-track {
+  position: relative;
+  padding: 0 var(--pad);
+}
+
+.fw-tl-plot {
+  position: relative;
+  height: 100%;
+}
+
+.fw-tl-unit,
+.fw-tl-rowlabel {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 8px 0 2px;
+  background: var(--fw-surface);
+}
+
+.fw-tl-unit {
+  justify-content: flex-end;
+  padding-bottom: 6px;
+  color: var(--fw-muted);
+  font: 11px var(--fw-mono);
+}
+
+.fw-tl-rowlabel {
+  cursor: pointer;
+}
+
+.fw-tl-name {
+  overflow: hidden;
+  font: 600 12.5px var(--fw-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-tl-sub {
+  overflow: hidden;
+  color: var(--fw-muted);
+  font: 11px var(--fw-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-tl-tick {
+  position: absolute;
+  bottom: 4px;
+  translate: -50% 0;
+  color: var(--fw-muted);
+  font: 10.5px var(--fw-mono);
+}
+
+/* Grid lines, the part of the axis that is still to come, and the "now" line, behind the rows. */
+.fw-tl-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--label) + var(--pad));
+  right: var(--pad);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.fw-tl-grid {
+  position: absolute;
+  top: 44px;
+  bottom: 0;
+  border-left: 1px dotted var(--fw-border);
+}
+
+.fw-tl-future {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(135deg, transparent 0 6px, var(--fw-surface-2) 6px 7px);
+  opacity: 0.9;
+}
+
+.fw-tl-nowline {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid var(--fw-select);
+}
+
+.fw-tl-row > *,
+.fw-tl-axis > * {
+  z-index: 2;
+}
+
+.fw-tl-now {
+  position: absolute;
+  top: 3px;
+  z-index: 4;
+  translate: -50% 0;
+  padding: 0 7px;
+  border: 1.5px solid var(--fw-select);
+  border-radius: 999px;
+  background: var(--fw-select-bg);
+  color: var(--fw-text);
+  font: 700 11px/17px var(--fw-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Spans */
+.fw-tl-span {
+  position: absolute;
+  top: calc(var(--top) + 24px);
+  height: 18px;
+  min-width: 4px;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 1.5px solid var(--fw-muted);
+  border-radius: 5px;
+  background: var(--fw-surface-2);
+  font: 600 10.5px/15px var(--fw-mono);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fw-tl-span > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fw-tl-span[data-kind='wait'] {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--fw-surface-2) 0 5px,
+    var(--fw-surface) 5px 10px
+  );
+  color: var(--fw-muted);
+}
+
+.fw-tl-span[data-kind='lease'] {
+  background: transparent;
+  border-style: dashed;
+  color: var(--fw-muted);
+}
+
+/* A span too narrow for its name shows the name beside it. */
+.fw-tl-span[data-narrow='true'] {
+  overflow: visible;
+  padding: 0;
+}
+
+.fw-tl-span[data-narrow='true'] > span {
+  position: absolute;
+  left: calc(100% + 4px);
+  overflow: visible;
+  color: var(--fw-muted);
+}
+
+/* A span that is still running has no end yet. */
+.fw-tl-span[data-open='true'] {
+  border-right-style: dotted;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.fw-tl-span[data-state='ok'] {
+  border-color: var(--fw-good);
+}
+
+.fw-tl-span[data-state='late'] {
+  border-color: var(--fw-warn);
+}
+
+.fw-tl-span[data-state='missed'] {
+  border-color: var(--fw-bad);
+  border-style: dashed;
+}
+
+.fw-tl-span[data-state='failed'] {
+  border-color: var(--fw-bad);
+  background: var(--fw-removed-bg);
+}
+
+.fw-tl-span[data-state='retried'] {
+  border-color: var(--fw-info);
+}
+
+.fw-tl-span[data-tone='good']:not([data-state]) {
+  border-color: var(--fw-good);
+}
+
+.fw-tl-span[data-tone='warn']:not([data-state]) {
+  border-color: var(--fw-warn);
+  border-style: dashed;
+}
+
+.fw-tl-span[data-tone='muted'] {
+  opacity: 0.7;
+}
+
+/* Instants */
+.fw-tl-instant {
+  position: absolute;
+  top: calc(var(--top) + 3px);
+  width: 16px;
+  height: 16px;
+  translate: -50% 0;
+  cursor: pointer;
+}
+
+.fw-tl-instant {
+  --c: var(--fw-text);
+}
+
+.fw-tl-marker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--c);
+  font: 700 10px/1 var(--fw-mono);
+}
+
+/* The shape is a layer behind the glyph, so that a diamond can turn without turning the glyph. */
+.fw-tl-marker::before {
+  position: absolute;
+  inset: 1px;
+  border: 2px solid var(--c);
+  background: var(--fw-surface);
+  content: '';
+  z-index: -1;
+}
+
+.fw-tl-instant[data-kind='heartbeat'] .fw-tl-marker::before {
+  border-radius: 50%;
+}
+
+.fw-tl-instant[data-kind='event'] .fw-tl-marker::before {
+  border-radius: 2px;
+  rotate: 45deg;
+  inset: 2px;
+}
+
+.fw-tl-ilabel {
+  position: absolute;
+  bottom: calc(100% + 2px + var(--lv, 0) * 13px);
+  left: 50%;
+  translate: -50% 0;
+  color: var(--fw-muted);
+  font: 10.5px/12px var(--fw-mono);
+  white-space: nowrap;
+}
+
+.fw-tl-instant[data-state='ok'],
+.fw-tl-instant[data-tone='good']:not([data-state]) {
+  --c: var(--fw-good);
+}
+
+.fw-tl-instant[data-state='late'],
+.fw-tl-instant[data-tone='warn']:not([data-state]) {
+  --c: var(--fw-warn);
+}
+
+.fw-tl-instant[data-state='missed'],
+.fw-tl-instant[data-state='failed'] {
+  --c: var(--fw-bad);
+}
+
+.fw-tl-instant[data-state='missed'] .fw-tl-marker::before {
+  border-style: dashed;
+}
+
+.fw-tl-instant[data-state='failed'] .fw-tl-marker::before {
+  background: var(--fw-removed-bg);
+}
+
+.fw-tl-instant[data-state='retried'] {
+  --c: var(--fw-info);
+}
+
+.fw-tl-instant[data-tone='muted'] {
+  opacity: 0.6;
+}
+
+/* Limits: a bar from where the limit starts to where it runs out, and a flag at the limit. */
+.fw-tl-limitlane {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 16px;
+  pointer-events: none;
+}
+
+.fw-tl-seg {
+  position: absolute;
+  top: 6px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.fw-tl-seg[data-kind='pending'] {
+  background: repeating-linear-gradient(90deg, var(--fw-muted) 0 4px, transparent 4px 7px);
+}
+
+.fw-tl-seg[data-kind='met'] {
+  background: var(--fw-good);
+}
+
+.fw-tl-seg[data-kind='missed'] {
+  background: var(--fw-warn);
+}
+
+.fw-tl-seg[data-kind='over'] {
+  height: 8px;
+  top: 4px;
+  background: repeating-linear-gradient(135deg, var(--fw-bad) 0 3px, transparent 3px 6px);
+  border: 1px solid var(--fw-bad);
+}
+
+.fw-tl-flag {
+  position: absolute;
+  top: 0;
+  height: 16px;
+  border-left: 2px solid var(--fw-muted);
+}
+
+.fw-tl-flag[data-status='missed'] {
+  border-left-color: var(--fw-bad);
+}
+
+.fw-tl-limit {
+  position: absolute;
+  top: -1px;
+  padding: 0 6px;
+  border: 1px solid var(--fw-border);
+  border-radius: 4px;
+  background: var(--fw-surface);
+  color: var(--fw-muted);
+  font: 600 10.5px/15px var(--fw-mono);
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  translate: 0 0;
+}
+
+.fw-tl-limit[data-status='missed'] {
+  border-color: var(--fw-bad);
+  color: var(--fw-bad);
+}
+
+.fw-tl-limit[data-status='met'] {
+  border-color: var(--fw-good);
+  color: var(--fw-good);
+}
+
+/* Absent elements keep their place. */
+.fw-tl .is-absent {
+  visibility: hidden;
+}
+
+/* Marks: the same as in every other panel. */
+.fw-tl-now.is-updated {
+  border-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+}
+
+.fw-tl .is-added:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit, .fw-tl-instant),
+.fw-tl .is-added.fw-tl-instant .fw-tl-marker {
+  --mark: var(--fw-added);
+  --mark-bg: var(--fw-added-bg);
+}
+
+.fw-tl .is-updated:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit, .fw-tl-instant) {
+  --mark: var(--fw-updated);
+  --mark-bg: var(--fw-updated-bg);
+}
+
+.fw-tl .is-read:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit, .fw-tl-instant) {
+  --mark: var(--fw-read);
+  --mark-bg: var(--fw-read-bg);
+}
+
+.fw-tl .is-removed:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit, .fw-tl-instant) {
+  --mark: var(--fw-removed);
+  --mark-bg: var(--fw-removed-bg);
+  text-decoration: line-through;
+}
+
+:is(.fw-tl-span, .fw-tl-rowlabel, .fw-tl-limit)[class*='is-']:not(
+    .is-idle,
+    .is-faded,
+    .is-absent,
+    .is-selected
+  ) {
+  outline: 2.5px solid var(--mark, transparent);
+  outline-offset: 1px;
+  background-color: var(--mark-bg, inherit);
+}
+
+.fw-tl-instant[class*='is-']:not(.is-idle, .is-faded, .is-absent) .fw-tl-marker {
+  box-shadow: 0 0 0 3px var(--mark, transparent);
+  border-radius: 50%;
+}
+
+.fw-tl-instant[class*='is-']:not(.is-idle, .is-faded, .is-absent) {
+  --c: var(--mark, var(--c));
+}
+
+.fw-tl-span.is-faded,
+.fw-tl-instant.is-faded,
+.fw-tl-limit.is-faded {
+  opacity: 0.55;
+}
+
+.fw-tl-span.is-selected,
+.fw-tl-rowlabel.is-selected,
+.fw-tl-now.is-selected,
+.fw-tl-limit.is-selected,
+.fw-tl-instant.is-selected .fw-tl-marker {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 1px;
+}
