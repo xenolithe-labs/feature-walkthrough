@@ -79,13 +79,7 @@ for (const walkthrough of walkthroughs) {
     const places = () =>
       page
         .locator(
-          `.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick${fixedTable ? ', .fw-table tbody tr' : ''}`,
-});
-
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-by-field',
-});
-
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-ring-key-hit',
+          `.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-by-field, .fw-ring-key-hit${fixedTable ? ', .fw-table tbody tr' : ''}`,
         )
         .evaluateAll((nodes) =>
           nodes.map((node) => {
@@ -94,10 +88,8 @@ for (const walkthrough of walkthroughs) {
             }
             const box = node.getBoundingClientRect();
             const pane = (
-              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-table') ?? node.closest('.fw-pane')!
-});
-
-              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-by-inner') ?? node.closest('.fw-pane')!
+              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-table, .fw-by-inner') ??
+              node.closest('.fw-pane')!
             ).getBoundingClientRect();
             return [
               node.getAttribute('data-entity') ?? node.textContent,
@@ -1165,6 +1157,7 @@ test('tree: ancestors open for the call, the reader can close one, Up and Down m
   await page.goto('/#w=aws-scp-inheritance&s=5&c=1');
   await expect(row('acct-sandbox')).toHaveAttribute('data-depth', '2');
   await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'false');
+  expect(errors).toEqual([]);
 });
 
 // ---- the bytes panel ----

@@ -124,34 +124,34 @@ graph). Selecting it in one pane then selects it in the other.
 
 Exact shapes are in [`reference.md`](reference.md), generated from the lint schemas.
 
-| Panel      | Use it for                                   | Elements                                                        | Present at start |
-| ---------- | -------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| `sequence` | Messages between lanes over time             | lanes, calls                                                    | lanes            |
-| `graph`    | Things and relationships that build up       | nodes, edges                                                    | no               |
-| `flow`     | A flow chart that calls walk through         | nodes, edges                                                    | yes              |
-| `boxes`    | Nesting: modules, components, frames         | boxes, edges                                                    | yes              |
-| `table`    | Rows of data that calls read and change      | rows                                                            | yes              |
-| `code`     | Source text, with the lines in question      | sources                                                         | yes              |
-| `payload`  | Message and object bodies, field by field    | payloads                                                        | yes              |
-| `schema`   | Tables or types, columns and relations       | tables, columns, relations                                      | yes              |
-| `array`    | A row of cells with pointers and ranges      | cells, pointers, ranges                                         | cells            |
-| `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
-| `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
-| `tree`     | An outline: files, DOM, accounts, an AST     | nodes                                                           | yes              |
-| Panel      | Use it for                                    | Elements                                                        | Present at start  |
-| ---------- | --------------------------------------------- | --------------------------------------------------------------- | ----------------- |
-| `sequence` | Messages between lanes over time              | lanes, calls                                                    | lanes             |
-| `graph`    | Things and relationships that build up        | nodes, edges                                                    | no                |
-| `flow`     | A flow chart that calls walk through          | nodes, edges                                                    | yes               |
-| `boxes`    | Nesting: modules, components, frames          | boxes, edges                                                    | yes               |
-| `table`    | Rows of data that calls read and change       | rows                                                            | yes               |
-| `code`     | Source text, with the lines in question       | sources                                                         | yes               |
-| `payload`  | Message and object bodies, field by field     | payloads                                                        | yes               |
-| `schema`   | Tables or types, columns and relations        | tables, columns, relations                                      | yes               |
-| `array`    | A row of cells with pointers and ranges       | cells, pointers, ranges                                         | cells             |
-| `bus`      | Events in topics, queues and buses            | channels, events, producers, consumers, cursors, rules, targets | all but events    |
-| `timeline` | Rows along a time axis: heartbeats, timeouts  | rows, instants, spans, limits, `now`                            | all               |
-| `bytes`    | Bit and byte layouts: headers, frames, tokens | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `tree`     | An outline: files, DOM, accounts, an AST          | nodes                                                           | yes                      |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ---------------------------------------------     | --------------------------------------------------------------- | -----------------        |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `bytes`    | Bit and byte layouts: headers, frames, tokens     | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame        |
 | Panel      | Use it for                                        | Elements                                                        | Present at start         |
 | ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
 | `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
