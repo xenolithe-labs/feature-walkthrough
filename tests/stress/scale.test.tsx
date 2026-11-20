@@ -67,7 +67,8 @@ describe('scale: the engine', () => {
     const w = load('1,500 calls in one step', longWalkthrough(1, 1500), 3000);
     // Measured about 2.4 s for 1,500 cursors (1.6 ms each); the total is quadratic in the step length.
     walkAll('1,500 calls in one step', w, 20_000);
-  });
+    // Each cursor draws up to 1,500 messages, so the walk takes seconds on a slow machine.
+  }, 30_000);
 
   it('a graph of 160 nodes and ~900 edges added over many calls', () => {
     const w = load('graph 160 nodes', bigGraph(160, 6), 3000);
