@@ -32,7 +32,7 @@ If the tool cannot show something the design calls for (a key, a note, a kind of
 3. **Afterwards they can:** one observable ability, with a verb you could test: predict, explain to someone else, spot the bug, choose between A and B. "Understand" is not a test.
 4. **Test question:** the question that checks line 3, with its written answer. The walkthrough exists to make the reader able to give that answer. Write the answer before anything else: it decides the data, the cut and the views.
 
-Bad: "Explain how OAuth works." Good: "A developer can say why the verifier is sent only in the last request, and what an attacker holding the authorisation code still cannot do."
+Bad: "Explain how database transactions work." Good: "A developer can say which of two transfers waits, why, and what the waiting one sees when it resumes."
 
 Write for one reader. Novices need more calls, defined terms and a stated purpose per step; the same scaffolding slows experts. If the subject is a fixed structure with nothing that changes (a lookup table, a comparison of options), do not use a walkthrough; use one annotated static diagram or a table.
 
@@ -65,6 +65,7 @@ Choose two or three views. A fourth needs a reason you can state in one sentence
 
 - **Each view answers a different question** ("who is talking?", "what does the store hold now?"). Name the question per view. If two views answer the same one, drop one.
 - **Pair what happens with what it changes, when the subject has both.** Most subjects need one view of the events (messages, code lines, a decision path) and one of the state they change (a table, a graph, a row of cells). If the subject has no messages or code (a recalculation, a layout pass), two views of the state are enough and the list of calls is the events view: do not add a flow chart only to have one.
+- **For a protocol, what the messages change is usually who knows what:** a table with a row per value and a column per actor. A cell that stays empty is state too; mark it when a call relies on the absence (the attacker has no verifier).
 - **A third view** is for something the first two cannot hold (exact bytes, or a second kind of state such as who has run as against what is stored), and only if all three can be seen at once, without scrolling, on an ordinary laptop screen in the layout readers get by default: build it and look. If they cannot, fold the third view's few items into the state view as rows, or move its content to the text.
 - **A view is wrong when:** it never changes across the whole walkthrough; it holds one or two elements (put them in the call text); the reader must scroll or zoom to read it; the reader must work out which row matches which node.
 - **Same thing, same name, same value** in every view that shows it. Draw what the idea needs and no more.
@@ -89,7 +90,7 @@ Choose two or three views. A fourth needs a reason you can state in one sentence
 
 **Recursion.** Size the example so the deepest path is about three calls. Show a call that returns at once as one call, at the line that makes it. Give the return of a call that did work its own call, because the reader must see the caller resume. Show waiting calls where the reader can see them at every call: as marks on the state they own (a bracket over their cells) before a separate stack view. A variable that each invocation holds separately must be in a view, or restated when control returns.
 
-**Branches and errors.** Walk the main path uninterrupted and mark the divergence in the text ("here the server can refuse"). Choose the alternative's data so it shares as much as possible with the main path. If the two paths share their opening, put the alternative in a later step that starts where they part, on the same views and values. Make a second walkthrough only when the paths share little; then say in its intro which calls repeat the first. Do not interleave two paths in one run of calls.
+**Branches and errors.** Walk the run that carries the test question uninterrupted (section 2); it may be the failing one. Mark the divergence in the text ("here the server can refuse"). Choose the other path's data so it shares as much as possible, and put it in a later step that starts where the two part, on the same views and values. Before fixing the order, check the later path is still true after the earlier one in views that accumulate: if one path uses something up (a single-use code, a consumed message), show first the path that leaves the shared state as it was, and present the two as alternatives. Make a second walkthrough only when the paths share little; then say in its intro which calls repeat the first. Do not interleave two paths in one run of calls.
 
 **Any order the system does not fix** (concurrent work, an unordered set, a scheduler's choice). Choose one valid order, say it is one of several, and say why you chose it (usually: it exposes the problem).
 
@@ -111,7 +112,7 @@ Each call has a name and a text.
 - **Distinguish kinds of touch:** something appears, changes, disappears, is relied on without changing, or is refused. "Relied on" is often the insight (the cache is read, the key is compared), so mark it.
 - **Keep the state the reader needs visible.** If call 9 depends on something set in call 2, a view holding it must be on screen at call 9, and the call should mark it as relied on. A call touches every view whose state it depends on, and no view it does not.
 - **Keep layout still** between calls, so a change is the only thing that moved.
-- **Ask for a prediction** at a decision point ("Which side will the search keep?") in the previous call's text, and answer it in the next.
+- **Ask for a prediction** at a decision point ("Which side will the search keep?"), as the last sentence of the call before it, set apart from the narration, and answer it in the next call.
 - **Never colour alone.** Every meaning carried by colour is also carried by text, a mark or a position, and explained in a key the reader can see. Keep to three or four colour meanings, used the same way throughout. Do not depend on hover or motion for meaning.
 
 ## 7. Values, names, labels
@@ -134,13 +135,13 @@ Each call has a name and a text.
 1. **Two rounds.** Test the storyboard first, because changes are cheap there; test again on the built walkthrough, because views change what the text needs to say.
 2. **Test on three to five people from the intended audience.** Ask the test question before and after. Watch them step through while thinking aloud; do not explain or hint. Note where they stall, go back, misread or say "wait". Revise, then test on new readers.
 3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent: the intro; the step names and step texts; the call names and texts, in order; the list of terms the reader record says the reader knows; and one line on what the views show before the first call (the names in the code, the starting values). Withhold everything else. Ask it to (a) list every state change the text does not state, (b) list every sentence it had to read twice, (c) list every term it could not derive. Only then give it the test question and ask for the answer. Act on (a) and (b) first; they find the most. This tests only the text, and a model's prior knowledge hides gaps, so report it as the weaker test.
-4. **Expect the cold read to push text longer.** Sort each "unstated change" before acting: if a view shows it, mark it there and add no words; if no view shows it but one could (a variable, a waiting call), add it to a view; only if neither, add words, and then cut as many elsewhere in that card. Count the mean words per card before and after each round, and report both.
+4. **Expect the cold read to push text longer.** Sort each "unstated change" before acting: if a view shows it, mark it there and add no words; if no view shows it but one could (a variable, a waiting call), add it to a view; only if neither, add words, and then cut as many elsewhere in that card. If it is on the cut list, or would not change the written answer, add nothing; if both rounds ask for it, name it in the omitted line. Expect the next cold reader to list again what you left to a view: do not add it back. Count the mean words per card before and after each round, and report both.
 
 ## Worked examples
 
 **A. A login session (messages).**
 _Weak:_ "show how login works". Five views; 22 calls including TLS, DNS and password reset; the browser table calls a value "cookie" and the server table calls the same value "token".
-_Better:_ reader is a front-end developer; outcome "can say why the session id is replaced at login and what an attacker with the old id can do". Two views: a sequence of messages (browser, server, attacker) and a table of server sessions. Ten calls in four steps: visit, log in, use the site, replay the old id. The ids are distinct (`s_7f3a`, `s_c91d`) and named identically in both views. At login the old row disappears and a new one appears, and the text gives both ids. The replay is a later step on the same table, and ends in a refusal.
+_Better:_ reader is a front-end developer; outcome "can say why the session id is replaced at login and what an attacker with the old id can do". Two views: a sequence of messages (browser, server, attacker) and a table of server sessions. Ten calls in four steps: visit, log in, use the site, replay the old id. The ids are distinct (`s_7f3a`, `s_c91d`) and named identically in both views. At login the old row disappears and a new one appears, and the text gives both ids. The replay is a later step on the same table, and ends in a refusal. (Had the old id been usable only once, the refused run would have to come first: see Branches.)
 
 **B. Binary search (code and a loop).**
 _Weak:_ one call per line of code, each with the same generic sentence; ten cells whose values could be mistaken for positions; a third view of variables below the fold.
@@ -184,7 +185,7 @@ Run it on the draft and the design record. Answer yes or no. Any "no" is a findi
 
 19. Do values that must be told apart differ, and can no value be mistaken for a position?
 20. Do five claims you choose at random each have a pointer to a primary source, or an "assumed" mark?
-21. Where the subject is code or a protocol run, do the values come from a real run?
+21. Does code come from a real run, and is every computed value (a hash, a signature, a total) checked by a test?
 
 **Before you ship**
 
