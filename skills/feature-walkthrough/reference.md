@@ -172,8 +172,69 @@ Effects on this panel take the shared verbs only.
           "y": {
             "type": "number"
           },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "arrange": {
+            "type": "string",
+            "enum": ["row", "column"]
+          },
+          "head": {
+            "type": "boolean"
+          },
+          "names": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
+          },
+          "parent": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "parents": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          },
+          "boundary": {
+            "type": "boolean"
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": ["id", "label"],
@@ -192,17 +253,25 @@ Effects on this panel take the shared verbs only.
           },
           "from": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "to": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "label": {
             "type": "string"
           },
+          "tree": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 12
           }
         },
         "required": ["from", "to"],
@@ -214,9 +283,50 @@ Effects on this panel take the shared verbs only.
       "type": "string",
       "enum": ["RIGHT", "DOWN"]
     },
+    "layout": {
+      "default": "layered",
+      "type": "string",
+      "enum": ["layered", "tree"]
+    },
     "initial": {
       "default": false,
       "type": "boolean"
+    },
+    "icons": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 4000,
+            "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE+\\-.,\\s]+$"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "d": {
+                "type": "string",
+                "maxLength": 4000,
+                "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE+\\-.,\\s]+$"
+              },
+              "fill": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 512
+              }
+            },
+            "required": ["d"],
+            "additionalProperties": false
+          }
+        ]
+      }
     }
   },
   "required": ["nodes"],
@@ -224,7 +334,46 @@ Effects on this panel take the shared verbs only.
 }
 ```
 
-Effects on this panel take the shared verbs only.
+An effect on this panel takes the shared verbs plus these keys:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "add": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "update": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "read": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "remove": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "focus": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "fields": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
+    "reverse": {
+      "type": "boolean"
+    }
+  }
+}
+```
 
 ## Panel `flow`
 
@@ -266,8 +415,69 @@ Effects on this panel take the shared verbs only.
           "y": {
             "type": "number"
           },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                },
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 40
+                },
+                "initial": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "arrange": {
+            "type": "string",
+            "enum": ["row", "column"]
+          },
+          "head": {
+            "type": "boolean"
+          },
+          "names": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
+          },
+          "parent": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "parents": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          },
+          "boundary": {
+            "type": "boolean"
+          },
+          "icon": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "required": ["id", "label"],
@@ -286,17 +496,25 @@ Effects on this panel take the shared verbs only.
           },
           "from": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "to": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
           },
           "label": {
             "type": "string"
           },
+          "tree": {
+            "type": "boolean"
+          },
           "initial": {
             "type": "boolean"
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 12
           }
         },
         "required": ["from", "to"],
@@ -308,9 +526,50 @@ Effects on this panel take the shared verbs only.
       "type": "string",
       "enum": ["RIGHT", "DOWN"]
     },
+    "layout": {
+      "default": "layered",
+      "type": "string",
+      "enum": ["layered", "tree"]
+    },
     "initial": {
       "default": true,
       "type": "boolean"
+    },
+    "icons": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "maxLength": 4000,
+            "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE+\\-.,\\s]+$"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "d": {
+                "type": "string",
+                "maxLength": 4000,
+                "pattern": "^[MmLlHhVvCcSsQqTtAaZz0-9eE+\\-.,\\s]+$"
+              },
+              "fill": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 512
+              }
+            },
+            "required": ["d"],
+            "additionalProperties": false
+          }
+        ]
+      }
     }
   },
   "required": ["nodes"],
@@ -318,7 +577,46 @@ Effects on this panel take the shared verbs only.
 }
 ```
 
-Effects on this panel take the shared verbs only.
+An effect on this panel takes the shared verbs plus these keys:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "add": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "update": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "read": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "remove": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "focus": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+    },
+    "fields": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    },
+    "reverse": {
+      "type": "boolean"
+    }
+  }
+}
+```
 
 ## Panel `boxes`
 

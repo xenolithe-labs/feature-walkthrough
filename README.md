@@ -3,7 +3,7 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The engine, the page, fourteen panels and twenty-one demos work end to end.
+> **Status: early.** The engine, the page, fourteen panels and twenty-five demos work end to end.
 
 | Panel      | Shows                                                                  |
 | ---------- | ---------------------------------------------------------------------- |
@@ -22,6 +22,11 @@ config; the engine shows it in coordinated panels and a details card, one call a
 | `bytes`    | Bit and byte layouts: packet headers, frames, token segments           |
 | `ring`     | A hash ring: tokens, keys, owners and replicas, and which keys move    |
 
+The `graph` and `flow` panels can also draw cloud and cluster topologies: nodes nest in groups
+(`parent`), a group can be a trust boundary whose crossing edges are marked, nodes take icons
+(built in, or your own path data), a node can move between the groups it lists (`parents`), and
+a read edge shows traffic along it, with an optional `weight` as stroke width.
+
 Demos: OAuth 2.0 with PKCE (with an `alt` frame for a failed check), a client retrying with backoff (`loop`, `par`, a lost message), a spreadsheet recalculating, one React state update, a Terraform
 plan and apply (the change as a diff, the plan and apply output as a transcript), and what git stores on add, commit and push (with real object ids). Four
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
@@ -31,7 +36,10 @@ EventBridge rules that start a Step Functions execution. Two more: a Kafka broke
 (leader election from the in-sync replicas, then a leadership rebalance), and an AWS API call
 evaluated against service control policies inherited down an organisation. Protocols and storage:
 the TCP three-way handshake header by header, a JWE token taken apart and decrypted, and a
-consistent-hash ring gaining and losing a node.
+consistent-hash ring gaining and losing a node. Cloud topology: a VPC drawn with nested
+groups, an HTTPS request into an app, then a rolling replacement of an instance. Three data-structure demos, also recorded
+from the real code: reversing a linked list in place, inserting into a binary search tree, and a
+hash table that chains a collision.
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 
@@ -83,7 +91,10 @@ Do not write the steps of a loop by hand. Run the algorithm with a `Recorder`
 (`import { Recorder } from 'feature-walkthrough'`): arrays you give it record their own reads and
 writes, a few calls say which line is running and where a pointer is, and `finish()` returns the
 ordinary config. Every line number is checked against the displayed source, so a wrong one fails
-instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill.
+instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill. Linked structures work the same way:
+`rec.records()` and `heap.node(...)` make the objects the algorithm uses record their own pointer
+changes, drawn as records (nodes of named slots) with arrows that leave from the slot, and `layout:
+"tree"` lays them out as a tree.
 
 Two views: **Grid** shows every pane at once; **Focus** shows the panes the current call touches
 large, on a stage that fills a desktop-sized window (the page itself does not scroll there; on a

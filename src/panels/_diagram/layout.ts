@@ -3,26 +3,45 @@
  * that nothing moves when a later call adds one. Positions pinned in the
  * config win; ELK is only loaded when something is not pinned.
  */
+import { hasGroups, layoutWithGroups, pinnedGroups } from './groups';
+import { treeLayout } from './tree-layout';
+
 export interface LayoutNode {
   id: string;
   width: number;
   height: number;
   x?: number | undefined;
   y?: number | undefined;
+  /** The group the node starts in. Pinned `x` and `y` are then relative to it. */
+  parent?: string | undefined;
+  /** Every group the node may ever sit in; a position is reserved in each. */
+  parents?: readonly string[] | undefined;
+  /** The ids of the node's slots, in order (record nodes); the tree layout uses them. */
+  slots?: readonly string[] | undefined;
 }
 
 export interface LayoutEdge {
   id: string;
   source: string;
   target: string;
+  /** The slot of `source` the edge leaves from, if it leaves from one. */
+  slot?: string | undefined;
+  /** False for an edge the tree layout must not treat as a parent-child link. */
+  tree?: boolean | undefined;
 }
 
 export type Direction = 'RIGHT' | 'DOWN';
-export type Positions = Record<string, { x: number; y: number }>;
+/** Groups also have a `width` and `height`; a key `<id>:<parent>` is a reserved position (see groups.ts). */
+export type Positions = Record<
+  string,
+  { x: number; y: number; width?: number | undefined; height?: number | undefined }
+>;
+export type LayoutMode = 'layered' | 'tree';
 
 const cache = new Map<string, Promise<Positions>>();
 
 export function pinned(nodes: readonly LayoutNode[]): Positions | undefined {
+  if (hasGroups(nodes)) return pinnedGroups(nodes);
   const positions: Positions = {};
   for (const node of nodes) {
     if (node.x === undefined || node.y === undefined) return undefined;
@@ -118,11 +137,20 @@ export function layout(
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
   direction: Direction,
+  mode: LayoutMode = 'layered',
 ): Promise<Positions> {
   const fixed = pinned(nodes);
   if (fixed !== undefined) return Promise.resolve(fixed);
+  if (mode === 'tree') return Promise.resolve(treeLayout(nodes, edges, direction));
   const key = JSON.stringify([direction, nodes, edges]);
   let result = cache.get(key);
+  if (result === undefined && hasGroups(nodes)) {
+    result = layoutWithGroups(nodes, edges, direction, {
+      dense: isDense(nodes.length, edges.length),
+      flat: layered,
+    });
+    cache.set(key, result);
+  }
   if (result === undefined) {
     // ELK's time grows steeply with the number of edges per node, and it runs on the page's own
     // thread, so a dense graph would freeze the page. Dense graphs get a plain layering instead.

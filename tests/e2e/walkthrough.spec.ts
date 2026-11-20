@@ -894,6 +894,9 @@ test('focus view: the marked items of every staged pane are in view, small or la
     '#w=react-render&s=2&c=2',
     '#w=kafka-broker-failure&s=3&c=1',
     '#w=aws-scp-inheritance&s=2&c=1',
+    '#w=aws-vpc-request&s=2&c=1',
+    '#w=aws-vpc-request&s=4&c=2',
+    '#w=aws-vpc-request&s=5&c=2',
   ];
   for (const size of [
     { width: 1440, height: 900 },
@@ -1419,3 +1422,484 @@ for (const cursor of ['s=3&c=1', 's=4&c=1']) {
     await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(3);
   });
 }
+
+// Groups, boundaries, icons, moves and traffic in the diagram panels.
+const awsHash = (step: number, call: number) => `#w=aws-vpc-request&s=${step}&c=${call}`;
+
+/** Where each node is on the page (its transform), by id, for the nodes that are drawn. */
+async function nodeBoxes(page: Page): Promise<Record<string, string>> {
+  return page.evaluate(() =>
+    Object.fromEntries(
+      [...document.querySelectorAll('.fw-pane[data-panel="graph"] .react-flow__node')].map(
+        (element) => [
+          element.getAttribute('data-id') ?? '',
+          `${(element as HTMLElement).style.transform} ${(element as HTMLElement).style.width}`,
+        ],
+      ),
+    ),
+  );
+}
+
+test('aws-vpc-request: groups are containers, a boundary is drawn as one, icons are drawn', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, awsHash(2, 1));
+  const graph = page.locator('.fw-pane[data-panel="graph"]');
+  await expect(graph.locator('.fw-group')).toHaveCount(8);
+  await expect(graph.locator('.fw-group[data-boundary]')).toHaveCount(1);
+  await expect(graph.locator('.fw-group-tag')).toHaveText('boundary');
+  expect(await graph.locator('svg.fw-icon').count()).toBeGreaterThan(10);
+  // Every icon is one path and nothing else.
+  expect(await graph.locator('svg.fw-icon > *:not(path)').count()).toBe(0);
+  // A child is drawn inside its group: the group's box holds the node's box.
+  const inside = await page.evaluate(() => {
+    const box = (id: string) =>
+      document
+        .querySelector(`.fw-pane[data-panel="graph"] [data-id="${id}"]`)!
+        .getBoundingClientRect();
+    const [group, child] = [box('priv-a'), box('i-a1')];
+    return (
+      child.left >= group.left &&
+      child.right <= group.right &&
+      child.top >= group.top &&
+      child.bottom <= group.bottom
+    );
+  });
+  expect(inside).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('aws-vpc-request: no element moves from one call to the next', async ({ page }) => {
+  await open(page, awsHash(1, 1));
+  const first = await nodeBoxes(page);
+  expect(Object.keys(first).length).toBe(20);
+  // 14 calls: 13 steps forward.
+  for (let i = 0; i < 13; i += 1) {
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(60);
+    expect(await nodeBoxes(page)).toEqual(first);
+  }
+});
+
+test('aws-vpc-request: an edge that crosses a boundary shows a gate and says so', async ({
+  page,
+}) => {
+  await open(page, awsHash(1, 1));
+  const graph = page.locator('.fw-pane[data-panel="graph"]');
+  // The gate belongs to the edge, not to the call: it is there whenever the edge is.
+  await expect(graph.locator('.fw-edge-gate')).toHaveCount(1);
+  await expect(page.getByText('Crosses a boundary')).toHaveCount(0);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-card-title')).toHaveText(/Open an HTTPS connection/);
+  await expect(graph.locator('.fw-edge-gate[data-gate="vpc"]')).toHaveCount(1);
+  await expect(graph.locator('.fw-edge-line[data-crosses="vpc"]')).toHaveCount(1);
+  await expect(page.getByText('Crosses a boundary')).toBeVisible();
+  await expect(page.getByText('HTTPS 443 crosses app-vpc')).toBeVisible();
+});
+
+test('aws-vpc-request: a group with something touched inside does not fade', async ({ page }) => {
+  await open(page, awsHash(2, 1));
+  const node = (id: string) =>
+    page.locator(`.fw-pane[data-panel="graph"] .react-flow__node[data-id="${id}"]`);
+  await expect(node('az-a')).not.toHaveClass(/is-faded/);
+  await expect(node('pub-a')).not.toHaveClass(/is-faded/);
+  await expect(node('vpc')).not.toHaveClass(/is-faded/);
+  await expect(node('az-b')).toHaveClass(/is-faded/);
+  await expect(node('data-a')).toHaveClass(/is-faded/);
+});
+
+test('aws-vpc-request: a read edge shows one dot, reversed for a reply, and none when still', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(`/${awsHash(1, 1)}`);
+  await page.waitForSelector('.react-flow__node');
+  const dot = page.locator('.fw-pane[data-panel="graph"] .fw-edge-dot');
+  await expect(dot).toHaveCount(1);
+  const path = async () => (await dot.locator('animateMotion').getAttribute('path')) ?? '';
+  const ends = (d: string) => d.replace(/[ML]/g, ' ').trim().split(/\s+/);
+  const forward = ends(await path());
+  await page.keyboard.press('ArrowRight');
+  await expect(dot).toHaveCount(1);
+  expect(ends(await path())).toEqual([forward[1], forward[0]]);
+  // The next call reads two edges: two dots, and the first one is gone.
+  await page.keyboard.press('ArrowRight');
+  await expect(dot).toHaveCount(2);
+  // Going back to the reply plays it again.
+  await page.keyboard.press('ArrowLeft');
+  await expect(dot).toHaveCount(1);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`/${awsHash(1, 1)}`);
+  await page.reload();
+  await page.waitForSelector('.react-flow__node');
+  await expect(page.locator('.fw-pane[data-panel="graph"] .react-flow__edge.is-read')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('.fw-edge-dot')).toHaveCount(0);
+});
+
+test('aws-vpc-request: a weight is the stroke width and an update changes it', async ({ page }) => {
+  const weight = async (id: string) => {
+    await page.waitForSelector(`[data-testid="rf__edge-${id}"] .fw-edge-line`);
+    return page.evaluate(
+      (edge) =>
+        document
+          .querySelector(`[data-testid="rf__edge-${edge}"] .fw-edge-line`)!
+          .getAttribute('data-weight'),
+      id,
+    );
+  };
+
+  await open(page, awsHash(4, 1));
+  expect(await weight('t-a1')).toBe('4');
+  await page.goto(`/${awsHash(4, 2)}`);
+  await page.reload();
+  await page.waitForSelector('.react-flow__node');
+  expect(await weight('t-a1')).toBe('2.5');
+  const stroke = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector('[data-testid="rf__edge-t-a1"] .fw-edge-line')!)
+        .strokeWidth,
+  );
+  // 2.5, and a pixel more while the call marks the edge.
+  expect(parseFloat(stroke)).toBeCloseTo(3.5, 1);
+});
+
+test('a node that moves between parents leaves everything else where it is', async ({ page }) => {
+  const config = {
+    id: 'mover',
+    title: 'Mover',
+    layout: {
+      panes: [
+        {
+          id: 'g',
+          panel: 'graph',
+          content: {
+            initial: true,
+            direction: 'RIGHT',
+            nodes: [
+              { id: 'a', label: 'Zone A' },
+              { id: 'b', label: 'Zone B' },
+              { id: 'other', label: 'Other', parent: 'b' },
+              { id: 'pod', label: 'Pod', parent: 'a', parents: ['a', 'b'] },
+            ],
+            edges: [{ from: 'pod', to: 'other' }],
+          },
+        },
+      ],
+    },
+    steps: [
+      {
+        id: 's',
+        title: 'S',
+        calls: [
+          { id: 'one', label: 'Start', effects: { g: [{ read: 'pod' }] } },
+          {
+            id: 'two',
+            label: 'Move',
+            effects: { g: [{ update: 'pod', fields: { parent: 'b' } }] },
+          },
+          {
+            id: 'three',
+            label: 'Move back',
+            effects: { g: [{ update: 'pod', fields: { parent: 'a' } }] },
+          },
+        ],
+      },
+    ],
+  };
+  await openConfig(page, 'mover', config);
+  await page.waitForSelector('.react-flow__node');
+  await page.waitForTimeout(300);
+  const absolute = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        ['a', 'b', 'other', 'pod'].map((id) => {
+          const r = document
+            .querySelector(`.react-flow__node[data-id="${id}"]`)!
+            .getBoundingClientRect();
+          return [
+            id,
+            [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+          ];
+        }),
+      ),
+    );
+  const start = await absolute();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(300);
+  const moved = await absolute();
+  // The groups and the other node are exactly where they were; the pod is now inside b.
+  for (const id of ['a', 'b', 'other']) expect(moved[id], id).toEqual(start[id]);
+  expect(moved.pod).not.toEqual(start.pod);
+  const pod = moved.pod!;
+  const b = moved.b!;
+  expect(pod[0]).toBeGreaterThanOrEqual(b[0]!);
+  expect(pod[0]! + pod[2]!).toBeLessThanOrEqual(b[0]! + b[2]!);
+  expect(pod[1]).toBeGreaterThanOrEqual(b[1]!);
+  expect(pod[1]! + pod[3]!).toBeLessThanOrEqual(b[1]! + b[3]!);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(300);
+  expect(await absolute()).toEqual(start);
+});
+
+test('aws-vpc-request: an edge inside a group and an empty group can be selected by clicking', async ({
+  page,
+}) => {
+  await open(page, awsHash(3, 2));
+  // Show the whole diagram, so that everything we click is in view.
+  await page.locator('.fw-pane[data-panel="graph"] .react-flow__controls-fitview').click();
+  await page.waitForTimeout(400);
+  // The middle of the edge i-a1 to db, which runs inside the VPC and over two groups.
+  const middle = await page.evaluate(() => {
+    const line = document.querySelector(
+      '[data-testid="rf__edge-q-a1"] .fw-edge-line',
+    ) as SVGLineElement;
+    const matrix = line.getScreenCTM()!;
+    const [x, y] = [
+      (line.x1.baseVal.value + line.x2.baseVal.value) / 2,
+      (line.y1.baseVal.value + line.y2.baseVal.value) / 2,
+    ];
+    return { x: matrix.a * x + matrix.c * y + matrix.e, y: matrix.b * x + matrix.d * y + matrix.f };
+  });
+  await page.mouse.click(middle.x, middle.y);
+  await expect(page).toHaveURL(/sel=q-a1/);
+  // The empty inside of a group: the app subnet in us-east-1b holds nothing yet. Playwright
+  // checks that the group itself receives the click, so a child or an edge over it would fail.
+  const subnet = page.locator('.react-flow__node[data-id="priv-b"]');
+  const size = (await subnet.boundingBox())!;
+  await subnet.click({ position: { x: size.width / 2, y: size.height - 8 } });
+  await expect(page).toHaveURL(/sel=priv-b/);
+  // A node inside a group is still the thing clicked when it is clicked.
+  await page.locator('.react-flow__node[data-id="i-a1"]').click();
+  await expect(page).toHaveURL(/sel=i-a1/);
+});
+
+/** The centre of an element's box, in page coordinates. */
+async function centreOf(locator: ReturnType<Page['locator']>) {
+  const box = (await locator.boundingBox())!;
+  return { x: box.x + box.width / 2, y: box.y + box.height / 2, box };
+}
+
+test('records: an arrow starts in the slot it names, and re-pointing removes one arrow and adds another', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Turn node 2: its next pointer goes from n3 back to n1. The call that does it.
+  await open(page, '#w=reverse-list&s=3&c=3');
+  await expect(page.locator('.fw-card-title')).toHaveText('Point the node backwards');
+  const slot = page.locator('.fw-slot[data-entity="n2.next"]');
+  await expect(slot).toHaveClass(/is-updated/);
+  await expect(slot).toHaveAttribute('aria-label', /n2 next: points to n1/);
+  await expect(page.locator('.react-flow__edge[data-id="n2.next.n3"]')).toHaveClass(/is-removed/);
+  await expect(page.locator('.react-flow__edge[data-id="n2.next.n1"]')).toHaveClass(/is-added/);
+
+  // The dot at the foot of the new arrow is inside that slot, not at the middle of the node.
+  const dot = await centreOf(page.locator('.react-flow__edge[data-id="n2.next.n1"] .fw-slot-dot'));
+  const cell = (await slot.boundingBox())!;
+  expect(dot.x).toBeGreaterThan(cell.x);
+  expect(dot.x).toBeLessThan(cell.x + cell.width);
+  expect(dot.y).toBeGreaterThan(cell.y);
+  expect(dot.y).toBeLessThan(cell.y + cell.height);
+  const node = (await page.locator('.react-flow__node[data-id="n2"]').boundingBox())!;
+  expect(Math.abs(dot.x - (node.x + node.width / 2))).toBeGreaterThan(4);
+
+  // The three variables are slots of one node, each with an arrow to what it names.
+  for (const [variable, target] of [
+    ['prev', 'n1'],
+    ['curr', 'n2'],
+    ['next', 'n3'],
+  ] as const) {
+    await expect(page.locator(`.fw-slot[data-entity="vars.${variable}"]`)).toHaveAttribute(
+      'aria-label',
+      new RegExp(`points to ${target}$`),
+    );
+  }
+  expect(errors).toEqual([]);
+});
+
+test('records: a slot is a keyboard-reachable, selectable element that follows the address', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=reverse-list&s=3&c=3');
+  const slot = page.locator('.fw-slot[data-entity="n2.next"]');
+  await slot.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=n2\.next/);
+  await expect(slot).toHaveClass(/is-selected/);
+  await expect(slot).toHaveAttribute('aria-pressed', 'true');
+  // The card names it, and a second press lets go.
+  await expect(page.locator('.fw-selected')).toContainText('n2 next');
+  await page.keyboard.press('Space');
+  await expect(slot).not.toHaveClass(/is-selected/);
+  // A link to a slot opens with it selected.
+  await page.goto('/#w=reverse-list&s=3&c=3&sel=n1.val');
+  await page.reload();
+  await expect(page.locator('.fw-slot[data-entity="n1.val"]')).toHaveClass(/is-selected/);
+  // A slot of a node that is not there yet cannot be reached with the keyboard or a screen reader.
+  await open(page, '#w=hash-table&s=1&c=1');
+  await expect(page.locator('.react-flow__node[data-id="e9"]')).toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-slot[data-entity="e9.key"]')).toHaveAttribute('tabindex', '-1');
+  await expect(page.locator('.fw-slot[data-entity="e9.key"]')).toHaveAttribute(
+    'aria-hidden',
+    'true',
+  );
+  await expect(page.locator('.fw-slot[data-entity="e5.key"]')).toHaveAttribute('tabindex', '0');
+});
+
+test('records: the tree layout puts children left to right under their parent', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=bst-insert&s=2&c=13');
+  const box = async (id: string) =>
+    (await page.locator(`.react-flow__node[data-id="${id}"]`).boundingBox())!;
+  const [n8, n3, n10, n1, n6, n5, n14, n12] = await Promise.all(
+    ['n8', 'n3', 'n10', 'n1', 'n6', 'n5', 'n14', 'n12'].map(box),
+  );
+  const centre = (b: NonNullable<typeof n8>) => b.x + b.width / 2;
+  // Left child before right child, wherever they sit.
+  expect(centre(n3!)).toBeLessThan(centre(n8!));
+  expect(centre(n10!)).toBeGreaterThan(centre(n8!));
+  expect(centre(n1!)).toBeLessThan(centre(n6!));
+  // 14 has only a right-hand parent slot filled on 10: its right child stays on the right.
+  expect(centre(n14!)).toBeGreaterThan(centre(n10!));
+  // The inserted 5 hangs on the left of 6, and 12 on the left of 14.
+  expect(centre(n5!)).toBeLessThan(centre(n6!));
+  expect(centre(n12!)).toBeLessThan(centre(n14!));
+  // Each level is a row, and a child is below its parent.
+  expect(Math.abs(n3!.y - n10!.y)).toBeLessThan(2);
+  expect(n5!.y).toBeGreaterThan(n6!.y + n6!.height - 1);
+  expect(n6!.y).toBeGreaterThan(n3!.y + n3!.height - 1);
+  expect(errors).toEqual([]);
+});
+
+test('records: a slot keeps its width when the text in it changes', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const widthAt = async (call: number) => {
+    await open(page, `#w=bst-insert&s=1&c=${call}`);
+    // The laid-out width, not the width on screen: the diagram's zoom differs from call to call.
+    return page
+      .locator('.fw-slot[data-entity="vars.side"]')
+      .evaluate((slot) => (slot as HTMLElement).offsetWidth);
+  };
+  // Before side is set it is empty; after, it says "right".
+  const empty = await widthAt(1);
+  const right = await widthAt(6);
+  await expect(page.locator('.fw-slot[data-entity="vars.side"] .fw-slot-value')).toHaveText(
+    /left|right/,
+  );
+  expect(right).toBe(empty);
+});
+
+test('records: the hash table chains a collision in one bucket, in focus view too', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page, '#w=hash-table&s=3&c=8&v=focus');
+  const edge = (id: string) => page.locator(`.react-flow__edge[data-id="${id}"]`);
+  await expect(edge('buckets.1.e5')).toHaveCount(1);
+  await expect(edge('e5.next.e9')).toHaveClass(/is-added|is-removed|is-faded/);
+  await expect(page.locator('.fw-slot[data-entity="buckets.1"]')).toHaveAttribute(
+    'aria-label',
+    /points to e5$/,
+  );
+  await expect(page.locator('.fw-slot[data-entity="buckets.0"]')).toHaveAttribute(
+    'aria-label',
+    /null$/,
+  );
+  expect(errors).toEqual([]);
+});
+
+test('records: a hand-written config with captions on, a node added later and an edge that ends at a slot', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  const config = {
+    id: 'hand',
+    title: 'Hand-written records',
+    layout: {
+      panes: [
+        {
+          id: 'g',
+          panel: 'graph',
+          title: 'Records',
+          content: {
+            initial: true,
+            direction: 'RIGHT',
+            nodes: [
+              { id: 'a', label: 'node a', slots: [{ id: 'val', value: 1 }, { id: 'next' }] },
+              {
+                id: 'b',
+                label: 'node b',
+                initial: false,
+                slots: [
+                  { id: 'val', value: 2 },
+                  { id: 'next', value: 'null' },
+                ],
+              },
+            ],
+            edges: [{ from: 'a.next', to: 'b.val', initial: false }],
+          },
+        },
+      ],
+    },
+    steps: [
+      {
+        id: 's1',
+        title: 'Build',
+        calls: [
+          { id: 'c1', label: 'Look at a', effects: { g: [{ read: 'a.val' }] } },
+          { id: 'c2', label: 'Add b', effects: { g: [{ add: 'b' }] } },
+          {
+            id: 'c3',
+            label: 'Link them',
+            effects: { g: [{ add: 'a.next.b.val' }, { update: 'a.next', fields: { value: '' } }] },
+          },
+        ],
+      },
+    ],
+  };
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openConfig(page, 'hand', config);
+  await expect(page.locator('.react-flow__node[data-id="a"]')).toBeVisible();
+
+  // b is not there yet: its caption and slots are out of the tab order and hidden from readers.
+  const bHead = page.locator('.react-flow__node[data-id="b"] .fw-record-head');
+  await expect(page.locator('.react-flow__node[data-id="b"]')).toHaveClass(/is-absent/);
+  await expect(bHead).toHaveAttribute('tabindex', '-1');
+  await expect(bHead).toHaveAttribute('aria-hidden', 'true');
+  const aHead = page.locator('.react-flow__node[data-id="a"] .fw-record-head');
+  await expect(aHead).toHaveText('node a');
+  await expect(aHead).toHaveAttribute('tabindex', '0');
+
+  // Once it is added they come back.
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(bHead).toHaveAttribute('tabindex', '0');
+  await expect(bHead).not.toHaveAttribute('aria-hidden', 'true');
+
+  // The arrow leaves a's next slot and ends at b's val slot, not at the node.
+  const edge = page.locator('.react-flow__edge[data-id="a.next.b.val"]');
+  await expect(edge).toHaveClass(/is-added/);
+  const dot = await centreOf(edge.locator('.fw-slot-dot'));
+  const next = (await page.locator('.fw-slot[data-entity="a.next"]').boundingBox())!;
+  expect(dot.x).toBeGreaterThan(next.x);
+  expect(dot.x).toBeLessThan(next.x + next.width);
+  expect(dot.y).toBeGreaterThan(next.y);
+  expect(dot.y).toBeLessThan(next.y + next.height);
+  const head = (await edge.locator('.fw-edge-head').boundingBox())!;
+  const target = (await page.locator('.fw-slot[data-entity="b.val"]').boundingBox())!;
+  // The tip of the arrowhead touches the slot: its box is within a few pixels of the slot's box.
+  const gapX = Math.max(target.x - (head.x + head.width), head.x - (target.x + target.width), 0);
+  const gapY = Math.max(target.y - (head.y + head.height), head.y - (target.y + target.height), 0);
+  expect(Math.hypot(gapX, gapY)).toBeLessThan(4);
+  expect(errors).toEqual([]);
+});

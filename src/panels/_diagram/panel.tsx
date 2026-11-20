@@ -19,7 +19,35 @@ import {
 import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
+import { containerIds, groupMinSize } from './groups';
+import { ICON_BAND, resolveIcon } from './icons';
 import { estimateSize, type Direction } from './layout';
+import {
+  DiagramEffect,
+  allowedFields,
+  crossingSection,
+  crossingsAt,
+  edgeFields,
+  groupProblems,
+  iconsField,
+  judgeField,
+  nodeFields,
+  placesNow,
+  weightOf,
+} from './model';
+import {
+  RECORD_EDGE_TYPES,
+  RECORD_NODE_TYPES,
+  edgeEnd,
+  recordEdge,
+  recordLint,
+  recordNode,
+  recordNodeFields,
+  recordSizes,
+  slotEntities,
+  withOwners,
+} from './records';
+import { judgeSlotField, splitEnd } from './slots';
 
 const NodeSchema = z.strictObject({
   id: IdSchema,
@@ -32,17 +60,23 @@ const NodeSchema = z.strictObject({
   /** Pin the position. When every node is pinned, no layout runs. */
   x: z.number().optional(),
   y: z.number().optional(),
+  ...recordNodeFields,
   /** Present before the first call. Defaults to the pane's `initial`. */
   initial: z.boolean().optional(),
+  ...nodeFields,
 });
 
 const EdgeSchema = z.strictObject({
   /** Defaults to "<from>.<to>". */
   id: IdSchema.optional(),
-  from: IdSchema,
-  to: IdSchema,
+  /** A node id, or `<node>.<slot>` to start (or end) at one of the node's slots. */
+  from: edgeEnd,
+  to: edgeEnd,
   label: z.string().optional(),
+  /** `false`: a reference, not a parent-child link. The tree layout ignores it; it is still drawn. */
+  tree: z.boolean().optional(),
   initial: z.boolean().optional(),
+  ...edgeFields,
 });
 
 function contentSchema(defaults: { initial: boolean; direction: Direction }) {
@@ -50,8 +84,12 @@ function contentSchema(defaults: { initial: boolean; direction: Direction }) {
     nodes: z.array(NodeSchema).min(1),
     edges: z.array(EdgeSchema).default([]),
     direction: z.enum(['RIGHT', 'DOWN']).default(defaults.direction),
+    /** `tree` places nodes as a tree: children in the order of the slots they hang from. */
+    layout: z.enum(['layered', 'tree']).default('layered'),
     /** Whether elements are present before the first call unless they say otherwise. */
     initial: z.boolean().default(defaults.initial),
+    /** Icons of this pane's own: name to path data (see the skill), usable as a node's `icon`. */
+    icons: iconsField,
   });
 }
 type DiagramContent = z.infer<ReturnType<typeof contentSchema>>;
@@ -66,6 +104,7 @@ function entitiesOf(content: DiagramContent) {
       label: node.label,
       initial: node.initial ?? content.initial,
     })),
+    ...slotEntities(content.nodes),
     ...content.edges.map((edge) => ({
       id: edgeId(edge),
       label: edge.label ?? `${edge.from} → ${edge.to}`,
@@ -84,11 +123,26 @@ function DiagramPanelView({
   ctx: PanelContext;
 }) {
   // Sizes come from the declared text, so positions do not depend on the cursor.
-  const sizes = useMemo(
+  const sized = useMemo(() => {
+    const holders = containerIds(content.nodes);
+    return recordSizes(ctx.pane.id, content.nodes, ctx.walkthrough.source, (plain) => {
+      const node = plain as DiagramContent['nodes'][number];
+      const icon = resolveIcon(node.icon, content.icons);
+      if (holders.has(node.id)) return groupMinSize(node.label, node.sub, node, icon);
+      const size = estimateSize(node.label, node.sub ?? ' ');
+      return icon === undefined ? size : { ...size, height: size.height + ICON_BAND };
+    });
+  }, [content, ctx.pane.id, ctx.walkthrough.source]);
+  const sizes = useMemo(() => new Map([...sized].map(([id, entry]) => [id, entry.size])), [sized]);
+  const records = useMemo(
     () =>
-      new Map(content.nodes.map((node) => [node.id, estimateSize(node.label, node.sub ?? ' ')])),
-    [content],
+      new Map(
+        content.nodes.map((node) => [node.id, { node, geometry: sized.get(node.id)?.geometry }]),
+      ),
+    [content, sized],
   );
+  const crossings = useMemo(() => crossingsAt(content, state, edgeId), [content, state]);
+  const places = useMemo(() => placesNow(content, state), [content, state]);
   const edges = useMemo<DiagramEdge[]>(
     () =>
       content.edges.map((edge) => ({
@@ -96,40 +150,88 @@ function DiagramPanelView({
         source: edge.from,
         target: edge.to,
         label: edge.label,
+        weight: weightOf(edge.weight, own(state.patches, edgeId(edge))?.weight),
+        crosses: crossings.get(edgeId(edge)),
+        tree: edge.tree,
+        ...(edge.from.includes('.') || edge.to.includes('.')
+          ? recordEdge(edge, records, new Set(state.present))
+          : {}),
       })),
-    [content],
+    [content, state.patches, crossings, records, state.present],
   );
+  const effects = ctx.current;
+  const current = useMemo(() => touched(effects), [effects]);
+  const framed = useMemo(() => withOwners(current, content.nodes), [current, content.nodes]);
+  const selectedId = ctx.selection.id;
+  const select = ctx.selection.select;
   const nodes = useMemo<DiagramNode[]>(
     () =>
       content.nodes.map((node) => {
         const patch = own(state.patches, node.id);
+        const geometry = sized.get(node.id)?.geometry;
         return {
+          ...(geometry === undefined
+            ? {}
+            : recordNode(node, geometry, {
+                paneId: ctx.pane.id,
+                nodes: content.nodes,
+                edges: content.edges,
+                walkthrough: ctx.walkthrough.source,
+                state,
+                current,
+                selected: selectedId,
+                select: (id) => select(selectedId === id ? undefined : id),
+              })),
           id: node.id,
           ...sizes.get(node.id)!,
           x: node.x,
           y: node.y,
+          parent: node.parent,
+          parents: node.parents,
+          at: places.get(node.id),
+          boundary: node.boundary,
+          icon: resolveIcon(node.icon, content.icons),
           label: text(patch?.label) ?? node.label,
           sub: text(patch?.sub) ?? node.sub,
           tone: toneOf(patch?.tone, node.tone),
           kind: node.kind,
         };
       }),
-    [content, sizes, state.patches],
+    [
+      content,
+      sizes,
+      sized,
+      state,
+      current,
+      selectedId,
+      select,
+      ctx.pane.id,
+      ctx.walkthrough.source,
+      places,
+    ],
   );
   const present = useMemo(() => new Set(state.present), [state.present]);
-  const effects = ctx.current;
-  const current = useMemo(() => touched(effects), [effects]);
+  const reversed = useMemo(
+    () =>
+      new Set(effects.flatMap((effect) => (effect.reverse === true ? [effect.read ?? ''] : []))),
+    [effects],
+  );
 
   return (
     <Diagram
       nodes={nodes}
       edges={edges}
       present={present}
-      current={current}
+      current={framed}
       selection={ctx.selection}
       theme={ctx.theme}
       direction={content.direction}
+      layout={content.layout}
       label={ctx.pane.title}
+      call={ctx.call.id}
+      reversed={reversed}
+      nodeTypes={RECORD_NODE_TYPES}
+      edgeTypes={RECORD_EDGE_TYPES}
     />
   );
 }
@@ -141,17 +243,19 @@ export function createDiagramPanel(options: {
 }): PanelType<DiagramContent, ElementsState> {
   return {
     id: options.id,
-    schema: { content: contentSchema(options) },
+    schema: { content: contentSchema(options), effect: DiagramEffect },
     entities: entitiesOf,
     init: (content) => initElements(entitiesOf(content)),
     reduce: (state, effect) => reduceElements(state, effect),
     Component: DiagramPanelView,
-    cardSections: ({ content, current, pane }) =>
-      changesSection(
+    cardSections: ({ state, content, current, pane }) => [
+      ...changesSection(
         pane.title,
         new Map(entitiesOf(content).map((entity) => [entity.id, entity.label])),
         current,
       ),
+      ...crossingSection(content, state, current, edgeId),
+    ],
     lint: (pane, walkthrough) => {
       const content = pane.content as DiagramContent;
       const nodes = new Set(content.nodes.map((node) => node.id));
@@ -159,7 +263,7 @@ export function createDiagramPanel(options: {
       const problems: Problem[] = [];
       content.edges.forEach((edge, position) => {
         for (const end of ['from', 'to'] as const) {
-          if (!nodes.has(edge[end])) {
+          if (!nodes.has(splitEnd(edge[end]).node)) {
             problems.push({
               severity: 'error',
               rule: `${options.id}/unknown-node`,
@@ -169,9 +273,25 @@ export function createDiagramPanel(options: {
           }
         }
       });
+      const edgeIds = new Set(content.edges.map(edgeId));
+      const slots = new Set(slotEntities(content.nodes).map((entity) => entity.id));
+      const allowed = allowedFields(content, edgeIds);
       problems.push(
-        ...fieldProblems(pane, walkthrough, (id) =>
-          nodes.has(id) ? ['label', 'sub', 'tone'] : [],
+        ...fieldProblems(
+          pane,
+          walkthrough,
+          (id) => (slots.has(id) ? ['value', 'tone'] : allowed(id)),
+          (id, field, value) =>
+            slots.has(id) ? judgeSlotField(field, value) : judgeField(id, field, value),
+        ),
+        ...groupProblems(options.id, pane, walkthrough, content, edgeId),
+        ...recordLint(
+          pane,
+          walkthrough,
+          index,
+          content.nodes,
+          content.edges,
+          (node) => node.initial ?? content.initial,
         ),
       );
       return problems;
