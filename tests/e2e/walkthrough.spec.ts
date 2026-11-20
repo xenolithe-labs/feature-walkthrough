@@ -920,3 +920,118 @@ test('focus view: the marked items of every staged pane are in view, small or la
   if ((await off.count()) > 0) await off.first().click();
   await expectMarkedItemsInView(page);
 });
+
+// ---- the bytes panel ----
+
+const field = (page: Page, id: string) => page.locator(`.fw-by-field[data-entity="${id}"]`);
+
+test('bytes: a call marks fields, shows their words, and a straddling field is one field', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  // The SYN-ACK: sequence 300, acknowledgment 101, SYN and ACK set.
+  await open(page, '#w=tcp-handshake&s=3&c=1');
+  await expect(field(page, 'seg.seq').first()).toHaveAttribute('data-mark', 'updated');
+  await expect(field(page, 'seg.seq').first().locator('.fw-by-select')).toHaveAttribute(
+    'aria-label',
+    /Sequence Number, bits 32–63, value 300/,
+  );
+  await expect(field(page, 'seg.ack')).toHaveAttribute('data-mark', 'updated');
+  await expect(page.locator('.fw-by-note[data-field="seg.ack"]')).toContainText('bit 107');
+
+  // On a phone the 32-bit rows are drawn 16 to a row, so the sequence number is two pieces.
+  await expect(page.locator('.fw-by-grid').first()).toHaveAttribute('data-width', '16');
+  await expect(field(page, 'seg.seq')).toHaveCount(2);
+  await expect(field(page, 'seg.seq').nth(1)).toHaveAttribute('data-part', '2/2');
+  // Only the first piece can be reached with the keyboard.
+  await expect(field(page, 'seg.seq').nth(1).locator('.fw-by-select')).toHaveAttribute(
+    'tabindex',
+    '-1',
+  );
+  // Choosing the second piece chooses the field: both pieces show it.
+  await field(page, 'seg.seq').nth(1).locator('.fw-by-select').click();
+  await expect(page).toHaveURL(/sel=seg\.seq/);
+  await expect(field(page, 'seg.seq').first()).toHaveClass(/is-selected/);
+  await expect(field(page, 'seg.seq').nth(1)).toHaveClass(/is-selected/);
+
+  // No page-wide sideways scroll at phone width.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // A flag is reachable with the keyboard and chosen with Enter.
+  await field(page, 'seg.syn').locator('.fw-by-select').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=seg\.syn/);
+  expect(errors).toEqual([]);
+});
+
+test('bytes: at desktop width the header keeps its 32-bit rows and nothing moves between calls', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=tcp-handshake&s=2&c=1&v=focus');
+  await expect(page.locator('.fw-by-grid').first()).toHaveAttribute('data-width', '32');
+  await expect(field(page, 'seg.seq')).toHaveCount(1);
+
+  const places = () =>
+    page.locator('.fw-by-frame[data-entity="seg"] .fw-by-field').evaluateAll((nodes) => {
+      const grid = nodes[0]!.closest('.fw-by-grid')!.getBoundingClientRect();
+      return nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return [
+          node.getAttribute('data-entity'),
+          Math.round(box.left - grid.left),
+          Math.round(box.top - grid.top),
+        ];
+      });
+    });
+  const before = await places();
+  expect(before.length).toBeGreaterThan(10);
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowRight');
+  expect(await places()).toEqual(before);
+});
+
+test('bytes: on the focus stage the panel fills its frame and scrolls inside it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=tcp-handshake&s=4&c=1&v=focus');
+  const pane = page.locator('.fw-stage-pane[data-panel="bytes"]');
+  await expect(pane).toBeVisible();
+  const [root, frame] = await Promise.all([
+    pane.locator('.fw-bytes').boundingBox(),
+    pane.boundingBox(),
+  ]);
+  expect(root!.y + root!.height).toBeLessThanOrEqual(frame!.y + frame!.height + 1);
+  // The frame the call adds is in view inside the scrolling root.
+  const added = await pane.locator('.fw-by-frame[data-entity="last"]').boundingBox();
+  expect(added!.y).toBeGreaterThanOrEqual(root!.y - 1);
+  expect(added!.y).toBeLessThan(root!.y + root!.height);
+});
+
+test('bytes: a segment links to the decoded header in a payload pane', async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=jwe-compact&s=2&c=2');
+  await expect(field(page, 'jwe.header')).toHaveAttribute('data-mark', 'updated');
+  await expect(field(page, 'jwe.ekey').locator('.fw-by-value')).toHaveText(/^C39XATK/);
+  // The cursor sits at the start of segment 2.
+  await expect(page.locator('.fw-by-cursor[data-entity="jwe.cursor"]')).toHaveCount(1);
+  await page.locator('.fw-by-link[data-ref="header"]').click();
+  await expect(page).toHaveURL(/sel=header/);
+  await expect(page.locator('.fw-payload[data-entity="header"]')).toHaveClass(/is-selected/);
+  // And back: the payload's link selects the segment.
+  await page.locator('.fw-pl-ref[data-ref="jwe.header"]').click();
+  await expect(page).toHaveURL(/sel=jwe\.header/);
+  await expect(field(page, 'jwe.header')).toHaveClass(/is-selected/);
+
+  // The bytes frame appears with a gap for the long ciphertext and an ASCII gutter.
+  await page.goto('/#w=jwe-compact&s=3&c=1');
+  await page.reload();
+  await expect(page.locator('.fw-by-frame[data-entity="raw"]')).toHaveAttribute(
+    'data-mark',
+    'added',
+  );
+  await expect(page.locator('.fw-by-field.is-gap')).toHaveCount(1);
+  await expect(page.locator('.fw-by-ascii').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -497,8 +497,8 @@
 .fw-by-sep {
   align-self: center;
   padding: 0 1px;
-  font: 700 18px var(--fw-mono);
-  color: var(--fw-muted);
+  font: 700 26px var(--fw-mono);
+  color: var(--fw-text);
 }
 
 .fw-by-caret {

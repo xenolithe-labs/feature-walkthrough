@@ -3,7 +3,7 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The engine, the page, eleven panels and thirteen demos work end to end.
+> **Status: early.** The engine, the page, twelve panels and fifteen demos work end to end.
 
 | Panel      | Shows                                                               |
 | ---------- | ------------------------------------------------------------------- |
@@ -18,13 +18,16 @@ config; the engine shows it in coordinated panels and a details card, one call a
 | `array`    | Cells in a row, with the pointers and ranges that move over them    |
 | `bus`      | Events in topics, queues and buses, with offsets, lag and rules     |
 | `timeline` | Rows along a time axis: heartbeats, timeouts, retries, a `now` mark |
+| `bytes`    | Bit and byte layouts: packet headers, frames, tokens, pages         |
 
 Demos: OAuth 2.0 with PKCE, a spreadsheet recalculating, one React state update, a Terraform
 plan and apply, and what git stores on add, commit and push (with real object ids). Four
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
 its call stack, breadth-first search and edit distance. Three event-driven demos: a Kafka consumer
 group that loses a consumer, a Temporal Activity that misses a heartbeat and is retried, and
-EventBridge rules that start a Step Functions execution.
+EventBridge rules that start a Step Functions execution. Two byte-level demos: the TCP
+three-way handshake drawn bit by bit (checksums verified in a test) and a JWE opened step by step
+(built and decrypted with Node's crypto in a test).
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 

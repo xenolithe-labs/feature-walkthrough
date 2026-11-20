@@ -125,12 +125,12 @@ export function entitiesOf(content: BytesContent) {
       // panel's lint answers for the frame (`bytes/absent-frame`).
       ...frame.fields.map((field) => ({
         id: fieldId(frame.id, field.id),
-        label: `${frame.title}: ${field.label ?? field.id}`,
+        label: field.label ?? field.id,
         initial: true,
       })),
       ...(frame.cursor === undefined
         ? []
-        : [{ id: cursorId(frame.id), label: `${frame.title}: cursor`, initial: true }]),
+        : [{ id: cursorId(frame.id), label: `${frame.id} cursor`, initial: true }]),
     ];
   });
 }

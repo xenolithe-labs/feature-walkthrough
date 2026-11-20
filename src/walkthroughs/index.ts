@@ -6,10 +6,12 @@ import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
+import { jweCompact } from './jwe-compact';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
 import { oauthPkce } from './oauth-pkce';
 import { reactRender } from './react-render';
 import { spreadsheet } from './spreadsheet';
+import { tcpHandshake } from './tcp-handshake';
 import { temporalHeartbeat } from './temporal-heartbeat';
 import { terraformApply } from './terraform-apply';
 
@@ -27,6 +29,8 @@ export const plainDemos: WalkthroughInput[] = [
   kafkaConsumerGroup,
   temporalHeartbeat,
   eventbridgeRouting,
+  tcpHandshake,
+  jweCompact,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */

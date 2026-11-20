@@ -1379,6 +1379,207 @@ Effects on this panel take the shared verbs only.
 
 Effects on this panel take the shared verbs only.
 
+## Panel `bytes`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "frames": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sub": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["bits", "bytes", "segments"]
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 128
+          },
+          "ascii": {
+            "default": false,
+            "type": "boolean"
+          },
+          "ruler": {
+            "default": true,
+            "type": "boolean"
+          },
+          "separator": {
+            "default": ".",
+            "type": "string",
+            "minLength": 1
+          },
+          "length": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "inside": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+          },
+          "cursor": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "default": 0,
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "default": "next",
+                "type": "string",
+                "minLength": 1
+              },
+              "tone": {
+                "type": "string",
+                "enum": ["muted", "warn", "good", "none"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "fields": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "short": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1048576
+                },
+                "variable": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "decoded": {
+                  "type": "string"
+                },
+                "link": {
+                  "type": "object",
+                  "properties": {
+                    "$ref": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["$ref"],
+                  "additionalProperties": false
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                            },
+                            "to": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                            }
+                          },
+                          "required": ["from", "to"],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "per": {
+                      "default": 1,
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["of"],
+                  "additionalProperties": false
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "title", "unit", "fields"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["frames"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
 ## Annotation `status`
 
 Walkthrough-level config, at `annotations.status`:

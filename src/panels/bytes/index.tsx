@@ -11,7 +11,7 @@
  * removes whole frames. Offsets, rows, the pieces of a field that straddles a row, lengths and
  * the sums that lint checks are all derived, never written.
  */
-import { useMemo, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 import {
   initElements,
   markOf,
@@ -26,7 +26,7 @@ import {
 } from '../../core';
 import { changesSection, text, toneOf, uniqueLabels } from '../_shared/changes';
 import { useWidth } from '../_shared/hooks';
-import { useRevealTouched } from '../_shared/reveal';
+import { TOUCHED_SELECTOR, revealScroll } from '../_shared/reveal';
 import { bytesLint } from './lint';
 import {
   BytesContent,
@@ -208,13 +208,15 @@ function PieceText({
   field,
   piece,
   shared,
+  compact,
 }: {
   frame: FrameDecl;
   field: FieldDecl;
   piece: Piece;
   shared: Shared;
+  compact: boolean;
 }) {
-  const label = field.label ?? field.id;
+  const label = compact ? (field.short ?? field.label ?? field.id) : (field.label ?? field.id);
   const value = valueOf(frame, field, shared.state.patches);
   const decoded = decodedOf(frame, field, shared.state.patches);
   if (piece.kind === 'gap') {
@@ -246,7 +248,7 @@ function PieceText({
             ))}
           </span>
         )}
-        {decoded !== undefined && <span className="fw-by-decoded">{decoded}</span>}
+        {decoded !== undefined && !compact && <span className="fw-by-decoded">{decoded}</span>}
       </>
     );
   }
@@ -257,7 +259,7 @@ function PieceText({
       {piece.kind === 'open' && value === undefined && (
         <span className="fw-by-decoded">variable length</span>
       )}
-      {decoded !== undefined && <span className="fw-by-decoded">{decoded}</span>}
+      {decoded !== undefined && !compact && <span className="fw-by-decoded">{decoded}</span>}
     </>
   );
 }
@@ -380,7 +382,13 @@ function BitsFrame({ frame, shared }: { frame: FrameDecl; shared: Shared }) {
             {narrow && piece.part === 0 ? (
               <NarrowText frame={frame} field={field} shared={shared} />
             ) : (
-              <PieceText frame={frame} field={field} piece={piece} shared={shared} />
+              <PieceText
+                frame={frame}
+                field={field}
+                piece={piece}
+                shared={shared}
+                compact={isBits && piece.kind === 'cells' && piece.span <= 4}
+              />
             )}
           </FieldBox>
         );
@@ -531,7 +539,8 @@ function Detail({ frame, shared }: { frame: FrameDecl; shared: Shared }) {
     const mark = markOf(id, shared.current);
     return (mark !== 'faded' && mark !== 'idle') || shared.selected === id;
   });
-  const marked = framed === 'faded' || framed === 'idle' ? chosen : frame.fields;
+  const whole = framed === 'added' || framed === 'read' || framed === 'removed';
+  const marked = chosen.length > 0 || !whole ? chosen : frame.fields;
   const list = marked.slice(0, 3);
   if (list.length === 0) {
     return (
@@ -610,7 +619,7 @@ function FrameView({
       className={`fw-by-frame is-${shown ? mark : 'absent'}${shared.selected === frame.id ? ' is-selected' : ''}`}
       style={{ marginLeft: depth * 14 }}
       data-entity={frame.id}
-      data-mark={shown ? mark : 'absent'}
+      data-mark={shown ? (mark === 'updated' ? 'idle' : mark) : 'absent'}
       data-tone={toneOf(patch?.tone, frame.tone)}
       data-unit={frame.unit}
       aria-hidden={shown ? undefined : true}
@@ -659,7 +668,24 @@ function BytesView({
   ctx: PanelContext;
 }) {
   const [widthRef, room] = useWidth<HTMLDivElement>();
-  const scroller = useRevealTouched<HTMLDivElement>(ctx.call.id);
+  const scroller = useRef<HTMLDivElement | null>(null);
+  const callId = ctx.call.id;
+  // Bring what the call is about into view: a frame it adds first, else the first field it marks.
+  useEffect(() => {
+    const box = scroller.current;
+    if (box === null) return;
+    const target =
+      box.querySelector<HTMLElement>('[data-mark="added"]') ??
+      box.querySelector<HTMLElement>(TOUCHED_SELECTOR);
+    if (target === null) return;
+    const frame = box.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    const y = revealScroll(
+      { scroll: box.scrollTop, size: box.clientHeight },
+      { start: rect.top - frame.top + box.scrollTop, size: rect.height },
+    );
+    if (y !== undefined) box.scrollTop = y;
+  }, [callId]);
   const effects = ctx.current;
   const current = useMemo(() => touched(effects), [effects]);
   const selected = ctx.selection.id;
@@ -708,7 +734,13 @@ function cardSections({
       const info = describeField(frame, field, shared);
       rows.push({
         key: labels.get(id) ?? id,
-        value: [info.where, info.value === undefined ? undefined : `= ${info.value}`, info.decoded]
+        value: [
+          info.where,
+          info.value === undefined
+            ? undefined
+            : `= ${info.value.length > 32 ? `${info.value.slice(0, 29)}…` : info.value}`,
+          info.decoded,
+        ]
           .filter((part): part is string => part !== undefined)
           .join(' · '),
       });
