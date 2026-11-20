@@ -84,3 +84,23 @@ Verdict from the trial: mixed. Better on substance (the reader can now say what 
 | Remove worked example A and the evidence tags in running text                                                                            | Deferred | One trial on a subject they do not fit is not enough; revisit after trials on message-based subjects                                |
 
 Most valuable parts, by the trial's account: writing the test question's answer before designing, picking values that tell things apart, checking facts against a primary source (it showed the original demo's "sort" stage is not what the cited documentation describes), and the cold read.
+
+### Trial 2: one React state update
+
+Verdict from the trial: mixed. Better on substance and layout (batching is now shown, a separate "compare" phase that the cited documentation does not describe is gone, everything fits one screen, every claim has a pointer, and a browser test proves the displayed code behaves as described); worse on card length per call (mean 37 words against 21) and the picture of the component tree is gone.
+
+| Finding                                                                                                         | Decision | Change                                                                                                                                           |
+| --------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The 40-word limit worked as a target: every card filled to it                                                   | Accepted | Reworded: as few words as state the change, many calls under 20; 40 is a ceiling; cards near the ceiling are a sign of a design problem          |
+| The limit pushed out the prediction prompt the skill recommends                                                 | Accepted | A prediction question does not count toward the limit                                                                                            |
+| The third-view rule is too narrow for a subject with two kinds of state, and "fits on screen" did not say where | Accepted | A second kind of state is a valid reason; the test is the default layout on an ordinary laptop; try folding it into the state view as rows first |
+| The cold read's "treat as unknown" over-reports terms the reader is recorded as knowing                         | Accepted | The reader's known terms are handed over as a list; step names are included; act on unstated changes and re-read sentences first                 |
+| Closing: a separate call, or the last event?                                                                    | Accepted | It is the last real event's call                                                                                                                 |
+| A step's purpose sentence and the intro may not be shown by the tool                                            | Accepted | Check that the tool shows them before relying on them; otherwise put them in calls                                                               |
+| "Read the cards aloud" was never possible                                                                       | Accepted | Removed                                                                                                                                          |
+| Checklist items that only re-ask the record                                                                     | Partly   | Items 1 to 3 tightened and tied to the final state; the rest kept until more trials show which never fail                                        |
+| Remove worked example B and the evidence caveats in bullets                                                     | Deferred | Trial 3 is a loop subject, which is what example B covers                                                                                        |
+
+Rules revised after trial 1, as judged by trial 2: pairing events with state, and showing existing state from the start, both worked on a subject with code. The word limit stopped trial 1's doubling but became a target. One place to define a term was clear. The cold-read protocol worked as written; "sentences read twice" was its most productive list.
+
+Both trials found that a step the original demo showed is not in the documentation it cites (a "sort" stage, a "compare" phase). Checking facts against the primary source is the rule that has paid most.
