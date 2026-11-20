@@ -29,12 +29,15 @@ jobs:
       # Lets this run prove to npm which repository and workflow it is. This replaces a token.
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      # This version of the action caches nothing unless asked to, and it is not asked to.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 # zizmor: ignore[cache-poisoning]
         with:
           node-version: 24
-          cache: pnpm
+          # No dependency cache here: a release is built only from the lockfile.
           registry-url: https://registry.npmjs.org
       - name: Check that the tag matches the package version
         if: github.event_name == 'push'
@@ -52,7 +55,8 @@ jobs:
       - name: Show what the package will contain
         run: npm pack --dry-run --ignore-scripts
       - name: Use an npm that supports staged publishing
-        run: npm install -g npm@^11.15.0
+        # An exact version of npm itself; there is no lockfile for the tool that reads lockfiles.
+        run: npm install -g npm@11.21.3 # zizmor: ignore[adhoc-packages]
       - name: See whether this version is on npm already
         id: published
         # The first version is published by hand, before npm can trust this workflow. Tagging it

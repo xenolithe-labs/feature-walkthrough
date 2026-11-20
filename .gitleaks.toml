@@ -1,0 +1,16 @@
+# Secret scanning (gitleaks). The default rules, minus the sample values the demos show.
+# Every value here is published example data, not a credential. Add a value only after checking
+# that; never add a whole file or folder.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Example tokens from RFC 6749, shown in the OAuth demo"
+regexes = ['''2YotnFZFEjr1zCsicMWpAA''', '''tGzv3JOkF0XG5Qx2TlKWIA''']
+
+[[allowlists]]
+description = "The made-up wrapped key in the JWE demo, in base64url and in hex"
+regexes = [
+  '''C39XATKWENRbLHDRNt4RmCeYYf3TMsv2GfZQ77k1h591eL1YPFOU2g''',
+  '''0b7f5701329610d45b2c70d136de1198279861fdd332cbf619f650efb935879f7578bd583c5394da''',
+]

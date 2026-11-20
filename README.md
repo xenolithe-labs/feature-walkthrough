@@ -192,7 +192,9 @@ pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel r
 pnpm colours             # regenerate the syntax colours of the bundled demos
 ```
 
-Releases and the credentials they need are described in [`docs/release.md`](docs/release.md).
+Releases and the credentials they need are described in [`docs/release.md`](docs/release.md). The automated
+security checks are described in [`docs/security.md`](docs/security.md); to report a vulnerability, see
+[`SECURITY.md`](SECURITY.md).
 
 ## Layout
 
