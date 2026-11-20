@@ -1,6 +1,7 @@
 import type { ConfigInput, WalkthroughInput } from '../core';
 import colours from './colours.generated.json' with { type: 'json' };
 import { awsScpInheritance } from './aws-scp-inheritance';
+import { awsVpcRequest } from './aws-vpc-request';
 import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
@@ -39,6 +40,7 @@ export const plainDemos: WalkthroughInput[] = [
   tcpHandshake,
   jweCompact,
   consistentHashing,
+  awsVpcRequest,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */

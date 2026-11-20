@@ -186,7 +186,33 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   `kind` is `step`, `decision` or `terminal`. An edge without an `id` gets the id `from.to`
   (for example `cached.query`); give an explicit `id` when two edges join the same pair. Read the
   edge as well as the node to show which way a decision went. `fields` can change `label`, `sub`
-  and `tone`. `direction` is `RIGHT` or `DOWN`.
+  and `tone`. `direction` is `RIGHT` or `DOWN`. Cloud and cluster topologies add the following:
+  - **Groups.** A node with `"parent": "<id>"` is drawn inside that node, which becomes a container
+    around its children (one element type: a group takes marks, tones, selection and edges like any
+    node, and an edge may start or end at one). Groups nest. A group does not fade while the call
+    touches something inside it. An edge between a group and something inside it is a lint error.
+    Layout runs once over every level. An explicit `x`/`y` is then relative to the parent, and a
+    group's size comes from what it holds.
+  - **Boundaries.** `"boundary": true` on a node that holds others draws it as a trust boundary or
+    network zone (dashed border and a tag). Every edge that crosses one is marked with a gate and
+    named on the card. This is derived from where the ends sit, never written. An edge that ends at
+    the boundary node itself does not cross it.
+  - **Icons.** `"icon": "<name>"` puts a glyph on a node or group. Built in: `server`, `database`,
+    `queue`, `balancer`, `user`, `lock`, `cloud`, `globe`, `function`, `storage`, `cache`,
+    `container`, `key`, `shield`, `network`, `gateway`, `document`. A pane's own
+    `"icons": { "name": "M12 2 …" }` adds more (provider icons you supply): a value is SVG path data
+    drawn in a 24 by 24 box as an outline, or `{ "d": "…", "fill": true, "size": 64 }` for a filled
+    shape in a box of another size. Only path data is accepted (letters of path commands, numbers,
+    separators; at most 4000 characters), never markup. An unknown name is a lint error.
+  - **Moving.** `"parents": ["a", "b"]` lists every group a node may ever sit in (`parent` is where
+    it starts, the first by default). `{ "update": "pod", "fields": { "parent": "b" } }` moves it;
+    a parent outside the list is a lint error, and a node without `parents` has no `parent` field to
+    update. Layout reserves a position in every listed group, so nothing else shifts when the node
+    moves, and an empty reserved position draws nothing. Edges and boundary crossings follow the node.
+  - **Traffic.** A call that `read`s an edge sends one dot along it (not under reduced motion);
+    `{ "read": "reply-edge", "reverse": true }` runs it from target to source, for a reply. `reverse`
+    is only for the `read` of an edge. An edge may have `"weight"` (0.5 to 12, its stroke width in
+    pixels) and `update` may change it: `{ "update": "e", "fields": { "weight": 6 } }`.
 - **`boxes`**: boxes `{ id, label, sub?, parent? }`; `parent` nests one box inside another.
   `direction` is `row` or `column`.
 - **`table`**: `columns` `{ id, label, mono?, meter? }` and `rows` `{ id, cells: { columnId: "text" }, group? }`.

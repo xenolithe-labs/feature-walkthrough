@@ -19,7 +19,22 @@ import {
 import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
+import { containerIds, groupMinSize } from './groups';
+import { ICON_BAND, resolveIcon } from './icons';
 import { estimateSize, type Direction } from './layout';
+import {
+  DiagramEffect,
+  allowedFields,
+  crossingSection,
+  crossingsAt,
+  edgeFields,
+  groupProblems,
+  iconsField,
+  judgeField,
+  nodeFields,
+  placesNow,
+  weightOf,
+} from './model';
 
 const NodeSchema = z.strictObject({
   id: IdSchema,
@@ -34,6 +49,7 @@ const NodeSchema = z.strictObject({
   y: z.number().optional(),
   /** Present before the first call. Defaults to the pane's `initial`. */
   initial: z.boolean().optional(),
+  ...nodeFields,
 });
 
 const EdgeSchema = z.strictObject({
@@ -43,6 +59,7 @@ const EdgeSchema = z.strictObject({
   to: IdSchema,
   label: z.string().optional(),
   initial: z.boolean().optional(),
+  ...edgeFields,
 });
 
 function contentSchema(defaults: { initial: boolean; direction: Direction }) {
@@ -52,6 +69,8 @@ function contentSchema(defaults: { initial: boolean; direction: Direction }) {
     direction: z.enum(['RIGHT', 'DOWN']).default(defaults.direction),
     /** Whether elements are present before the first call unless they say otherwise. */
     initial: z.boolean().default(defaults.initial),
+    /** Icons of this pane's own: name to path data (see the skill), usable as a node's `icon`. */
+    icons: iconsField,
   });
 }
 type DiagramContent = z.infer<ReturnType<typeof contentSchema>>;
@@ -84,11 +103,19 @@ function DiagramPanelView({
   ctx: PanelContext;
 }) {
   // Sizes come from the declared text, so positions do not depend on the cursor.
-  const sizes = useMemo(
-    () =>
-      new Map(content.nodes.map((node) => [node.id, estimateSize(node.label, node.sub ?? ' ')])),
-    [content],
-  );
+  const sizes = useMemo(() => {
+    const holders = containerIds(content.nodes);
+    return new Map(
+      content.nodes.map((node) => {
+        const icon = resolveIcon(node.icon, content.icons);
+        if (holders.has(node.id)) return [node.id, groupMinSize(node.label, node.sub, node, icon)];
+        const size = estimateSize(node.label, node.sub ?? ' ');
+        return [node.id, icon === undefined ? size : { ...size, height: size.height + ICON_BAND }];
+      }),
+    );
+  }, [content]);
+  const crossings = useMemo(() => crossingsAt(content, state, edgeId), [content, state]);
+  const places = useMemo(() => placesNow(content, state), [content, state]);
   const edges = useMemo<DiagramEdge[]>(
     () =>
       content.edges.map((edge) => ({
@@ -96,8 +123,10 @@ function DiagramPanelView({
         source: edge.from,
         target: edge.to,
         label: edge.label,
+        weight: weightOf(edge.weight, own(state.patches, edgeId(edge))?.weight),
+        crosses: crossings.get(edgeId(edge)),
       })),
-    [content],
+    [content, state.patches, crossings],
   );
   const nodes = useMemo<DiagramNode[]>(
     () =>
@@ -108,17 +137,27 @@ function DiagramPanelView({
           ...sizes.get(node.id)!,
           x: node.x,
           y: node.y,
+          parent: node.parent,
+          parents: node.parents,
+          at: places.get(node.id),
+          boundary: node.boundary,
+          icon: resolveIcon(node.icon, content.icons),
           label: text(patch?.label) ?? node.label,
           sub: text(patch?.sub) ?? node.sub,
           tone: toneOf(patch?.tone, node.tone),
           kind: node.kind,
         };
       }),
-    [content, sizes, state.patches],
+    [content, sizes, state.patches, places],
   );
   const present = useMemo(() => new Set(state.present), [state.present]);
   const effects = ctx.current;
   const current = useMemo(() => touched(effects), [effects]);
+  const reversed = useMemo(
+    () =>
+      new Set(effects.flatMap((effect) => (effect.reverse === true ? [effect.read ?? ''] : []))),
+    [effects],
+  );
 
   return (
     <Diagram
@@ -130,6 +169,8 @@ function DiagramPanelView({
       theme={ctx.theme}
       direction={content.direction}
       label={ctx.pane.title}
+      call={ctx.call.id}
+      reversed={reversed}
     />
   );
 }
@@ -141,17 +182,19 @@ export function createDiagramPanel(options: {
 }): PanelType<DiagramContent, ElementsState> {
   return {
     id: options.id,
-    schema: { content: contentSchema(options) },
+    schema: { content: contentSchema(options), effect: DiagramEffect },
     entities: entitiesOf,
     init: (content) => initElements(entitiesOf(content)),
     reduce: (state, effect) => reduceElements(state, effect),
     Component: DiagramPanelView,
-    cardSections: ({ content, current, pane }) =>
-      changesSection(
+    cardSections: ({ state, content, current, pane }) => [
+      ...changesSection(
         pane.title,
         new Map(entitiesOf(content).map((entity) => [entity.id, entity.label])),
         current,
       ),
+      ...crossingSection(content, state, current, edgeId),
+    ],
     lint: (pane, walkthrough) => {
       const content = pane.content as DiagramContent;
       const nodes = new Set(content.nodes.map((node) => node.id));
@@ -169,10 +212,10 @@ export function createDiagramPanel(options: {
           }
         }
       });
+      const edgeIds = new Set(content.edges.map(edgeId));
       problems.push(
-        ...fieldProblems(pane, walkthrough, (id) =>
-          nodes.has(id) ? ['label', 'sub', 'tone'] : [],
-        ),
+        ...fieldProblems(pane, walkthrough, allowedFields(content, edgeIds), judgeField),
+        ...groupProblems(options.id, pane, walkthrough, content, edgeId),
       );
       return problems;
     },
