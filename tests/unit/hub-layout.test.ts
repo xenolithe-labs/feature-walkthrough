@@ -117,6 +117,20 @@ describe('disc nodes', () => {
     expect(size.width).toBeGreaterThanOrEqual(DISC);
   });
 
+  it('in any other layout a line meets the disc, not the box that also holds the label', async () => {
+    const discs = [n('a'), n('b')];
+    for (const hint of [{}, { cell: [0, 0] as const }]) {
+      const set = hint.cell === undefined ? discs : [n('a', hint), n('b', { cell: [1, 0] })];
+      const result = await layoutFull(set, [e('a', 'b')], 'RIGHT', 'layered', {});
+      const route = result.routes['a.b']!;
+      const [pa, pb] = [result.positions.a!, result.positions.b!];
+      const dist = (p: { x: number; y: number }, at: { x: number; y: number }) =>
+        Math.hypot(p.x - (at.x + 50), p.y - (at.y + DISC / 2));
+      expect(dist(route.points[0]!, pa)).toBeCloseTo(DISC / 2, 0);
+      expect(dist(route.points.at(-1)!, pb)).toBeCloseTo(DISC / 2, 0);
+    }
+  });
+
   it('shape, badge, accent and more are read from the config and reach the layout', () => {
     const loaded = loadConfig(dependencyVulnerability, createRegistry());
     expect(loaded.problems).toEqual([]);

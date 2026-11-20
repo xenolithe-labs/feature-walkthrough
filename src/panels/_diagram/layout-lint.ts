@@ -309,11 +309,13 @@ export async function paneProblems(
     if (zoom < READABLE_ZOOM) {
       const wide = box.width / NORMAL_PANE.width > box.height / NORMAL_PANE.height;
       const advice = [
-        wide && content.direction === 'RIGHT'
-          ? 'set "direction": "DOWN"'
-          : !wide && content.direction === 'DOWN'
-            ? 'set "direction": "RIGHT"'
-            : undefined,
+        mode !== 'layered'
+          ? undefined
+          : wide && content.direction === 'RIGHT'
+            ? 'set "direction": "DOWN"'
+            : !wide && content.direction === 'DOWN'
+              ? 'set "direction": "RIGHT"'
+              : undefined,
         content.spacing === 'compact' || mode !== 'layered'
           ? undefined
           : 'set "spacing": "compact"',

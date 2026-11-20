@@ -14,10 +14,15 @@ import type { Direction, LayoutEdge, LayoutNode, LayoutOptions, Layout } from '.
 import { labelSize, type Point, type Route } from './route';
 import type { Side } from './ortho';
 
+/**
+ * Room, in pixels. A layer that holds a label is given its own row between two others, so with
+ * labels the gap between layers is smaller (it is paid on both sides of the label): about as much
+ * room for an edge with a label as for one without.
+ */
 const SPACING = {
-  compact: { node: 16, layer: 32, edge: 10 },
-  normal: { node: 28, layer: 48, edge: 14 },
-  roomy: { node: 44, layer: 76, edge: 20 },
+  compact: { node: 16, layer: 32, labelled: 18, edge: 10 },
+  normal: { node: 28, layer: 48, labelled: 26, edge: 14 },
+  roomy: { node: 44, layer: 76, labelled: 40, edge: 20 },
 } as const;
 
 const SIDE: Record<Side, string> = { top: 'NORTH', right: 'EAST', bottom: 'SOUTH', left: 'WEST' };
@@ -38,6 +43,7 @@ export async function layoutElk(
   const down = direction === 'DOWN';
   // Self loops are drawn by the diagram: ELK's own are a few pixels across.
   const routed = tree.edges.filter((edge) => edge.source !== edge.target);
+  const labelled = routing !== 'straight' && routed.some((edge) => (edge.label ?? '') !== '');
 
   const ports = new Map<string, Set<Side>>();
   const want = (node: string, side: Side | undefined) => {
@@ -103,7 +109,7 @@ export async function layoutElk(
       'elk.edgeRouting': routing === 'orthogonal' ? 'ORTHOGONAL' : 'POLYLINE',
       'elk.json.edgeCoords': 'ROOT',
       'elk.spacing.nodeNode': String(space.node),
-      'elk.layered.spacing.nodeNodeBetweenLayers': String(space.layer),
+      'elk.layered.spacing.nodeNodeBetweenLayers': String(labelled ? space.labelled : space.layer),
       'elk.spacing.edgeNode': String(space.edge),
       'elk.spacing.edgeEdge': String(space.edge * 0.6),
       'elk.layered.spacing.edgeNodeBetweenLayers': String(space.edge),

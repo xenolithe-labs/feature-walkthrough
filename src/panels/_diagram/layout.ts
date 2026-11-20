@@ -307,7 +307,60 @@ function applyPins(
   return out;
 }
 
+/**
+ * A disc node's box holds the label beneath the disc, so a line that ends at the box would end
+ * beside the label. Lines end on the disc instead: the end point moves to where the line from the
+ * disc's centre towards the next point meets the disc's rim.
+ */
+function clipToDiscs(
+  nodes: readonly LayoutNode[],
+  edges: readonly LayoutEdge[],
+  positions: Positions,
+  routes: Record<string, Route>,
+): Record<string, Route> {
+  const discs = nodes.filter((node) => node.disc !== undefined);
+  if (discs.length === 0) return routes;
+  const boxes = absoluteBoxes(discs, positions);
+  const byId = new Map(discs.map((node) => [node.id, node]));
+  const out: Record<string, Route> = {};
+  for (const edge of edges) {
+    const route = routes[edge.id];
+    if (route === undefined) continue;
+    const points = route.points.map((point) => ({ ...point }));
+    const clip = (id: string, end: number, next: number) => {
+      const node = byId.get(id);
+      const box = boxes.get(id);
+      if (node?.disc === undefined || box === undefined || points.length < 2) return;
+      const radius = node.disc / 2;
+      const centre = { x: box.x + box.width / 2, y: box.y + radius };
+      const toward = points[next]!;
+      const length = Math.hypot(toward.x - centre.x, toward.y - centre.y);
+      if (length <= radius) return;
+      points[end] = {
+        x: centre.x + ((toward.x - centre.x) / length) * radius,
+        y: centre.y + ((toward.y - centre.y) / length) * radius,
+      };
+    };
+    clip(edge.source, 0, 1);
+    clip(edge.target, points.length - 1, points.length - 2);
+    out[edge.id] = { ...route, points };
+  }
+  return { ...routes, ...out };
+}
+
 async function compute(
+  nodes: readonly LayoutNode[],
+  edges: readonly LayoutEdge[],
+  direction: Direction,
+  mode: LayoutMode,
+  options: LayoutOptions,
+): Promise<Layout> {
+  const result = await place(nodes, edges, direction, mode, options);
+  if (result.kind === 'hub') return result;
+  return { ...result, routes: clipToDiscs(nodes, edges, result.positions, result.routes) };
+}
+
+async function place(
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
   direction: Direction,

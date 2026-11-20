@@ -15,7 +15,11 @@ reader moves through it one call at a time. You write the JSON; you never write 
 1. Write the config (start from [`example.json`](example.json)).
 2. Check it: `npx feature-walkthrough lint flow.json`. It exits 1 on errors and prints one line per
    problem with the path, such as `steps[2].calls[0].effects.graph[1]`.
-3. Fix every error and every warning, then lint again until it prints `ok`.
+3. Fix every error and every warning, then lint again until it prints `ok`. For `graph` and `flow`
+   panes, lint also runs the real layout and warns about what the picture would look like (an edge
+   through a node, a label on a line, a diagram too wide to read): you cannot see the picture, so
+   apply the hint the warning names (`fromSide`, `routing`, `spacing`, `direction`, a cell) and lint
+   again.
 4. Show it: `npx feature-walkthrough flow.json` serves it locally, or
    `npx feature-walkthrough build flow.json -o flow.html` writes one self-contained HTML file.
    Both add syntax colours to code panes. To get colours into a JSON file that is loaded some
@@ -199,8 +203,8 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 - **`graph`, `flow`**: nodes `{ id, label, sub?, kind?, tone? }` and edges `{ from, to, label?, id? }`.
   `kind` is `step`, `decision` or `terminal`. An edge without an `id` gets the id `from.to`
   (for example `cached.query`); give an explicit `id` when two edges join the same pair. Read the
-  edge as well as the node to show which way a decision went. `fields` can change `label`, `sub`
-  and `tone`. `direction` is `RIGHT` or `DOWN`. Cloud and cluster topologies add the following:
+  edge as well as the node to show which way a decision went. `fields` can change `label`, `sub`,
+  `tone` and `badge`. `direction` is `RIGHT` or `DOWN`. Cloud and cluster topologies add the following:
   - **Groups.** A node with `"parent": "<id>"` is drawn inside that node, which becomes a container
     around its children (one element type: a group takes marks, tones, selection and edges like any
     node, and an edge may start or end at one). Groups nest. A group does not fade while the call
@@ -213,7 +217,7 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
     the boundary node itself does not cross it.
   - **Icons.** `"icon": "<name>"` puts a glyph on a node or group. Built in: `server`, `database`,
     `queue`, `balancer`, `user`, `lock`, `cloud`, `globe`, `function`, `storage`, `cache`,
-    `container`, `key`, `shield`, `network`, `gateway`, `document`. A pane's own
+    `container`, `key`, `shield`, `network`, `gateway`, `document`, `package`, `bug`, `users`, `alert`. A pane's own
     `"icons": { "name": "M12 2 …" }` adds more (provider icons you supply): a value is SVG path data
     drawn in a 24 by 24 box as an outline, or `{ "d": "…", "fill": true, "size": 64 }` for a filled
     shape in a box of another size. Only path data is accepted (letters of path commands, numbers,
@@ -227,7 +231,70 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
     `{ "read": "reply-edge", "reverse": true }` runs it from target to source, for a reply. `reverse`
     is only for the `read` of an edge. An edge may have `"weight"` (0.5 to 12, its stroke width in
     pixels) and `update` may change it: `{ "update": "e", "fields": { "weight": 6 } }`.
-    and `tone`. `direction` is `RIGHT` or `DOWN`.
+  - **Lines.** Edges follow a route round the nodes, not a straight line through them. Pane
+    `"routing"`: `"orthogonal"` (the default: right angles with rounded corners), `"curved"` (smooth
+    curves) or `"straight"` (the old straight lines between borders; a straight line can cross a
+    node). `"spacing"`: `"compact"`, `"normal"` (default) or `"roomy"`, the room between nodes and
+    layers. `"order": "declared"` keeps nodes in the order you declared them within a layer, even
+    where that makes lines cross (left alone, the layout reorders to avoid crossings). An edge may
+    say `"routing"` (`"straight"`, `"orthogonal"` or `"curved"`: how this one line is drawn),
+    `"fromSide"` and `"toSide"` (`"top"`, `"right"`, `"bottom"`, `"left"`: the side of its node the
+    line leaves or arrives by). A node may say `"rank": "first"` or `"last"`: the first or last
+    layer of a layered layout. A label sits on a pill where the layout put it. Routes come from the
+    layout, so they never change between calls; a pinned or grid diagram is routed by a router that
+    goes round every node; the tree layout, a diagram too dense to lay out (over 200 edges and three
+    per node) and slot arrows draw straight lines (slot arrows have their own router); a node
+    that moves between parents draws its edges straight. A self loop is always drawn beside its node.
+  - **Placing nodes by hand.** Do not write pixels. In order of preference:
+    1. `"cell": [column, row]`, whole numbers that only give the order (empty columns and rows take
+       no room, so start at 0 or 1), with `"span": [columns, rows]` to cover more than one cell. The
+       column widths and row heights come from the nodes in them, so text never overlaps. Inside a
+       group, cells are relative to the group. As soon as any node of a pane (or of a group) has a
+       cell or a relative place, that pane (group) is placed by the grid: nodes with no cell go into
+       the first free cell, one column past the furthest node that points at them (one row, for
+       `direction: "DOWN"`); lines are routed round the nodes, in the gaps between columns and rows.
+       Absent nodes keep their cell, so nothing moves between calls.
+    2. Relative to a node of the same group: `"rightOf": "<id>"` (the next column, same row),
+       `"below": "<id>"` (the next row, same column), both together (column from `rightOf`, row from
+       `below`), `"alignWith": "<id>"` (same row; same column when `below` is also given). They
+       resolve to cells, so a cycle (`a` right of `b`, `b` below `a`), an unknown name, a name in
+       another group, or two nodes that end up in one cell are lint errors.
+    3. `"x"` and `"y"` pixel pins. When every node is pinned, positions are as given. When only some
+       are, the layered layout places the rest and the pinned nodes keep the axes you gave; nodes
+       that would overlap a pin move along their free axis. Pins are not used (and lint says
+       `pin-ignored`, never silently) in a pane with groups, with cells, or with `layout` `tree` or
+       `hub`, unless every node is pinned. Not built: `via` (cells an edge must pass) and "same rank
+       as": nothing honours them predictably.
+  - **Shapes.** `"shape"`: `"box"` (default), `"circle"` (a disc with the icon in it and the label,
+    one or two short lines, beneath it; the line meets the disc) or `"pill"`. `"badge"`: a small count or
+    short text (at most 8 characters) on a node's corner; `update` may change it:
+    `{ "update": "apps", "fields": { "badge": 7 } }`. `"more": 4` draws a dashed disc reading `+4`: it
+    stands for four children that are not drawn (give it a label such as `Show all`). `"accent"`:
+    `red`, `amber`, `violet`, `blue` or `teal`, a ring colour for a kind of thing. Colour never
+    carries meaning alone: the pane's `"accents": { "red": "Weakness" }` must explain every colour
+    used (lint error `unknown-accent` otherwise); it is shown as a key beside the diagram and
+    added to the node's accessible name. Marks (added, read, ...) still show over an accent.
+    More built-in icons: `package`, `bug`, `users`, `alert`.
+  - **Hub layout.** `"layout": "hub"` puts one node in the middle (the root of the tree with the most
+    nodes; tree edges are found as for `tree`: the first edge that points at a node makes its source
+    the parent) with the trees that hang from it fanning out to its left and right, level after
+    level, with a smooth curve from each parent to its children, leaving together. A child of the
+    hub says `"side": "left"` or `"right"`; without one it goes to the side with fewer nodes so far.
+    Use it with `"shape": "circle"` nodes. See the dependency-vulnerability demo
+    (`src/walkthroughs/dependency-vulnerability.ts`).
+  - **Layout feedback.** `lint` also runs the real layout of every `graph` and `flow` pane (in Node:
+    text estimates give the sizes, so it needs no browser) and warns, naming the elements:
+    `edge-through-node` ("edge a→b passes through node "c"; try "fromSide": "bottom" on edge a.b, or
+    pin node c elsewhere"), `label-overlap`, `edge-crossings` (more pairs of crossing edges than
+    `max(4, 0.4 × edges)`), `node-overlap` (pinned nodes on top of each other, with a place to move
+    one to), `too-dense`, `too-wide` (the diagram would need a zoom below 0.6 to fit a 560 px pane:
+    try `"direction"`, `"spacing": "compact"`, or split it) and `not-routed` (too many nodes for the
+    router: edges are drawn straight). They are warnings: lint still exits 0. They are skipped for a
+    walkthrough that has errors, so fix those first. The loop: lint, apply the hint the warning
+    names, lint again, until the layout warnings are gone. Other lint rules for hints (all in
+    `graph/` and `flow/`): `unknown-anchor`, `placement-cycle`, `cell-taken`, `span-without-cell`,
+    `pin-ignored`, `hint-ignored` (a hint with nothing to act on, such as `rank` in a tree layout),
+    `unknown-accent`; a bad value of any hint is a schema error.
     **Records** (data structures): a node may have `slots`, an ordered row (or, with
     `"arrange": "column"`, a column) of named places, each `{ id, value?, label?, tone? }`. A slot is
     an element with the id `node.slot`: `read` marks it, `update` with `fields.value` (text or a

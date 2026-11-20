@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../../src/core';
 import { crossings, labelHits, throughNodes } from '../../src/panels/_diagram/audit';
-import { drawn } from '../../src/panels/_diagram/layout-lint';
+import { drawn, layoutProblems } from '../../src/panels/_diagram/layout-lint';
 import {
   layoutEdgesOf,
   layoutNodesOf,
@@ -28,6 +28,8 @@ async function measureDemos() {
     routedThrough: number;
     labelHits: number;
     crossings: number;
+    size: string;
+    sizeBefore: string;
   }[] = [];
   for (const walkthrough of loaded.walkthroughs) {
     for (const pane of walkthrough.panes) {
@@ -41,7 +43,22 @@ async function measureDemos() {
       const routed = await layoutFull(nodes, edges, content.direction, content.layout, options);
       const asRouted = drawn(content, routed, nodes);
       const asStraight = drawn({ ...content, routing: 'straight' }, routed, nodes);
+      const extent = (boxes: Iterable<{ x: number; y: number; width: number; height: number }>) => {
+        const all = [...boxes];
+        const w = Math.max(...all.map((b) => b.x + b.width)) - Math.min(...all.map((b) => b.x));
+        const h = Math.max(...all.map((b) => b.y + b.height)) - Math.min(...all.map((b) => b.y));
+        return `${Math.round(w)}x${Math.round(h)}`;
+      };
+      // What the layout was before routes: no label room, and lines left to the diagram.
+      const before = await layoutFull(nodes, edges, content.direction, content.layout, {
+        ...options,
+        routing: 'straight',
+      });
       rows.push({
+        size: extent(asRouted.boxes.values()),
+        sizeBefore: extent(
+          drawn({ ...content, routing: 'straight' }, before, nodes).boxes.values(),
+        ),
         demo: walkthrough.id,
         pane: pane.id,
         nodes: content.nodes.length,
@@ -68,7 +85,7 @@ describe('routed edges in the bundled demos (measured)', () => {
         'demo / pane: nodes, edges, layout; edges through an unrelated node straight -> routed; label hits; edge crossings',
         ...rows.map(
           (row) =>
-            `${row.demo} / ${row.pane}: ${row.nodes} nodes, ${row.edges} edges, ${row.kind}; ` +
+            `${row.demo} / ${row.pane}: ${row.nodes} nodes, ${row.edges} edges, ${row.kind}; size ${row.sizeBefore} -> ${row.size}; ` +
             `${row.straightThrough} -> ${row.routedThrough}; labels ${row.labelHits}; crossings ${row.crossings}`,
         ),
       ].join('\n'),
@@ -77,5 +94,17 @@ describe('routed edges in the bundled demos (measured)', () => {
     for (const row of rows) {
       expect(row.routedThrough, `${row.demo} / ${row.pane}`).toBe(0);
     }
+  });
+
+  it('layout lint on the bundled demos: what it says about each (and nothing about edges through nodes)', async () => {
+    const found = await layoutProblems({ walkthroughs: plainDemos }, createRegistry());
+    console.info(
+      found.length === 0
+        ? 'layout lint: no findings in any demo'
+        : found
+            .map((p) => `${p.rule} at ${JSON.stringify(p.path.slice(0, 4))}: ${p.message}`)
+            .join('\n'),
+    );
+    expect(found.filter((p) => p.rule.endsWith('/edge-through-node'))).toEqual([]);
   });
 });

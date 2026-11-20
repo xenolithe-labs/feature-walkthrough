@@ -27,6 +27,17 @@ The `graph` and `flow` panels can also draw cloud and cluster topologies: nodes 
 (built in, or your own path data), a node can move between the groups it lists (`parents`), and
 a read edge shows traffic along it, with an optional `weight` as stroke width.
 
+Lines go round the nodes: edges follow the route the layout (ELK) finds, with right angles or
+smooth curves and their labels on a pill, never straight through a node. Optional hints steer the
+layout (`routing`, `spacing`, `order`, an edge's `fromSide` and `toSide`, a node's `rank`), and
+nodes can be placed by hand without pixels: on a grid (`cell`, `span`), relative to a neighbour
+(`rightOf`, `below`, `alignWith`), or pinned on one or both axes. Nodes can be discs with their label
+beneath (`shape: "circle"`), carry a count (`badge`) or a ring colour that the pane explains
+(`accent`, `accents`), and `layout: "hub"` fans trees out to the left and right of one node. The
+`lint` command runs the real layout and warns about what it would look like (an edge through a
+node, a label on a line, a diagram too wide to read) and which hint would fix it, for an author
+who cannot see the picture.
+
 Demos: OAuth 2.0 with PKCE (with an `alt` frame for a failed check), a client retrying with backoff (`loop`, `par`, a lost message), a spreadsheet recalculating, one React state update, a Terraform
 plan and apply (the change as a diff, the plan and apply output as a transcript), and what git stores on add, commit and push (with real object ids). Four
 algorithm demos, recorded from the real code: binary search (found, and not found), quicksort with
@@ -39,7 +50,9 @@ the TCP three-way handshake header by header, a JWE token taken apart and decryp
 consistent-hash ring gaining and losing a node. Cloud topology: a VPC drawn with nested
 groups, an HTTPS request into an app, then a rolling replacement of an instance. Three data-structure demos, also recorded
 from the real code: reversing a linked list in place, inserting into a binary search tree, and a
-hash table that chains a collision.
+hash table that chains a collision. And one advisory at the centre of a dependency-vulnerability
+investigation, with the weaknesses and exploit signals on one side and what it reaches on the other
+(the hub layout; every name in it is invented).
 
 Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 
@@ -49,7 +62,7 @@ Write a JSON config, then:
 
 ```sh
 npx feature-walkthrough flow.json                      # check it, then show it in the browser
-npx feature-walkthrough lint flow.json                 # check only; exits 1 on errors
+npx feature-walkthrough lint flow.json                 # check only (and the layout of diagrams); exits 1 on errors
 npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
 npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config

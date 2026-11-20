@@ -63,10 +63,7 @@ async function read(file: string): Promise<unknown> {
 }
 
 /** Reads and checks one file, printing its problems. */
-async function check(
-  file: string,
-  withLayout = false,
-): Promise<{ ok: boolean; config?: unknown }> {
+async function check(file: string, withLayout = false): Promise<{ ok: boolean; config?: unknown }> {
   let config: unknown;
   try {
     config = await read(file);
