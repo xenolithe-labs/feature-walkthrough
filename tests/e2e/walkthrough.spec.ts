@@ -25,7 +25,13 @@ async function open(page: Page, hash = ''): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`/${hash}`);
   await expect(shell(page)).toBeVisible();
-  await expect(page.locator('.react-flow__node').first()).toBeAttached();
+  await expect(page.locator('.fw-pane').first()).toBeVisible();
+  // A graph or flow pane draws its nodes a moment later. Not every walkthrough has one.
+  await page.waitForFunction(
+    () =>
+      document.querySelector('.fw-pane[data-panel="graph"], .fw-pane[data-panel="flow"]') ===
+        null || document.querySelector('.react-flow__node') !== null,
+  );
 }
 
 for (const walkthrough of walkthroughs) {
@@ -59,15 +65,23 @@ for (const walkthrough of walkthroughs) {
   test(`${walkthrough.id}: no element moves between the first call and the last`, async ({
     page,
   }) => {
+    // Graph and flow nodes, and the cells and index labels of an array. Pointers and ranges
+    // move by design, but the cells they move over must not.
     const places = () =>
-      page
-        .locator('.react-flow__node')
-        .evaluateAll((nodes) =>
-          nodes.map((node) => [
-            node.getAttribute('data-id'),
-            (node as HTMLElement).style.transform,
-          ]),
-        );
+      page.locator('.react-flow__node, .fw-array-cell, .fw-array-index').evaluateAll((nodes) =>
+        nodes.map((node) => {
+          if (node.classList.contains('react-flow__node')) {
+            return [node.getAttribute('data-id'), (node as HTMLElement).style.transform];
+          }
+          const box = node.getBoundingClientRect();
+          const pane = node.closest('.fw-pane')!.getBoundingClientRect();
+          return [
+            node.getAttribute('data-entity') ?? node.textContent,
+            Math.round(box.left - pane.left),
+            Math.round(box.top - pane.top),
+          ];
+        }),
+      );
     await open(page, `#w=${walkthrough.id}`);
     const before = await places();
     expect(before.length).toBeGreaterThan(0);
@@ -329,5 +343,72 @@ test('git demo: a link in a payload selects the same commit in the graph, and ra
   );
   await expect(page.locator('.fw-schema-relation[data-entity="commit.parent:commit"]')).toHaveClass(
     /is-read/,
+  );
+});
+
+test('algorithm demos: the array shows pointers, the window and the code pointer', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // Round 2, the call that asks "which side is it on?": lo=5, hi=9, mid=7.
+  await open(page, '#w=binary-search&s=3&c=4');
+  await expect(page.locator('.fw-array-pointer[data-entity="lo"]')).toHaveAttribute(
+    'aria-label',
+    'pointer lo: index 5 (value 31)',
+  );
+  await expect(page.locator('.fw-array-cell[data-entity="items.7"]')).toHaveAttribute(
+    'data-mark',
+    'read',
+  );
+  // Everything left of lo is outside the window and dimmed; the window itself is not.
+  await expect(page.locator('.fw-array-cell[data-entity="items.4"]')).toHaveAttribute(
+    'data-dim',
+    'true',
+  );
+  await expect(page.locator('.fw-array-cell[data-entity="items.6"]')).not.toHaveAttribute(
+    'data-dim',
+    /.*/,
+  );
+  await expect(page.locator('.fw-array-range[data-entity="window"]')).toHaveAttribute(
+    'aria-label',
+    'range window: indexes 5 to 9',
+  );
+  // The code panel points at line 9 and marks just the comparison inside it.
+  await expect(page.locator('.fw-code-line[data-at]')).toHaveAttribute('data-line', '9');
+  await expect(page.locator('.fw-code-expr')).toHaveText('items[mid] < target');
+
+  // A cell can be chosen with the keyboard and the choice goes into the address.
+  await page.locator('.fw-array-cell[data-entity="items.6"]').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=items\.6/);
+  await expect(page.locator('.fw-array-cell[data-entity="items.6"]')).toHaveClass(/is-selected/);
+
+  // The last call of the miss: hi is one off the left end and the window is empty.
+  await page.goto('/#w=binary-search-missing&s=5&c=2');
+  await expect(page.locator('.fw-array-pointer[data-entity="hi"]')).toHaveAttribute(
+    'data-off',
+    'before',
+  );
+  await expect(page.locator('.fw-array-range[data-entity="window"]')).toHaveAttribute(
+    'data-mark',
+    'absent',
+  );
+  expect(errors).toEqual([]);
+});
+
+test('algorithm demos: a call stack, a queue and a table follow the code', async ({ page }) => {
+  await open(page, '#w=quicksort&s=1&c=1');
+  await expect(page.locator('.fw-box[data-entity="stack.0"]')).not.toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-box[data-entity="stack.1"]')).toHaveClass(/is-absent/);
+  await page.goto('/#w=quicksort&s=16&c=2');
+  await expect(page.locator('.fw-array-cell[data-tone="good"]')).toHaveCount(7);
+
+  await page.goto('/#w=bfs&s=8&c=2');
+  await expect(page.locator('.fw-array-cell:not(.is-absent)')).toHaveCount(6);
+  await expect(page.locator('.react-flow__node.is-absent')).toHaveCount(0);
+
+  await page.goto('/#w=edit-distance&s=6&c=1');
+  await expect(page.locator('.fw-table tr[data-entity="dp.r4"] td[data-column="c4"]')).toHaveText(
+    '2',
   );
 });

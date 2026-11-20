@@ -1,5 +1,5 @@
 import { Recorder } from '../../recorder';
-import { quicksort, useRecorder } from './quicksort.algo';
+import { quicksort, setRecorder } from './quicksort.algo';
 
 /**
  * The text the reader sees. `tests/unit/algorithms.test.ts` checks that it is the algorithm in
@@ -44,7 +44,7 @@ export function recordQuicksort() {
     ranges: [{ id: 'active', label: 'sorting this range', dim: true }],
   });
   rec.stack('stack', { title: 'Call stack' });
-  useRecorder(rec);
+  setRecorder(rec);
   rec.step('Sort the whole array');
   quicksort(items, 0, items.length - 1);
   return { config: rec.finish(), result: items };

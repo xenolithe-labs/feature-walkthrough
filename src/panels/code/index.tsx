@@ -70,6 +70,8 @@ function expand(lines: unknown): number[] {
   return result;
 }
 
+const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'set', 'fields', 'lines', 'expr'];
+
 const MARK = { add: 'added', update: 'updated', read: 'read', remove: 'removed' } as const;
 
 function CodeView({
@@ -202,6 +204,16 @@ export const codePanel: PanelType<CodeContent, ElementsState> = {
           const { id } = effectTarget(effect);
           if (id === undefined || !sourceLines.has(id)) return;
           const at = ['steps', s, 'calls', c, 'effects', pane.id, e];
+          // A misspelt key ("line" for "lines") is otherwise ignored without a word.
+          for (const key of Object.keys(effect)) {
+            if (EFFECT_KEYS.includes(key)) continue;
+            problems.push({
+              severity: 'warning',
+              rule: 'code/unknown-key',
+              path: [...at, key],
+              message: `an effect on a source takes ${EFFECT_KEYS.join(', ')}; "${key}" is ignored`,
+            });
+          }
           const replaced = text(effect.fields?.text);
           if (replaced !== undefined) sourceLines.set(id, replaced.split('\n'));
           const lines = sourceLines.get(id)!;

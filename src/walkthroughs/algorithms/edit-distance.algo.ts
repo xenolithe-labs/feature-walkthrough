@@ -5,7 +5,7 @@
 // @ts-nocheck
 let rec;
 
-export function useRecorder(recorder) {
+export function setRecorder(recorder) {
   rec = recorder;
 }
 

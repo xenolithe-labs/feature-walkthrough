@@ -172,6 +172,7 @@ export class Recorder {
   private readonly visits = new Map<string, number>();
   private readonly titles = new Map<string, number>();
   private readonly deferred: (() => void)[] = [];
+  private firstTitle: string | undefined;
   /** Set by `leave`: what follows belongs to the caller's next call, not to the one that returned. */
   private sealed = false;
   private readonly queue: [string, Effect][] = [];
@@ -293,8 +294,13 @@ export class Recorder {
   at(lines: Lines, snippet: string, options: AtOptions = {}): void {
     const [first, last] = checkLines(this.source.text, lines, snippet);
     if (!this.started) this.start();
-    if (this.steps.length === 0) this.openStep('Run');
-    else if (this.stepTitle !== undefined && this.options.steps === 'frames' && !this.manualStep) {
+    if (this.steps.length === 0) {
+      this.openStep(this.options.steps === 'frames' ? (this.firstTitle ?? 'Run') : 'Run');
+    } else if (
+      this.stepTitle !== undefined &&
+      this.options.steps === 'frames' &&
+      !this.manualStep
+    ) {
       this.openStep(this.stepTitle);
     }
     this.stepTitle = undefined;
@@ -445,7 +451,12 @@ export class Recorder {
   enter(name: string, args: Record<string, Scalar> = {}): void {
     if (!this.started) {
       // The outermost call starts before any line has run: it joins the first call.
-      this.deferred.push(() => this.enter(name, args));
+      this.firstTitle ??= `${name}(${Object.values(args).join(', ')})`;
+      this.deferred.push(() => {
+        this.enter(name, args);
+        // The first call's step is already open: this frame does not start another.
+        this.stepTitle = undefined;
+      });
       return;
     }
     this.open('enter');
@@ -693,19 +704,18 @@ export class Recorder {
   // ---- Tracking ----
 
   private track(view: ArrayState): Scalar[] {
-    const recorder = this;
     return new Proxy(view.data, {
-      get(target, prop, receiver) {
+      get: (target, prop, receiver) => {
         if (typeof prop === 'string' && INDEX.test(prop)) {
           const index = Number(prop);
-          if (index < target.length && recorder.started && view.present.has(index)) {
-            recorder.emit(view.pane, { read: `${view.id}.${index}` });
+          if (index < target.length && this.started && view.present.has(index)) {
+            this.emit(view.pane, { read: `${view.id}.${index}` });
           }
           return Reflect.get(target, prop);
         }
         return Reflect.get(target, prop, receiver);
       },
-      set(target, prop, value) {
+      set: (target, prop, value) => {
         if (typeof prop === 'string' && INDEX.test(prop)) {
           const index = Number(prop);
           if (!isScalar(value))
@@ -717,13 +727,13 @@ export class Recorder {
           const fresh = !view.present.has(index);
           Reflect.set(target, prop, value);
           view.longest = Math.max(view.longest, target.length);
-          if (recorder.started) {
+          if (this.started) {
             const cell = `${view.id}.${index}`;
             if (fresh) {
               view.present.add(index);
-              recorder.emit(view.pane, { add: cell });
+              this.emit(view.pane, { add: cell });
             }
-            recorder.emit(view.pane, { update: cell, fields: { value } });
+            this.emit(view.pane, { update: cell, fields: { value } });
           } else {
             view.present.add(index);
           }
@@ -733,13 +743,13 @@ export class Recorder {
           const length = Number(value);
           if (length > target.length)
             throw new RangeError('cannot grow an array by setting its length');
-          for (let index = length; index < target.length; index += 1) recorder.drop(view, index);
+          for (let index = length; index < target.length; index += 1) this.drop(view, index);
           return Reflect.set(target, prop, value);
         }
         return Reflect.set(target, prop, value);
       },
-      deleteProperty(target, prop) {
-        if (typeof prop === 'string' && INDEX.test(prop)) recorder.drop(view, Number(prop));
+      deleteProperty: (target, prop) => {
+        if (typeof prop === 'string' && INDEX.test(prop)) this.drop(view, Number(prop));
         return Reflect.deleteProperty(target, prop);
       },
     });
@@ -752,23 +762,22 @@ export class Recorder {
   }
 
   private trackRow(view: GridState, row: number): Cell[] {
-    const recorder = this;
     const rowId = `${view.id}.r${row}`;
     return new Proxy(view.data[row]!, {
-      get(target, prop, receiver) {
+      get: (target, prop, receiver) => {
         if (
           typeof prop === 'string' &&
           INDEX.test(prop) &&
           Number(prop) < target.length &&
-          recorder.started
+          this.started
         ) {
-          recorder.emit(view.id, { read: rowId, cells: [`c${prop}`] });
+          this.emit(view.id, { read: rowId, cells: [`c${prop}`] });
         }
         return Reflect.get(target, prop, receiver);
       },
-      set(target, prop, value) {
-        if (typeof prop === 'string' && INDEX.test(prop) && recorder.started) {
-          recorder.emit(view.id, { update: rowId, fields: { [`c${prop}`]: show(value as Cell) } });
+      set: (target, prop, value) => {
+        if (typeof prop === 'string' && INDEX.test(prop) && this.started) {
+          this.emit(view.id, { update: rowId, fields: { [`c${prop}`]: show(value as Cell) } });
         }
         return Reflect.set(target, prop, value);
       },

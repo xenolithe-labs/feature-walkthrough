@@ -1,5 +1,5 @@
 import { Recorder } from '../../recorder';
-import { binarySearch, useRecorder } from './binary-search.algo';
+import { binarySearch, setRecorder } from './binary-search.algo';
 
 /**
  * The text the reader sees. `tests/unit/algorithms.test.ts` checks that it is the algorithm in
@@ -39,7 +39,7 @@ export function recordBinarySearch(
     ranges: [{ id: 'window', from: 'lo', to: 'hi', label: 'window', dim: true }],
   });
   rec.vars('vars', { target, lo: '', hi: '', mid: '', result: '' }, { title: 'Variables' });
-  useRecorder(rec);
+  setRecorder(rec);
   const result = binarySearch(items, target);
   return { config: rec.finish(), result };
 }

@@ -236,7 +236,7 @@ describe('edit distance', () => {
       rows: { id: string; cells: Record<string, string> }[];
     };
     const state = finalState(walkthrough)['dp']!.state as ElementsState;
-    const shown = content.rows.map((row, i) =>
+    const shown = content.rows.map((row) =>
       Array.from({ length: b.length + 1 }, (_, j) => {
         const patched = state.patches[row.id]?.[`c${j}`];
         return Number(typeof patched === 'string' ? patched : row.cells[`c${j}`]);

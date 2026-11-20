@@ -1,5 +1,5 @@
 import { Recorder } from '../../recorder';
-import { editDistance, useRecorder } from './edit-distance.algo';
+import { editDistance, setRecorder } from './edit-distance.algo';
 
 /**
  * The text the reader sees. `tests/unit/algorithms.test.ts` checks that it is the algorithm in
@@ -58,7 +58,7 @@ export function recordEditDistance() {
     },
     { title: 'dp: edits needed for each pair of prefixes' },
   );
-  useRecorder(rec);
+  setRecorder(rec);
   const run = editDistance as unknown as (a: string, b: string, dp: (number | null)[][]) => number;
   const result = run(a, b, dp);
   return { config: rec.finish(), result, table: dp };

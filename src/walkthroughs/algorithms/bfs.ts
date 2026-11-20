@@ -1,5 +1,5 @@
 import { Recorder } from '../../recorder';
-import { bfs, useRecorder } from './bfs.algo';
+import { bfs, setRecorder } from './bfs.algo';
 
 /**
  * The text the reader sees. `tests/unit/algorithms.test.ts` checks that it is the algorithm in
@@ -67,7 +67,7 @@ export function recordBfs() {
     pointers: ['head'],
   });
   rec.vars('vars', { node: '', next: '', head: '' }, { title: 'Variables' });
-  useRecorder(rec);
+  setRecorder(rec);
   const run = bfs as unknown as (
     graph: Record<string, string[]>,
     start: string,

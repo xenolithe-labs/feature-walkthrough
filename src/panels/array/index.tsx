@@ -42,6 +42,7 @@ import {
 } from './model';
 import './array.css';
 
+const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'set', 'fields'];
 const CELL_FIELDS = ['value', 'tone'];
 const POINTER_FIELDS = ['at', 'label', 'tone'];
 const RANGE_FIELDS = ['from', 'to', 'label', 'tone'];
@@ -55,22 +56,15 @@ interface Shared {
   toggle(id: string): void;
 }
 
-/** Enter and Space select; the arrow keys walk along the shown cells of one array. */
+/**
+ * Enter and Space select. The arrow keys are left alone: they move through the walkthrough, here
+ * as everywhere on the page. Tab reaches each shown cell, pointer and range.
+ */
 function keys(select: () => void) {
   return (event: KeyboardEvent<HTMLElement>) => {
-    if (event.target !== event.currentTarget) return;
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault();
       select();
-      return;
-    }
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    const row = event.currentTarget.closest('.fw-array-grid');
-    const cells = [...(row?.querySelectorAll<HTMLElement>('.fw-array-cell:not(.is-absent)') ?? [])];
-    const next = cells[cells.indexOf(event.currentTarget) + (event.key === 'ArrowLeft' ? -1 : 1)];
-    if (next !== undefined) {
-      event.preventDefault();
-      next.focus();
     }
   };
 }
@@ -151,12 +145,7 @@ function Pointer({
       aria-pressed={shared.selected === pointer.id}
       aria-label={`pointer ${label}: ${describePointer(shared.content, pointer, shared.state)}`}
       onClick={select}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          select();
-        }
-      }}
+      onKeyDown={keys(select)}
     >
       {off ? `${label} = ${at}` : label}
     </div>
@@ -203,12 +192,7 @@ function Range({
       aria-pressed={shared.selected === range.id}
       aria-label={`range ${label}: ${words}`}
       onClick={select}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          select();
-        }
-      }}
+      onKeyDown={keys(select)}
     >
       <span>{label}</span>
     </div>
@@ -488,6 +472,15 @@ export const arrayPanel: PanelType<ArrayContent, ElementsState> = {
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
         (call.effects?.[pane.id] ?? []).forEach((effect, e) => {
+          for (const key of Object.keys(effect)) {
+            if (EFFECT_KEYS.includes(key)) continue;
+            problems.push({
+              severity: 'warning',
+              rule: 'array/unknown-key',
+              path: ['steps', s, 'calls', c, 'effects', pane.id, e, key],
+              message: `an effect on an array takes ${EFFECT_KEYS.join(', ')}; "${key}" is ignored`,
+            });
+          }
           const { verb, id } = effectTarget(effect);
           const kind = id === undefined ? undefined : kinds.get(id);
           if (kind === undefined || verb !== 'update') return;
