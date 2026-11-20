@@ -23,6 +23,7 @@ import {
   type Walkthrough,
 } from '../../core';
 import { useWidth } from '../_shared/hooks';
+import { revealScroll } from '../_shared/reveal';
 import './sequence.css';
 
 const SequenceContent = z
@@ -56,6 +57,19 @@ function touches(call: Call, id: string): boolean {
 }
 
 const MIN_GAP = 88;
+const MAX_MIN_GAP = 150;
+
+/**
+ * The narrowest a lane may be: wide enough that the longest unbreakable word of a lane title
+ * is not split in the middle, up to a ceiling, so long titles wrap between words instead.
+ */
+export function minLaneGap(titles: readonly string[]): number {
+  const longest = Math.max(
+    0,
+    ...titles.flatMap((title) => title.split(/\s+/).map((w) => w.length)),
+  );
+  return Math.min(MAX_MIN_GAP, Math.max(MIN_GAP, Math.ceil(longest * CHAR) + 24));
+}
 const ROW = 46;
 const TOP = 30;
 const BOTTOM = 18;
@@ -78,7 +92,8 @@ function SequenceView({
   const [frame, width] = useWidth<HTMLDivElement>();
   const scroller = useRef<HTMLDivElement | null>(null);
 
-  const gap = Math.max(MIN_GAP, Math.floor(width / Math.max(lanes.length, 1)));
+  const floor = useMemo(() => minLaneGap(lanes.map((lane) => lane.title)), [lanes]);
+  const gap = Math.max(floor, Math.floor(width / Math.max(lanes.length, 1)));
   const total = gap * lanes.length;
   const height = TOP + messages.length * ROW + BOTTOM;
   const laneX = (id: string) => gap * lanes.findIndex((lane) => lane.id === id) + gap / 2;
@@ -98,6 +113,22 @@ function SequenceView({
       box.scrollTop = Math.max(0, y - box.clientHeight / 2);
     }
   }, [currentIndex]);
+
+  // With more lanes than fit, the lanes of the current message may be out of sight sideways.
+  useEffect(() => {
+    const box = scroller.current;
+    const message = messages[currentIndex];
+    if (box === null || message === undefined) return;
+    const ends = [laneX(message.from!), laneX(message.to!)];
+    const start = Math.min(...ends) - gap / 2;
+    const x = revealScroll(
+      { scroll: box.scrollLeft, size: box.clientWidth },
+      { start, size: Math.max(...ends) + gap / 2 - start },
+      0,
+    );
+    if (x !== undefined) box.scrollLeft = x;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, gap]);
 
   const toggle = (id: string) => ctx.selection.select(selected === id ? undefined : id);
 

@@ -21,6 +21,7 @@ import {
   type Problem,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
+import { useRevealTouched } from '../_shared/reveal';
 import './schema.css';
 
 const ColumnSchema = z.strictObject({
@@ -169,7 +170,7 @@ function SchemaView({
     return ids;
   }, [content, state.present, current]);
 
-  const frame = useRef<HTMLDivElement | null>(null);
+  const frame = useRevealTouched<HTMLDivElement>(ctx.call.id);
   const elements = useRef(new Map<string, HTMLElement>());
   const [rects, setRects] = useState<Record<string, Rect>>({});
   const register = (id: string) => (element: HTMLElement | null) => {
@@ -199,7 +200,7 @@ function SchemaView({
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [content, state.patches, shown]);
+  }, [content, state.patches, shown, frame]);
 
   const selected = ctx.selection.id;
   const toggle = (id: string) => ctx.selection.select(selected === id ? undefined : id);

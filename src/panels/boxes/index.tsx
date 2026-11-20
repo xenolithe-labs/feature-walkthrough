@@ -21,6 +21,7 @@ import {
 } from '../../core';
 import { exitPoint, type Box } from '../_diagram/Diagram';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
+import { useRevealTouched } from '../_shared/reveal';
 import './boxes.css';
 
 const BoxSchema = z.strictObject({
@@ -161,7 +162,7 @@ function BoxesView({
     return ids;
   }, [content, state.present, current]);
 
-  const frame = useRef<HTMLDivElement | null>(null);
+  const frame = useRevealTouched<HTMLDivElement>(ctx.call.id);
   const elements = useRef(new Map<string, HTMLDivElement>());
   const [rects, setRects] = useState<Rects>({});
 
@@ -187,7 +188,7 @@ function BoxesView({
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [content, state.patches]);
+  }, [content, state.patches, frame]);
 
   const selected = ctx.selection.id;
   const shared: Shared = {

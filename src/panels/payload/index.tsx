@@ -25,6 +25,7 @@ import {
   type Problem,
 } from '../../core';
 import { TONES, changesSection, toneOf } from '../_shared/changes';
+import { revealScroll } from '../_shared/reveal';
 import { hasPath, isLeaf, isRef, members, patched, setPath } from './paths';
 import './payload.css';
 
@@ -224,10 +225,16 @@ function PayloadView({
     if (box === null || firstTouched === undefined || !current.any) return;
     const card = box.querySelector<HTMLElement>(`[data-entity="${CSS.escape(firstTouched)}"]`);
     if (card === null) return;
-    const top = card.offsetTop - box.offsetTop;
-    if (top < box.scrollTop || top + card.offsetHeight > box.scrollTop + box.clientHeight) {
-      box.scrollTop = Math.max(0, top - 8);
-    }
+    // Within a payload taller than the pane, the field the call marks matters more than the title.
+    const field = card.querySelector<HTMLElement>('[data-path][data-mark]');
+    const target = field ?? card;
+    const frame = box.getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
+    const y = revealScroll(
+      { scroll: box.scrollTop, size: box.clientHeight },
+      { start: rect.top - frame.top + box.scrollTop, size: rect.height },
+    );
+    if (y !== undefined) box.scrollTop = y;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstTouched, ctx.call.id]);
 

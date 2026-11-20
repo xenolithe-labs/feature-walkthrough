@@ -23,7 +23,16 @@ import {
 import '@xyflow/react/dist/style.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { markOf, type Selection, type Touched } from '../../core';
-import { layout, pinned, type Direction, type LayoutNode, type Positions } from './layout';
+import {
+  fitZoom,
+  framing,
+  READABLE_ZOOM,
+  layout,
+  pinned,
+  type Direction,
+  type LayoutNode,
+  type Positions,
+} from './layout';
 import './diagram.css';
 
 export interface DiagramNode extends LayoutNode {
@@ -187,8 +196,17 @@ function usePositions(
  * Keeps the view on the elements that are shown. Positions never change, so
  * the view only zooms and pans as the diagram grows or shrinks.
  */
-function Fit({ frame, shown }: { frame: React.RefObject<HTMLDivElement | null>; shown: string }) {
-  const { fitView } = useReactFlow();
+function Fit({
+  frame,
+  shown,
+  touched,
+}: {
+  frame: React.RefObject<HTMLDivElement | null>;
+  shown: string;
+  /** The shown nodes the current call touches, and the ends of the shown edges it touches. */
+  touched: string;
+}) {
+  const { fitView, getNodes, getNodesBounds } = useReactFlow();
   const ready = useNodesInitialized();
   const first = useRef(true);
   const [size, setSize] = useState(0);
@@ -206,16 +224,30 @@ function Fit({ frame, shown }: { frame: React.RefObject<HTMLDivElement | null>; 
 
   useEffect(() => {
     if (!ready) return;
-    const ids = shown === '' ? [] : shown.split('\n');
+    let ids = shown === '' ? [] : shown.split('\n');
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // A big diagram fitted whole is too small to read: follow the call instead.
+    const element = frame.current;
+    const focus = touched === '' ? [] : touched.split('\n');
+    let minZoom = 0.2;
+    if (element !== null && ids.length > 0 && focus.length > 0) {
+      const shownSet = new Set(ids);
+      const bounds = getNodesBounds(getNodes().filter((node) => shownSet.has(node.id)));
+      const zoom = fitZoom(bounds, element.getBoundingClientRect(), 24, 1.15);
+      if (framing(zoom, focus.length) === 'touched') {
+        ids = focus;
+        minZoom = READABLE_ZOOM;
+      }
+    }
     void fitView({
       ...(ids.length > 0 ? { nodes: ids.map((id) => ({ id })) } : {}),
       maxZoom: 1.15,
+      minZoom,
       padding: '24px',
       duration: first.current || still ? 0 : 250,
     });
     first.current = false;
-  }, [ready, shown, size, fitView]);
+  }, [ready, shown, touched, size, fitView, getNodes, getNodesBounds, frame]);
 
   return null;
 }
@@ -269,6 +301,26 @@ export function Diagram({
     .filter((node) => shownIds.has(node.id))
     .map((node) => node.id)
     .join('\n');
+  // The nodes the call touches, and the ends of the edges it touches.
+  const touchedNodes = useMemo(() => {
+    const ids = new Set<string>();
+    const marks = [...current.added, ...current.updated, ...current.read, ...current.removed];
+    const nodeIds = new Set(nodes.map((node) => node.id));
+    for (const id of marks) {
+      if (!shownIds.has(id)) continue;
+      if (nodeIds.has(id)) ids.add(id);
+    }
+    for (const edge of edges) {
+      if (marks.includes(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target)) {
+        ids.add(edge.source);
+        ids.add(edge.target);
+      }
+    }
+    return nodes
+      .filter((node) => ids.has(node.id))
+      .map((node) => node.id)
+      .join('\n');
+  }, [nodes, edges, current, shownIds]);
 
   // Absent elements stay in the flow, invisible, so that positions are stable.
   const flowNodes = useMemo<Node[]>(() => {
@@ -333,7 +385,7 @@ export function Diagram({
             onEdgeClick={(_, edge) => toggle(edge.id)}
           >
             <Controls showInteractive={false} />
-            <Fit frame={frame} shown={shownNodes} />
+            <Fit frame={frame} shown={shownNodes} touched={touchedNodes} />
           </ReactFlow>
         </ReactFlowProvider>
       )}

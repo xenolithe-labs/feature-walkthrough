@@ -20,6 +20,7 @@ import {
   type Problem,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
+import { useRevealTouched } from '../_shared/reveal';
 import './table.css';
 
 const TableContent = z.strictObject({
@@ -85,9 +86,11 @@ function TableView({
   const current = touched(ctx.current);
   const selected = ctx.selection.id;
   const toggle = (id: string) => ctx.selection.select(selected === id ? undefined : id);
+  // Rows below the fold, or columns to the right of it, are brought into view when a call touches them.
+  const scroller = useRevealTouched<HTMLDivElement>(ctx.call.id, { inset: 'thead' });
 
   return (
-    <div className="fw-table-scroll">
+    <div className="fw-table-scroll" ref={scroller}>
       <table className="fw-table">
         <caption className="fw-visually-hidden">{ctx.pane.title}</caption>
         <thead>
@@ -119,7 +122,7 @@ function TableView({
                 className={classes}
                 data-entity={row.id}
                 data-mark={shown ? mark : 'absent'}
-                data-tone={toneOf(patch?.tone, row.tone)}
+                data-tone={shown ? toneOf(patch?.tone, row.tone) : undefined}
                 aria-hidden={shown ? undefined : true}
                 aria-selected={selected === row.id}
                 tabIndex={shown ? 0 : -1}
