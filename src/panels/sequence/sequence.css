@@ -121,3 +121,112 @@
 .fw-seq-message.is-selected {
   opacity: 1;
 }
+
+/* Message styles. None of them depends on colour: dashes, head shape and a cross tell them apart. */
+.fw-seq-line.is-dashed {
+  stroke-dasharray: 6 4;
+}
+
+.fw-seq-head.is-open {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+}
+
+.fw-seq-cross {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+}
+
+/* Fragments: a box behind the messages, with a tab that names the kind and the label. */
+.fw-seq-box {
+  fill: color-mix(in srgb, var(--fw-surface-2) 55%, transparent);
+  stroke: var(--fw-muted);
+  stroke-width: 1.25;
+}
+
+.fw-seq-frame text,
+.fw-seq-note text {
+  paint-order: stroke;
+  stroke: var(--fw-surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.fw-seq-frame text {
+  fill: var(--fw-text);
+  font: 11.5px/1 var(--fw-mono);
+}
+
+.fw-seq-tab text {
+  stroke: var(--fw-surface-2);
+}
+
+.fw-seq-tab {
+  cursor: pointer;
+}
+
+.fw-seq-tab rect {
+  fill: var(--fw-surface-2);
+  stroke: var(--fw-muted);
+  stroke-width: 1.25;
+}
+
+.fw-seq-tab text:first-of-type {
+  font-weight: 700;
+}
+
+.fw-seq-tab:focus-visible {
+  outline: none;
+}
+
+.fw-seq-tab:focus-visible rect,
+.fw-seq-frame.is-selected .fw-seq-box {
+  stroke: var(--fw-select);
+  stroke-width: 2;
+}
+
+.fw-seq-frame.is-added .fw-seq-tab rect {
+  stroke: var(--fw-added);
+}
+
+.fw-seq-divider line {
+  stroke: var(--fw-muted);
+  stroke-width: 1.25;
+  stroke-dasharray: 6 4;
+}
+
+/* Notes. */
+.fw-seq-note {
+  cursor: pointer;
+}
+
+.fw-seq-note rect {
+  fill: var(--fw-surface-2);
+  stroke: var(--fw-muted);
+  stroke-width: 1.25;
+}
+
+.fw-seq-note text {
+  fill: var(--fw-text);
+  stroke: var(--fw-surface-2);
+  font: 11.5px/1 var(--fw-mono);
+}
+
+.fw-seq-note:focus-visible {
+  outline: none;
+}
+
+.fw-seq-note:focus-visible rect,
+.fw-seq-note.is-selected rect {
+  stroke: var(--fw-select);
+  stroke-width: 2;
+}
+
+.fw-seq-note.is-added rect {
+  stroke: var(--fw-added);
+  stroke-width: 2;
+}

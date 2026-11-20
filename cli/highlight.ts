@@ -13,6 +13,9 @@ interface Source {
   lang?: unknown;
   text?: unknown;
   tokens?: unknown;
+  base?: unknown;
+  baseTokens?: unknown;
+  transcript?: unknown;
 }
 
 /** Every code source in a config, whatever else the config holds. Nothing here is validated. */
@@ -72,13 +75,21 @@ export async function addTokens(config: unknown): Promise<{ coloured: number; un
   let coloured = 0;
   const unknown = new Set<string>();
   for (const source of sourcesOf(config)) {
-    if (source.tokens !== undefined) continue;
     if (typeof source.lang !== 'string' || typeof source.text !== 'string') continue;
-    const tokens = await tokensFor(source.text, source.lang);
-    if (tokens === undefined) unknown.add(source.lang);
-    else {
-      source.tokens = tokens;
-      coloured += 1;
+    // A transcript is output, not source text: it is shown plain.
+    if (source.transcript !== undefined) continue;
+    if (source.tokens === undefined) {
+      const tokens = await tokensFor(source.text, source.lang);
+      if (tokens === undefined) unknown.add(source.lang);
+      else {
+        source.tokens = tokens;
+        coloured += 1;
+      }
+    }
+    // The removed lines of a diff come from `base`.
+    if (typeof source.base === 'string' && source.baseTokens === undefined) {
+      const tokens = await tokensFor(source.base, source.lang);
+      if (tokens !== undefined) source.baseTokens = tokens;
     }
   }
   return { coloured, unknown: [...unknown] };
