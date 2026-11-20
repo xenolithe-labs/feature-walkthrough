@@ -23,7 +23,7 @@
 }
 
 .fw-payload.is-faded {
-  opacity: 0.5;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-payload.is-added {

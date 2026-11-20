@@ -40,7 +40,7 @@
 }
 
 .fw-code-lines.has-marks .fw-code-line:not([data-mark]) {
-  opacity: 0.5;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-code-number {

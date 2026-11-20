@@ -156,7 +156,7 @@
 }
 
 .fw-diagram .is-faded {
-  opacity: 0.4;
+  opacity: var(--fw-faded-opacity);
 }
 
 .fw-diagram .react-flow__node.is-added .fw-node {
