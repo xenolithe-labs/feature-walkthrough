@@ -4,6 +4,7 @@ import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
 import { gitCommit } from './git-commit';
+import { kafkaConsumerGroup } from './kafka-consumer-group';
 import { oauthPkce } from './oauth-pkce';
 import { reactRender } from './react-render';
 import { spreadsheet } from './spreadsheet';
@@ -21,6 +22,7 @@ export const demos: ConfigInput = {
     quicksortDemo,
     bfsDemo,
     editDistanceDemo,
+    kafkaConsumerGroup,
   ],
 };
 

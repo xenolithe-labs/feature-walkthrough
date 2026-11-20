@@ -1,0 +1,294 @@
+.fw-bus {
+  display: grid;
+  gap: 14px;
+  padding: 12px;
+}
+
+.fw-bus-channel {
+  min-width: 0;
+  padding: 10px;
+  border: 1.5px solid var(--fw-border);
+  border-radius: var(--fw-radius);
+  background: var(--fw-surface);
+}
+
+.fw-bus-head,
+.fw-bus-parties,
+.fw-bus-rule-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.fw-bus-head {
+  margin-bottom: 8px;
+}
+
+.fw-bus-parties,
+.fw-bus-rules {
+  margin-top: 10px;
+}
+
+.fw-bus-rules {
+  display: grid;
+  gap: 6px;
+}
+
+.fw-bus-caption {
+  color: var(--fw-muted);
+  font: 600 10.5px var(--fw-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fw-bus-arrow {
+  color: var(--fw-muted);
+}
+
+/* Everything that can be marked: the same marks as every other panel. */
+.fw-bus-title,
+.fw-bus-party,
+.fw-bus-rule,
+.fw-bus-event,
+.fw-bus-cursor {
+  border: 1.5px solid var(--fw-border);
+  background: var(--fw-surface-2);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.fw-bus-title,
+.fw-bus-party,
+.fw-bus-rule {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.fw-bus-title {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  border-width: 2px;
+}
+
+.fw-bus-name {
+  font: 600 13px var(--fw-mono);
+}
+
+.fw-bus-kind,
+.fw-bus-sub {
+  color: var(--fw-muted);
+  font: 11px var(--fw-mono);
+}
+
+.fw-bus-pattern {
+  max-width: 34ch;
+  overflow: hidden;
+  color: var(--fw-muted);
+  font: 11px var(--fw-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-bus-match {
+  font: 600 11px var(--fw-mono);
+}
+
+.fw-bus-match[data-match='yes'] {
+  color: var(--fw-good);
+}
+
+.fw-bus-match[data-match='no'] {
+  color: var(--fw-muted);
+}
+
+/* The slots of a channel scroll sideways inside it, as the cells of an array do. */
+.fw-bus-scroll {
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+}
+
+.fw-bus-grid {
+  display: grid;
+  grid-template-columns: auto repeat(var(--n), minmax(36px, 52px));
+  column-gap: 3px;
+  row-gap: 3px;
+  padding-right: 96px;
+}
+
+.fw-bus-lane {
+  align-self: center;
+  padding-right: 8px;
+  color: var(--fw-muted);
+  font: 600 12px var(--fw-mono);
+}
+
+.fw-bus-event {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-width: 0;
+  border-radius: 6px;
+  font: 600 12.5px var(--fw-mono);
+}
+
+.fw-bus-event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-bus-event-name[data-state='acked'] {
+  color: var(--fw-good);
+}
+
+.fw-bus-event-name[data-state='failed'],
+.fw-bus-event-name[data-state='dead'] {
+  color: var(--fw-bad);
+}
+
+.fw-bus-glyph {
+  position: absolute;
+  top: -1px;
+  right: 2px;
+  font: 700 10px/1 var(--fw-mono);
+}
+
+.fw-bus-glyph[data-state='acked'] {
+  color: var(--fw-good);
+}
+
+.fw-bus-glyph[data-state='failed'],
+.fw-bus-glyph[data-state='dead'] {
+  color: var(--fw-bad);
+}
+
+.fw-bus-glyph[data-state='delivered'] {
+  color: var(--fw-info);
+}
+
+.fw-bus-offset {
+  color: var(--fw-muted);
+  font: 10.5px var(--fw-mono);
+  text-align: center;
+}
+
+.fw-bus-empty {
+  height: 36px;
+}
+
+/* The committed offset: a chip under the slot of the next event to read, with a caret up to it. */
+.fw-bus-cursor {
+  position: relative;
+  justify-self: start;
+  margin-top: 5px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font: 600 11.5px/18px var(--fw-mono);
+  white-space: nowrap;
+}
+
+.fw-bus-cursor::after {
+  position: absolute;
+  bottom: 100%;
+  left: 14px;
+  width: 0;
+  height: 0;
+  border: 4px solid transparent;
+  border-bottom-color: var(--fw-muted);
+  content: '';
+}
+
+.fw-bus-lag {
+  color: var(--fw-muted);
+}
+
+.fw-bus-lag[data-lag='some'] {
+  color: var(--fw-warn);
+}
+
+.fw-bus .is-absent {
+  visibility: hidden;
+}
+
+.fw-bus-event.is-faded,
+.fw-bus-rule.is-faded {
+  opacity: 0.55;
+}
+
+.fw-bus-title.is-added,
+.fw-bus-party.is-added,
+.fw-bus-rule.is-added,
+.fw-bus-event.is-added,
+.fw-bus-cursor.is-added {
+  border-color: var(--fw-added);
+  background: var(--fw-added-bg);
+}
+
+.fw-bus-title.is-updated,
+.fw-bus-party.is-updated,
+.fw-bus-rule.is-updated,
+.fw-bus-event.is-updated,
+.fw-bus-cursor.is-updated {
+  border-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+}
+
+.fw-bus-title.is-read,
+.fw-bus-party.is-read,
+.fw-bus-rule.is-read,
+.fw-bus-event.is-read,
+.fw-bus-cursor.is-read {
+  border-color: var(--fw-read);
+  background: var(--fw-read-bg);
+}
+
+.fw-bus-title.is-removed,
+.fw-bus-party.is-removed,
+.fw-bus-rule.is-removed,
+.fw-bus-event.is-removed,
+.fw-bus-cursor.is-removed {
+  border-color: var(--fw-removed);
+  border-style: dashed;
+  background: var(--fw-removed-bg);
+  text-decoration: line-through;
+}
+
+[data-tone='good']:is(.fw-bus-title, .fw-bus-party, .fw-bus-rule, .fw-bus-event, .fw-bus-cursor):not(
+    .is-added,
+    .is-updated,
+    .is-read,
+    .is-removed
+  ) {
+  border-color: var(--fw-good);
+}
+
+[data-tone='warn']:is(.fw-bus-title, .fw-bus-party, .fw-bus-rule, .fw-bus-event, .fw-bus-cursor):not(
+    .is-added,
+    .is-updated,
+    .is-read,
+    .is-removed
+  ) {
+  border-color: var(--fw-warn);
+  border-style: dashed;
+}
+
+[data-tone='muted']:is(.fw-bus-title, .fw-bus-party, .fw-bus-rule, .fw-bus-event, .fw-bus-cursor) {
+  border-style: dotted;
+  color: var(--fw-muted);
+}
+
+.fw-bus-title.is-selected,
+.fw-bus-party.is-selected,
+.fw-bus-rule.is-selected,
+.fw-bus-event.is-selected,
+.fw-bus-cursor.is-selected {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 1px;
+}
