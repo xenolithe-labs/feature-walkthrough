@@ -3,8 +3,26 @@
 A configurable UI that shows step-by-step walkthroughs of a flow. You describe the flow in a
 config; the engine shows it in coordinated panels and a details card, one call at a time.
 
-> **Status: early.** The core (config contract, cursor, fold, registry, card model, lint) is in
-> place with tests. The shell, the panels and the demo walkthroughs are next.
+> **Status: early.** The engine, the page, six panels and four demos work end to end.
+
+| Panel      | Shows                                                         |
+| ---------- | ------------------------------------------------------------- |
+| `sequence` | Lanes and the messages between them                           |
+| `graph`    | Nodes and relationships that appear as calls add them         |
+| `flow`     | A chart of steps and decisions that calls walk through        |
+| `boxes`    | Boxes within boxes: components, modules, call frames          |
+| `table`    | Rows of data, with the rows and cells a call reads or changes |
+| `code`     | Source text, with the lines a call is about                   |
+
+Demos: OAuth 2.0 with PKCE, a spreadsheet recalculating, one React state update, and a
+Terraform plan and apply.
+
+Run `pnpm dev` to see the demo. To show your own flow, write a JSON config and open the page with
+`?src=<url of the config>`; if the config has problems, the page lists each one with its path.
+The files in `src/walkthroughs/` are complete examples.
+
+Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
+(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>`), so any call can be linked to.
 
 ## The config
 

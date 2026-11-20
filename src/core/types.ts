@@ -16,6 +16,8 @@ export interface Problem {
 /** An element a pane can show. `initial` elements are present before the first call. */
 export interface EntityDecl {
   id: string;
+  /** A name to show for the element, for example on the card. */
+  label?: string;
   initial?: boolean;
 }
 
