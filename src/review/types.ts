@@ -18,6 +18,8 @@ export interface Finding {
   source: string;
   /** "<step id>.<call id>" when the finding is about one call. */
   call?: string;
+  /** How many calls the finding stands for, when it sums up several (the default is one). */
+  count?: number;
 }
 
 export type RawFinding = Omit<Finding, 'severity' | 'rule' | 'group' | 'source'>;

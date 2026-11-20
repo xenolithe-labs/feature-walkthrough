@@ -250,6 +250,12 @@
                       "call": {
                         "description": "\"<step id>.<call id>\" when the finding is about a call.",
                         "type": "string"
+                      },
+                      "count": {
+                        "description": "How many calls the finding stands for, when it sums up several. Default 1.",
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
                       }
                     },
                     "required": [

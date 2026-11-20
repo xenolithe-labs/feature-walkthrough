@@ -54,6 +54,7 @@ const toFinding = (finding: Finding) => ({
   at: formatPath(finding.path),
   path: finding.path,
   ...(finding.call === undefined ? {} : { call: finding.call }),
+  ...(finding.count === undefined ? {} : { count: finding.count }),
   message: finding.message,
   source: finding.source,
 });
@@ -146,9 +147,11 @@ export async function reviewConfig(
     ),
   );
 
-  // loadConfig resolves nothing in a collection when any one walkthrough fails to parse. The
-  // others can still be checked, so each is loaded on its own.
+  // loadConfig resolves nothing in a collection when any one walkthrough fails to parse, and
+  // then reports only the parse errors. The others can still be checked, so each is loaded on
+  // its own, and its own problems (a lint error, a warning) are reported with the prefix.
   let resolved: (ResolvedWalkthrough | undefined)[];
+  const extra = new Map<number, Problem[]>();
   const clean = failed.filter((flag) => !flag).length;
   if (loaded.walkthroughs.length === clean) {
     let next = 0;
@@ -157,6 +160,13 @@ export async function reviewConfig(
     resolved = items.map((item, index) => {
       if (failed[index]) return undefined;
       const alone = loadConfig(item, registry);
+      extra.set(
+        index,
+        alone.problems.map((problem) => ({
+          ...problem,
+          path: [...prefixOf(index), ...problem.path],
+        })),
+      );
       return alone.walkthroughs[0];
     });
   }
@@ -171,7 +181,7 @@ export async function reviewConfig(
           title: isRecord(item) && typeof item.title === 'string' ? item.title : null,
           path: prefixOf(index),
         },
-        own(index),
+        [...own(index), ...(extra.get(index) ?? [])],
         options,
       ),
     ),

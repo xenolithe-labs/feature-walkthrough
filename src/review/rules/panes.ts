@@ -165,6 +165,7 @@ export const elementFlash: Rule = {
       : [
           {
             ...out[0]!,
+            count: out.length,
             message: `${out.length} elements are removed in the call after they are added; first: ${out[0]!.message}`,
           },
         ];

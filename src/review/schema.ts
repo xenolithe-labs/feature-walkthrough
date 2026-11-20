@@ -38,6 +38,12 @@ export const FindingSchema = z
     message: z.string().describe('What is wrong and what to do about it.'),
     source: z.string().describe('Which part of the design guidance the rule comes from.'),
     call: z.string().optional().describe('"<step id>.<call id>" when the finding is about a call.'),
+    count: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('How many calls the finding stands for, when it sums up several. Default 1.'),
   })
   .describe('Feedback on a config that loads: how it could be better, not why it will not load.');
 

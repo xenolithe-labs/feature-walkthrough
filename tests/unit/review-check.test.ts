@@ -92,6 +92,36 @@ describe('reviewConfig', () => {
     expect(review.problems).toEqual([]);
   });
 
+  it('a collection with a schema error: a sibling with a lint error still lists it', async () => {
+    const schemaBroken = { id: 'schema-broken', title: 'No layout', steps: [] };
+    const lintBroken = bent((c) => {
+      c.id = 'lint-broken';
+      c.steps[0]!.calls[0]!.effects = { data: [{ read: 'nope' }] };
+    });
+    const warned = bent((c) => {
+      c.id = 'warned';
+      c.steps[0]!.calls[1]!.effects = { data: [{ add: 'b' }, { add: 'b' }] };
+    });
+    const review = await reviewConfig(
+      'mixed.json',
+      { walkthroughs: [schemaBroken, lintBroken, cleanConfig(), warned] },
+      registry,
+    );
+    expect(review.walkthroughs.map((w) => [w.id, w.status])).toEqual([
+      ['schema-broken', 'not-checked'],
+      ['lint-broken', 'not-checked'],
+      ['clean', 'checked'],
+      ['warned', 'checked'],
+    ]);
+    expect(review.walkthroughs[0]!.problems!.length).toBeGreaterThan(0);
+    expect(review.walkthroughs[1]!.problems!.map((p) => [p.severity, p.rule, p.at])).toEqual([
+      ['error', 'unknown-id', 'walkthroughs[1].steps[0].calls[0].effects.data[0].read'],
+    ]);
+    expect(review.walkthroughs[3]!.problems!.map((p) => [p.rule, p.at])).toEqual([
+      ['already-present', 'walkthroughs[3].steps[0].calls[1].effects.data[1].add'],
+    ]);
+  });
+
   it('a collection whose shape is wrong: the problem belongs to the file, the rest is still checked', async () => {
     const review = await reviewConfig(
       'odd.json',

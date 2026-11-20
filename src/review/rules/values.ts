@@ -94,6 +94,12 @@ export const valueChangeUnstated: Rule = {
             // Filling an empty cell is a first value, not a change of one.
             if (previous === undefined || String(previous).trim() === '') continue;
             if (String(previous) === String(next)) continue;
+            // The same element updated in another pane (a variable in a table and its pointer
+            // in an array) is shown there: the guidance says to check that before adding words.
+            const shownElsewhere = walkthrough.panes.some(
+              (other) => other.id !== pane.id && item.touches[other.id]?.updated.has(id) === true,
+            );
+            if (shownElsewhere) continue;
             if (stated(item.text, next)) continue;
             if (stated(item.text, previous)) continue;
             changes.push(
@@ -114,6 +120,7 @@ export const valueChangeUnstated: Rule = {
       : [
           {
             ...out[0]!,
+            count: out.length,
             message: `${out.length} calls change a value without naming it in the text (${listKeys(out.map((finding) => finding.call ?? ''))}); first: ${out[0]!.message}`,
           },
         ];

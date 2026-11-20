@@ -112,6 +112,7 @@ export const noVisibleChange: Rule = {
       {
         path: [...idle[0]!.path, 'effects'],
         call: idle[0]!.key,
+        count: idle.length,
         message: `${idle.length} of ${calls.length} calls touch nothing in any pane (${listKeys(idle.map((item) => item.key))}), so the reader sees no mark on them. Use read for what a call looks at or relies on, update for what it changes`,
       },
     ];
@@ -131,6 +132,7 @@ export const callsWithoutPointer: Rule = {
       {
         path: [...lacking[0]!.path, 'where'],
         call: lacking[0]!.key,
+        count: lacking.length,
         message: `${has.length} calls point to a source with where, but ${lacking.length} do not (${listKeys(lacking.map((item) => item.key))}). A claim with no pointer cannot be checked: add one (spec section, file and line, the command that produced the value), or say in the text that the value is assumed`,
       },
     ];

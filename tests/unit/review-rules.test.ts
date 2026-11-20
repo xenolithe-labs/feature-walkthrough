@@ -418,6 +418,40 @@ describe('value rules', () => {
     expect(ruleIds(empty)).not.toContain('design/value-change-unstated');
   });
 
+  it('design/value-change-unstated: left alone when the same element is updated in another pane', () => {
+    const twoPanes = (second: boolean) =>
+      bent((c) => {
+        c.layout.panes.push({
+          id: 'echo',
+          panel: 'table',
+          role: 'fixed',
+          title: 'Echo',
+          content: {
+            columns: [
+              { id: 'name', label: 'Name' },
+              { id: 'val', label: 'Value' },
+            ],
+            rows: [{ id: 'a', cells: { name: 'alpha', val: '14' } }],
+          },
+        });
+        c.steps[1]!.calls[0]!.text = 'Alpha is updated by the server.';
+        c.steps[1]!.calls[0]!.effects = {
+          data: [{ update: 'a', fields: { val: '15' } }],
+          ...(second
+            ? { echo: [{ update: 'a', fields: { val: '15' } }] }
+            : { echo: [{ read: 'a' }] }),
+        };
+        for (const step of c.steps) {
+          for (const item of step.calls) {
+            if (item.effects?.echo === undefined)
+              item.effects = { ...item.effects, echo: [{ read: 'a' }] };
+          }
+        }
+      });
+    expect(ruleIds(twoPanes(false))).toContain('design/value-change-unstated');
+    expect(ruleIds(twoPanes(true))).not.toContain('design/value-change-unstated');
+  });
+
   it('design/value-change-unstated: an array value that is overwritten', () => {
     const arrayConfig = (text: string) => ({
       id: 'arr',

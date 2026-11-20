@@ -42,7 +42,8 @@ it for a quick edit-and-check, and `check` before you hand over.
 reported), `--max-warnings 0` exits 1 if any warning is left, and several files may be given. The
 shape of the JSON is the JSON Schema `feature-walkthrough/check-result.schema.json` (`schema/check-result.schema.json` in the package).
 
-What `--json` looks like (cut down; each finding names the call and the rule):
+What `--json` looks like, cut down, for a copy of `example.json` in which the call `miss.reply-1` has
+no text (the example itself checks clean):
 
 ```json
 {
@@ -73,7 +74,7 @@ What `--json` looks like (cut down; each finding names the call and the rule):
 }
 ```
 
-What `--call hit.get-2` prints (the `>x<` marks a value the call touched, `x*` a thing it touched; the
+What `--call hit.get-2` prints for `example.json` (the `>x<` marks a value the call touched, `x*` a thing it touched; the
 last pane lines say what the reader sees, and the stage is what the Focus view puts on screen):
 
 ```text

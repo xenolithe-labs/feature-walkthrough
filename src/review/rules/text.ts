@@ -44,6 +44,7 @@ export const textCrowded: Rule = {
     return [
       {
         path: [...prefix, 'steps'],
+        count: near.length,
         message: `${near.length} of ${calls.length} calls have ${NEAR_CEILING} words or more, close to the ceiling of about ${WORD_CEILING}. When most calls are this long, the calls carry two ideas or the panes do not carry the values: split calls, or put the values in the panes, instead of trimming words`,
       },
     ];
@@ -69,6 +70,7 @@ export const textMissing: Rule = {
       {
         path: [...missing[0]!.path, 'text'],
         call: missing[0]!.key,
+        count: missing.length,
         message: `${missing.length} of ${calls.length} calls have no text (${listKeys(missing.map((item) => item.key))}). Say in each what changed, with its values, and why it matters`,
       },
     ];
@@ -98,6 +100,7 @@ export const textDuplicate: Rule = {
       {
         path: [...second.path, 'text'],
         call: second.key,
+        count: covered,
         message: `${covered} calls share ${repeated.length === 1 ? 'one text' : `${repeated.length} texts`} with other calls; the largest group is ${listKeys(worst.map((item) => item.key))}: "${worst[0]!.text.slice(0, 80)}${worst[0]!.text.length > 80 ? '...' : ''}". Each call states its own change: give each the values it handled, or merge calls that do the same thing. If they are alike loop iterations, show the first, the second and the one that differs, and say how many were skipped`,
       },
     ];
