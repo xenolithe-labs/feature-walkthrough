@@ -1,4 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { demos } from '../../src/walkthroughs';
@@ -332,6 +335,42 @@ test('the command line exits 1 and names the problem for a bad config', () => {
   });
   expect(result.status).toBe(1);
   expect(result.stderr).toContain('package.json: error');
+});
+
+test('the command line lint warns about the layout, names the hint, and still exits 0', () => {
+  const content = (routing: string) => ({
+    initial: true,
+    routing,
+    nodes: ['a', 'c', 'b'].map((id) => ({ id, label: id.toUpperCase() })),
+    edges: [
+      { from: 'a', to: 'c' },
+      { from: 'c', to: 'b' },
+      { from: 'a', to: 'b' },
+    ],
+  });
+  const config = (routing: string) => ({
+    id: 'bad',
+    title: 'Bad',
+    layout: { panes: [{ id: 'g', panel: 'graph', content: content(routing) }] },
+    steps: [{ id: 's', title: 'S', calls: [{ id: 'c1', label: 'C', effects: { g: [] } }] }],
+  });
+  const dir = mkdtempSync(join(tmpdir(), 'fw-layout-'));
+  const lint = (routing: string) => {
+    const file = join(dir, `${routing}.json`);
+    writeFileSync(file, JSON.stringify(config(routing)));
+    return spawnSync(process.execPath, ['dist/cli/index.js', 'lint', file], { encoding: 'utf8' });
+  };
+  const first = lint('straight');
+  expect(first.status).toBe(0);
+  expect(first.stderr).toContain(
+    'warning graph/edge-through-node at layout.panes[0].content.edges[2]',
+  );
+  expect(first.stderr).toContain('set routing to "orthogonal"');
+  // The agent applies the hint and lints again: the warning is gone.
+  const second = lint('orthogonal');
+  expect(second.status).toBe(0);
+  expect(second.stderr).not.toContain('edge-through-node');
+  expect(second.stderr).toContain(': ok (1 walkthrough(s))');
 });
 
 test('git demo: a link in a payload selects the same commit in the graph, and raw text can be shown', async ({

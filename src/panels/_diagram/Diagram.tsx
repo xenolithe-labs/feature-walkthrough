@@ -466,7 +466,10 @@ function Fit({
 
   useEffect(() => {
     if (!ready) return;
-    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // The fit animates only when motion is on (the page root says so), and never under reduced motion.
+    const still =
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      frame.current?.closest('.fw')?.getAttribute('data-motion') !== 'on';
     const shownIds = shown === '' ? [] : shown.split('\n');
     const element = frame.current;
     let choice = chooseFit(shownIds, [], { width: 0, height: 0 }, { width: 0, height: 0 });
