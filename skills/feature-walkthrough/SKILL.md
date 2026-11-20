@@ -1,8 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, tree). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, bytes). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, hash ring). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, tree, bytes, hash ring). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -132,48 +130,6 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | Panel      | Use it for                                        | Elements                                                        | Present at start         |
 | ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
 | `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
-| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
-| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
-| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
-| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
-| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
-| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
-| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
-| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
-| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
-| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
-| `tree`     | An outline: files, DOM, accounts, an AST          | nodes                                                           | yes                      |
-| Panel      | Use it for                                        | Elements                                                        | Present at start         |
-| ---------- | ---------------------------------------------     | --------------------------------------------------------------- | -----------------        |
-| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
-| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
-| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
-| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
-| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
-| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
-| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
-| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
-| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
-| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
-| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
-| `bytes`    | Bit and byte layouts: headers, frames, tokens     | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame        |
-| Panel      | Use it for                                        | Elements                                                        | Present at start         |
-| ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
-| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
-| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
-| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
-| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
-| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
-| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
-| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
-| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
-| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
-| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
-| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
-| `ring`     | Consistent hashing, partition ownership, replicas | nodes, tokens, keys                                             | all but `initial: false` |
-| Panel      | Use it for                                        | Elements                                                        | Present at start         |
-| ---------- | --------------------------------------------      | --------------------------------------------------------------- | ----------------         |
-| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
 | `graph`    | Things and relationships that build up            | nodes, slots, edges                                             | no                       |
 | `flow`     | A flow chart that calls walk through              | nodes, slots, edges                                             | yes                      |
 | `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
@@ -184,6 +140,9 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
 | `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
 | `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `tree`     | An outline: files, DOM, accounts, an AST          | nodes                                                           | yes                      |
+| `bytes`    | Bit and byte layouts: headers, frames, tokens     | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame        |
+| `ring`     | Consistent hashing, partition ownership, replicas | nodes, tokens, keys                                             | all but `initial: false` |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown. Optional content, all by call id:

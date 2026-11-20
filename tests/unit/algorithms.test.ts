@@ -130,7 +130,7 @@ describe('quicksort', () => {
     expect(items).toEqual([...INPUT].sort((a, b) => a - b));
   });
 
-  it('the walkthrough ends on the sorted array, every cell settled, and the stack back at the root', () => {
+  it('the walkthrough ends on the sorted array, every cell settled, and no call left open', () => {
     const walkthrough = load(quicksortRun.config);
     const { values, state } = cellsOf(walkthrough, 'items', 'items');
     const sorted = [...INPUT].sort((a, b) => a - b);
@@ -139,16 +139,35 @@ describe('quicksort', () => {
     for (let index = 0; index < INPUT.length; index += 1) {
       expect(state.patches[`items.${index}`]?.tone).toBe('good');
     }
-    const stack = finalState(walkthrough)['stack']!.state as ElementsState;
-    expect(stack.present).toEqual(['stack-0']);
+    // Every call has returned: no bracket is left over the cells, and no pointer under them.
+    for (const id of ['active', 'waiting-1', 'waiting-2']) expect(state.present).not.toContain(id);
+    for (const id of ['pivot', 'i', 'j']) expect(state.patches[id]?.at ?? null).toBeNull();
   });
 
-  it('shows the recursion as deep as it went', () => {
+  it('draws a waiting bracket for each caller, as deep as the recursion went', () => {
     const walkthrough = load(quicksortRun.config);
-    const stack = walkthrough.panes.find((pane) => pane.id === 'stack')!;
-    const depth = (stack.content as { boxes: unknown[] }).boxes.length;
-    // quicksort -> quicksort -> quicksort -> partition at the deepest point.
-    expect(depth).toBeGreaterThanOrEqual(4);
+    const folder = createFolder(walkthrough);
+    const brackets = shapeOf(walkthrough).flatMap((calls, s) =>
+      Array.from({ length: calls }, (_, c) => {
+        const state = folder.at(s, c)['items']!.state as ElementsState;
+        return ['waiting-1', 'waiting-2', 'active']
+          .filter((id) => state.present.includes(id))
+          .map((id) => `${String(state.patches[id]?.from)}..${String(state.patches[id]?.to)}`);
+      }),
+    );
+    // quicksort(0, 4) alone; then it waits for quicksort(0, 1), which waits for quicksort(0, -1).
+    expect(brackets[0]).toEqual(['0..4']);
+    expect(brackets).toContainEqual(['0..4', '0..1']);
+    expect(brackets).toContainEqual(['0..4', '0..1', '0..-1']);
+    expect(brackets).toContainEqual(['0..4', '3..4', '5..4']);
+    expect(Math.max(...brackets.map((list) => list.length))).toBe(3);
+  });
+
+  it('says in words the values the pictures show, and never leaves a card empty', () => {
+    const calls = quicksortRun.config.steps.flatMap((step) => step.calls);
+    expect(calls.every((call) => (call.text ?? '').length > 0)).toBe(true);
+    expect(calls.map((call) => call.label)).toContain('19 < 23? Yes: swap it into cell 0');
+    expect(calls.at(-1)!.text).toContain([...INPUT].sort((a, b) => a - b).join(', '));
   });
 });
 
