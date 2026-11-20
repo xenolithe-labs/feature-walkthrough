@@ -745,3 +745,463 @@ body {
     white-space: nowrap;
   }
 }
+
+/* ---------------------------------------------------------------------------------------------
+   Header controls: the view switch sits next to the theme button.
+   ------------------------------------------------------------------------------------------- */
+.fw-head {
+  flex-wrap: wrap;
+}
+
+.fw-head-text {
+  flex: 1 1 16rem;
+}
+
+.fw-head-controls {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.fw-views {
+  display: inline-flex;
+  border: 1px solid var(--fw-control-border);
+  border-radius: 999px;
+  background: var(--fw-surface);
+  overflow: hidden;
+}
+
+.fw-view {
+  padding: 3px 12px;
+  border: 0;
+  background: none;
+  font-size: 0.8rem;
+}
+
+.fw-view[aria-pressed='true'] {
+  background: var(--fw-select);
+  color: var(--fw-surface);
+  font-weight: 600;
+}
+
+.fw-steps ol {
+  position: relative;
+}
+
+/* ---------------------------------------------------------------------------------------------
+   Focus view. Below 900px (or in a short window) the page flows and scrolls a little: the card,
+   then the list of panes, then a stage of a set height. From 900px in a tall enough window the
+   page is the window: nothing scrolls except what scrolls inside a region.
+   ------------------------------------------------------------------------------------------- */
+.fw-focus-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+/* In one column the stage comes first and the card after it: the stage has a set height, so the
+   words are never more than a screen away, and the bar above always names the call. */
+.fw-focus-body > .fw-card {
+  order: 1;
+}
+
+.fw-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.fw-rail-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.fw-rail {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fw-rail-item {
+  /* The hidden words inside are absolutely placed: this keeps them inside the scrolling row. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-height: 40px;
+  padding: 3px 10px;
+  border: 1px solid var(--fw-border);
+  border-radius: var(--fw-radius);
+  background: var(--fw-surface);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.fw-rail-item:hover {
+  background: var(--fw-surface-2);
+}
+
+.fw-rail-item[data-on-stage='true'] {
+  border-color: var(--fw-select);
+  background: var(--fw-select-bg);
+}
+
+.fw-rail-item[aria-pressed='true'] {
+  box-shadow: inset 0 0 0 1px var(--fw-select);
+}
+
+.fw-rail-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* A square that is filled for a pane on stage and hollow for one that is not. */
+.fw-rail-dot {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--fw-muted);
+  border-radius: 2px;
+}
+
+.fw-rail-item[data-on-stage='true'] .fw-rail-dot {
+  border-color: var(--fw-select);
+  background: var(--fw-select);
+}
+
+.fw-rail-summary {
+  color: var(--fw-muted);
+  font-size: 0.74rem;
+}
+
+.fw-rail-item[data-touched='true'] .fw-rail-summary {
+  color: var(--fw-text);
+  font-weight: 600;
+}
+
+.fw-rail-new,
+.fw-tag.is-swapped {
+  padding: 0 6px;
+  border: 1px solid var(--fw-select);
+  border-radius: 999px;
+  background: var(--fw-select);
+  color: var(--fw-surface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.fw-rail-note {
+  display: flex;
+  flex: 1 1 14rem;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  color: var(--fw-muted);
+  font-size: 0.78rem;
+}
+
+.fw-stage {
+  display: grid;
+  grid-template-columns: repeat(var(--fw-stage-count, 1), minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  height: clamp(340px, 62dvh, 640px);
+  min-height: 0;
+}
+
+/* Three panes: the one with the most to show on the left, the others stacked beside it. The
+   panes keep their place in the page, so only the grid areas move when the main one changes. */
+.fw-stage[data-count='3'] {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.fw-stage[data-count='3'] > [data-primary='true'] {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.fw-stage[data-count='3'] > [data-primary='false'] {
+  grid-column: 2;
+}
+
+.fw-stage-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-top: 3px solid var(--fw-border);
+  overflow: hidden;
+}
+
+.fw-stage-pane[data-touched='true'],
+.fw-stage-pane[data-swapped='true'] {
+  border-top-color: var(--fw-select);
+}
+
+.fw-stage-pane[data-swapped='true'] {
+  border-color: var(--fw-select);
+  animation: fw-arrive 1s ease-out;
+}
+
+@keyframes fw-arrive {
+  from {
+    box-shadow: 0 0 0 4px var(--fw-select-bg);
+  }
+  to {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.fw-stage-pane > .fw-pane-title {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fw-pane-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fw-pane-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fw-tag {
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fw-tag.is-touched {
+  color: var(--fw-text);
+  font-weight: 700;
+}
+
+.fw-stage-pane > .fw-pane-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* A panel is sized for the page: it stops at about 520px and scrolls inside itself. On the
+   stage the pane is the frame, so a panel fills it, and its scrolling part scrolls within it. */
+.fw-stage .fw-pane-body > * {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}
+
+.fw-stage .fw-pane-body > .fw-diagram {
+  height: auto;
+  overflow: hidden;
+}
+
+.fw-stage .fw-pane-body > .fw-code-panel,
+.fw-stage .fw-pane-body > .fw-seq {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fw-stage .fw-code-panel > .fw-code-scroll,
+.fw-stage .fw-seq > .fw-seq-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none;
+}
+
+.fw-card-more {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--fw-border);
+}
+
+.fw-card-more > summary {
+  color: var(--fw-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fw-card-more > .fw-section:first-of-type {
+  border-top: 0;
+}
+
+@media (max-width: 899px) {
+  /* A row of panes that scrolls sideways: the note beside it names what is out of sight. */
+  .fw-rail {
+    flex-wrap: nowrap;
+    flex-basis: 100%;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+
+  .fw-rail-item {
+    scroll-snap-align: start;
+  }
+
+  .fw-stage {
+    height: clamp(320px, 56dvh, 620px);
+  }
+
+  /* Less header, so that the stage starts on the first screen. */
+  .fw[data-view='focus'] .fw-steps ol {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .fw[data-view='focus'] .fw-steps li {
+    flex: none;
+  }
+
+  .fw[data-view='focus'] .fw-step {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .fw[data-view='focus'] .fw-lead {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+@media (min-width: 900px) and (min-height: 560px) {
+  .fw[data-view='focus'] {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    padding-block: 10px;
+    overflow: hidden;
+  }
+
+  .fw[data-view='focus'] .fw-head {
+    flex: none;
+    align-items: center;
+  }
+
+  .fw[data-view='focus'] .fw-head-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    align-items: baseline;
+    min-width: 0;
+  }
+
+  .fw[data-view='focus'] .fw-head h1 {
+    font-size: 1.05rem;
+  }
+
+  .fw[data-view='focus'] .fw-picker select {
+    margin: 0;
+  }
+
+  .fw[data-view='focus'] .fw-lead {
+    flex: 1 1 20ch;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: 0.85rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fw[data-view='focus'] .fw-steps {
+    flex: none;
+  }
+
+  .fw[data-view='focus'] .fw-steps ol {
+    flex-wrap: nowrap;
+    margin-top: 8px;
+    padding-bottom: 2px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .fw[data-view='focus'] .fw-steps li {
+    flex: none;
+  }
+
+  .fw[data-view='focus'] .fw-step {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  .fw[data-view='focus'] .fw-nav {
+    position: static;
+    flex: none;
+    margin: 8px 0;
+    padding: 0;
+  }
+
+  .fw-focus-body {
+    flex: 1 1 0;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-rows: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .fw-focus-body > .fw-card {
+    position: static;
+    order: 0;
+    max-height: none;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .fw-stage {
+    flex: 1 1 0;
+    height: auto;
+  }
+
+  .fw[data-view='focus'] .fw-legend {
+    flex: none;
+    margin-top: 8px;
+  }
+}
+
+@media (min-width: 1180px) and (min-height: 560px) {
+  .fw-focus-body {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fw-stage-pane {
+    animation: none !important;
+  }
+}

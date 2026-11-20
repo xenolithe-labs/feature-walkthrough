@@ -6,3 +6,4 @@ export * from './cursor';
 export * from './fold';
 export * from './card';
 export * from './lint';
+export * from './stage';

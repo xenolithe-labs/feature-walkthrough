@@ -7,6 +7,7 @@ import {
   flatIndex,
   fromFlatIndex,
   isFirst,
+  isView,
   isLast,
   nextCall,
   nextStep,
@@ -132,6 +133,46 @@ describe('hash codec', () => {
         },
       ),
     );
+  });
+
+  it('writes the view last, and only when there is one', () => {
+    expect(encodeHash({ w: 'first', s: 0, c: 0, view: 'focus' })).toBe('#w=first&s=1&c=1&v=focus');
+    expect(encodeHash({ w: 'first', s: 0, c: 1, sel: 'token', view: 'grid' })).toBe(
+      '#w=first&s=1&c=2&sel=token&v=grid',
+    );
+    expect(encodeHash({ w: 'first', s: 0, c: 0 })).not.toContain('v=');
+  });
+
+  it('reads the view, and round trips it with everything else', () => {
+    expect(decodeHash('#w=first&s=2&c=1&v=focus', walkthroughs)).toEqual({
+      w: 'first',
+      s: 1,
+      c: 0,
+      view: 'focus',
+    });
+    expect(decodeHash('#v=grid', walkthroughs)).toEqual({ w: 'first', s: 0, c: 0, view: 'grid' });
+    for (const view of ['grid', 'focus'] as const) {
+      const cursor = { w: 'second', s: 0, c: 3, sel: 'a b', view };
+      expect(decodeHash(encodeHash(cursor), walkthroughs)).toEqual(cursor);
+    }
+  });
+
+  it('ignores a view it does not know, and keeps the view of a stale link', () => {
+    expect(decodeHash('#w=first&s=1&c=1&v=cards', walkthroughs)).toEqual({
+      w: 'first',
+      s: 0,
+      c: 0,
+    });
+    expect(decodeHash('#w=first&v=', walkthroughs)).toEqual({ w: 'first', s: 0, c: 0 });
+    expect(decodeHash('#w=first&v=FOCUS', walkthroughs)).toEqual({ w: 'first', s: 0, c: 0 });
+    expect(decodeHash('#w=nope&s=3&v=focus', walkthroughs)).toEqual({
+      w: 'first',
+      s: 0,
+      c: 0,
+      view: 'focus',
+    });
+    expect(isView('focus') && isView('grid')).toBe(true);
+    expect(isView('Focus') || isView(undefined) || isView(3)).toBe(false);
   });
 
   it('falls back to the nearest valid place', () => {
