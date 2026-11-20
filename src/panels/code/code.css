@@ -231,7 +231,7 @@
 /* A mark from a call wins over the tint of the diff, and keeps the outline so it still shows. */
 .fw-code-line.is-diff-add[data-mark],
 .fw-code-line.is-diff-del[data-mark] {
-  box-shadow: inset 0 0 0 1.5px currentColor;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
 }
 
 .fw-code-line.is-diff-add.is-read,
