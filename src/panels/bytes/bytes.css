@@ -502,12 +502,18 @@
 }
 
 .fw-by-caret {
-  display: inline-block;
+  /* An empty inline box with the bar drawn out of flow: it never changes where a line wraps. */
+  position: relative;
+}
+
+.fw-by-caret::after {
+  position: absolute;
+  top: 0.1em;
+  left: -1.5px;
   width: 3px;
-  height: 1.1em;
-  margin: 0 1px;
+  height: 1.2em;
   background: var(--fw-info);
-  vertical-align: text-bottom;
+  content: '';
 }
 
 .fw-by-seg > .fw-by-cursor {
@@ -526,7 +532,9 @@
 /* ---- the line under a frame: the fields a call marks, in words ---- */
 
 .fw-by-detail {
-  min-height: 2.9em;
+  /* A fixed room, so that notes appearing and going move nothing below the frame. */
+  height: 8.8em;
+  overflow-y: auto;
   margin-top: 8px;
   padding-top: 6px;
   border-top: 1px solid var(--fw-border);

@@ -74,7 +74,7 @@ for (const walkthrough of walkthroughs) {
     const places = () =>
       page
         .locator(
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick',
+          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-by-field',
         )
         .evaluateAll((nodes) =>
           nodes.map((node) => {
@@ -83,7 +83,7 @@ for (const walkthrough of walkthroughs) {
             }
             const box = node.getBoundingClientRect();
             const pane = (
-              node.closest('.fw-bus-grid, .fw-tl-inner') ?? node.closest('.fw-pane')!
+              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-by-inner') ?? node.closest('.fw-pane')!
             ).getBoundingClientRect();
             return [
               node.getAttribute('data-entity') ?? node.textContent,
@@ -938,7 +938,8 @@ test('bytes: a call marks fields, shows their words, and a straddling field is o
     /Sequence Number, bits 32–63, value 300/,
   );
   await expect(field(page, 'seg.ack')).toHaveAttribute('data-mark', 'updated');
-  await expect(page.locator('.fw-by-note[data-field="seg.ack"]')).toContainText('bit 107');
+  await expect(page.locator('.fw-by-note[data-field="seg.sport"]')).toContainText('bits 0–15');
+  await expect(page.locator('.fw-by-more')).toContainText('more marked');
 
   // On a phone the 32-bit rows are drawn 16 to a row, so the sequence number is two pieces.
   await expect(page.locator('.fw-by-grid').first()).toHaveAttribute('data-width', '16');

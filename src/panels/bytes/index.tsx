@@ -501,7 +501,8 @@ function SegmentsFrame({ frame, shared }: { frame: FrameDecl; shared: Shared }) 
                   </>
                 )}
               </span>
-              {decoded !== undefined && <span className="fw-by-decoded">{decoded}</span>}
+              {/* The line is always there, so a meaning that arrives later moves nothing. */}
+              <span className="fw-by-decoded">{decoded ?? '\u00a0'}</span>
             </FieldBox>
             {caret !== undefined && frame.cursor !== undefined && (
               <span
