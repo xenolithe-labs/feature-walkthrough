@@ -920,3 +920,223 @@ test('focus view: the marked items of every staged pane are in view, small or la
   if ((await off.count()) > 0) await off.first().click();
   await expectMarkedItemsInView(page);
 });
+
+// Groups, boundaries, icons, moves and traffic in the diagram panels.
+const awsHash = (step: number, call: number) => `#w=aws-vpc-request&s=${step}&c=${call}`;
+
+/** Where each node is on the page (its transform), by id, for the nodes that are drawn. */
+async function nodeBoxes(page: Page): Promise<Record<string, string>> {
+  return page.evaluate(() =>
+    Object.fromEntries(
+      [...document.querySelectorAll('.fw-pane[data-panel="graph"] .react-flow__node')].map(
+        (element) => [
+          element.getAttribute('data-id') ?? '',
+          `${(element as HTMLElement).style.transform} ${(element as HTMLElement).style.width}`,
+        ],
+      ),
+    ),
+  );
+}
+
+test('aws-vpc-request: groups are containers, a boundary is drawn as one, icons are drawn', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, awsHash(2, 1));
+  const graph = page.locator('.fw-pane[data-panel="graph"]');
+  await expect(graph.locator('.fw-group')).toHaveCount(8);
+  await expect(graph.locator('.fw-group[data-boundary]')).toHaveCount(1);
+  await expect(graph.locator('.fw-group-tag')).toHaveText('boundary');
+  expect(await graph.locator('svg.fw-icon').count()).toBeGreaterThan(10);
+  // Every icon is one path and nothing else.
+  expect(await graph.locator('svg.fw-icon > *:not(path)').count()).toBe(0);
+  // A child is drawn inside its group: the group's box holds the node's box.
+  const inside = await page.evaluate(() => {
+    const box = (id: string) =>
+      document
+        .querySelector(`.fw-pane[data-panel="graph"] [data-id="${id}"]`)!
+        .getBoundingClientRect();
+    const [group, child] = [box('priv-a'), box('i-a1')];
+    return (
+      child.left >= group.left &&
+      child.right <= group.right &&
+      child.top >= group.top &&
+      child.bottom <= group.bottom
+    );
+  });
+  expect(inside).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('aws-vpc-request: no element moves from one call to the next', async ({ page }) => {
+  await open(page, awsHash(1, 1));
+  const first = await nodeBoxes(page);
+  expect(Object.keys(first).length).toBe(20);
+  // 14 calls: 13 steps forward.
+  for (let i = 0; i < 13; i += 1) {
+    await page.keyboard.press('ArrowRight');
+    await page.waitForTimeout(60);
+    expect(await nodeBoxes(page)).toEqual(first);
+  }
+});
+
+test('aws-vpc-request: an edge that crosses a boundary shows a gate and says so', async ({
+  page,
+}) => {
+  await open(page, awsHash(1, 1));
+  const graph = page.locator('.fw-pane[data-panel="graph"]');
+  // The gate belongs to the edge, not to the call: it is there whenever the edge is.
+  await expect(graph.locator('.fw-edge-gate')).toHaveCount(1);
+  await expect(page.getByText('Crosses a boundary')).toHaveCount(0);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-card-title')).toHaveText(/Open an HTTPS connection/);
+  await expect(graph.locator('.fw-edge-gate[data-gate="vpc"]')).toHaveCount(1);
+  await expect(graph.locator('.fw-edge-line[data-crosses="vpc"]')).toHaveCount(1);
+  await expect(page.getByText('Crosses a boundary')).toBeVisible();
+  await expect(page.getByText('HTTPS 443 crosses app-vpc')).toBeVisible();
+});
+
+test('aws-vpc-request: a group with something touched inside does not fade', async ({ page }) => {
+  await open(page, awsHash(2, 1));
+  const node = (id: string) =>
+    page.locator(`.fw-pane[data-panel="graph"] .react-flow__node[data-id="${id}"]`);
+  await expect(node('az-a')).not.toHaveClass(/is-faded/);
+  await expect(node('pub-a')).not.toHaveClass(/is-faded/);
+  await expect(node('vpc')).not.toHaveClass(/is-faded/);
+  await expect(node('az-b')).toHaveClass(/is-faded/);
+  await expect(node('data-a')).toHaveClass(/is-faded/);
+});
+
+test('aws-vpc-request: a read edge shows one dot, reversed for a reply, and none when still', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto(`/${awsHash(1, 1)}`);
+  await page.waitForSelector('.react-flow__node');
+  const dot = page.locator('.fw-pane[data-panel="graph"] .fw-edge-dot');
+  await expect(dot).toHaveCount(1);
+  const path = async () => (await dot.locator('animateMotion').getAttribute('path')) ?? '';
+  const ends = (d: string) => d.replace(/[ML]/g, ' ').trim().split(/\s+/);
+  const forward = ends(await path());
+  await page.keyboard.press('ArrowRight');
+  await expect(dot).toHaveCount(1);
+  expect(ends(await path())).toEqual([forward[1], forward[0]]);
+  // The next call reads two edges: two dots, and the first one is gone.
+  await page.keyboard.press('ArrowRight');
+  await expect(dot).toHaveCount(2);
+  // Going back to the reply plays it again.
+  await page.keyboard.press('ArrowLeft');
+  await expect(dot).toHaveCount(1);
+
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(`/${awsHash(1, 1)}`);
+  await page.reload();
+  await page.waitForSelector('.react-flow__node');
+  await expect(page.locator('.fw-pane[data-panel="graph"] .react-flow__edge.is-read')).toHaveCount(
+    1,
+  );
+  await expect(page.locator('.fw-edge-dot')).toHaveCount(0);
+});
+
+test('aws-vpc-request: a weight is the stroke width and an update changes it', async ({ page }) => {
+  const weight = (id: string) =>
+    page.evaluate(
+      (edge) =>
+        document
+          .querySelector(`[data-testid="rf__edge-${edge}"] .fw-edge-line`)!
+          .getAttribute('data-weight'),
+      id,
+    );
+  await open(page, awsHash(4, 1));
+  expect(await weight('t-a1')).toBe('4');
+  await page.goto(`/${awsHash(4, 2)}`);
+  await page.reload();
+  await page.waitForSelector('.react-flow__node');
+  expect(await weight('t-a1')).toBe('2.5');
+  const stroke = await page.evaluate(
+    () =>
+      getComputedStyle(document.querySelector('[data-testid="rf__edge-t-a1"] .fw-edge-line')!)
+        .strokeWidth,
+  );
+  // 2.5, and a pixel more while the call marks the edge.
+  expect(parseFloat(stroke)).toBeCloseTo(3.5, 1);
+});
+
+test('a node that moves between parents leaves everything else where it is', async ({ page }) => {
+  const config = {
+    id: 'mover',
+    title: 'Mover',
+    layout: {
+      panes: [
+        {
+          id: 'g',
+          panel: 'graph',
+          content: {
+            initial: true,
+            direction: 'RIGHT',
+            nodes: [
+              { id: 'a', label: 'Zone A' },
+              { id: 'b', label: 'Zone B' },
+              { id: 'other', label: 'Other', parent: 'b' },
+              { id: 'pod', label: 'Pod', parent: 'a', parents: ['a', 'b'] },
+            ],
+            edges: [{ from: 'pod', to: 'other' }],
+          },
+        },
+      ],
+    },
+    steps: [
+      {
+        id: 's',
+        title: 'S',
+        calls: [
+          { id: 'one', label: 'Start', effects: { g: [{ read: 'pod' }] } },
+          {
+            id: 'two',
+            label: 'Move',
+            effects: { g: [{ update: 'pod', fields: { parent: 'b' } }] },
+          },
+          {
+            id: 'three',
+            label: 'Move back',
+            effects: { g: [{ update: 'pod', fields: { parent: 'a' } }] },
+          },
+        ],
+      },
+    ],
+  };
+  await openConfig(page, 'mover', config);
+  await page.waitForSelector('.react-flow__node');
+  await page.waitForTimeout(300);
+  const absolute = () =>
+    page.evaluate(() =>
+      Object.fromEntries(
+        ['a', 'b', 'other', 'pod'].map((id) => {
+          const r = document
+            .querySelector(`.react-flow__node[data-id="${id}"]`)!
+            .getBoundingClientRect();
+          return [
+            id,
+            [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
+          ];
+        }),
+      ),
+    );
+  const start = await absolute();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(300);
+  const moved = await absolute();
+  // The groups and the other node are exactly where they were; the pod is now inside b.
+  for (const id of ['a', 'b', 'other']) expect(moved[id], id).toEqual(start[id]);
+  expect(moved.pod).not.toEqual(start.pod);
+  const pod = moved.pod!;
+  const b = moved.b!;
+  expect(pod[0]).toBeGreaterThanOrEqual(b[0]!);
+  expect(pod[0]! + pod[2]!).toBeLessThanOrEqual(b[0]! + b[2]!);
+  expect(pod[1]).toBeGreaterThanOrEqual(b[1]!);
+  expect(pod[1]! + pod[3]!).toBeLessThanOrEqual(b[1]! + b[3]!);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(300);
+  expect(await absolute()).toEqual(start);
+});

@@ -114,7 +114,7 @@ export function crossingsOf(
     const crossed = [
       ...from.filter((id) => !toSet.has(id)),
       ...to.filter((id) => !fromSet.has(id)).reverse(),
-    ].filter((id) => boundaries.has(id));
+    ].filter((id) => boundaries.has(id) && id !== edge.source && id !== edge.target);
     if (crossed.length > 0) result.set(edge.id, crossed);
   }
   return result;
