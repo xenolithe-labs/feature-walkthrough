@@ -143,15 +143,15 @@ test.describe('graph edges', () => {
     expect(errors).toEqual([]);
   });
 
-  test('node ids with dots, colons and dashes are addressable, selectable and survive a reload from the URL', async ({
+  test('node ids with dashes, underscores and leading digits are addressable, selectable and survive a reload from the URL', async ({
     page,
   }) => {
     const errors = watchErrors(page);
-    const ids = ['a.b', 'c:d', 'e-f', 'g_h', '1.2:3-4'];
+    const ids = ['a-b', 'c_d', 'e-f', 'g_h', '1-2_3-4'];
     await openConfig(
       page,
       'ids',
-      graph({ nodes: ids.map((id) => node(id)), edges: [{ from: 'a.b', to: 'c:d' }] }),
+      graph({ nodes: ids.map((id) => node(id)), edges: [{ from: 'a-b', to: 'c_d' }] }),
     );
     for (const id of ids) {
       await page.locator(`.react-flow__node[data-id="${id}"]`).click();
@@ -161,7 +161,7 @@ test.describe('graph edges', () => {
       );
     }
     await page.reload();
-    await expect(page.locator(`.react-flow__node[data-id="1.2:3-4"]`)).toHaveClass(/is-selected/);
+    await expect(page.locator(`.react-flow__node[data-id="1-2_3-4"]`)).toHaveClass(/is-selected/);
     expect(errors).toEqual([]);
   });
 
@@ -215,7 +215,7 @@ test.describe('schema', () => {
                 label: 'Orders',
                 columns: [
                   { id: 'id', key: 'PK' },
-                  { id: 'user.ref', note: 'dotted' },
+                  { id: 'user-ref', note: 'dashed' },
                   { id: 'plain' },
                 ],
               },
@@ -246,17 +246,14 @@ test.describe('schema', () => {
     expect(errors).toEqual([]);
   });
 
-  // DEFECT: a relation end is split at its LAST dot to find the table, so a column whose own id has a
-  // dot ("orders" + "user.ref" = "orders.user.ref") is never matched to a table and the relation is not
-  // drawn, though lint accepts it (src/panels/schema/index.tsx tableOf).
-  test('precondition: the dotted-column relation loads and the column is drawn', async ({
-    page,
-  }) => {
-    await openConfig(page, 'dotted', schema([{ from: 'orders.user.ref', to: 'users.id' }]));
-    await expect(page.locator('.fw-schema-column[data-entity="orders.user.ref"]')).toBeVisible();
+  // A column id cannot contain a dot, so "orders.user-ref" can only mean the column "user-ref" of
+  // the table "orders".
+  test('a column with a dash in its id is drawn', async ({ page }) => {
+    await openConfig(page, 'dashed', schema([{ from: 'orders.user-ref', to: 'users.id' }]));
+    await expect(page.locator('.fw-schema-column[data-entity="orders.user-ref"]')).toBeVisible();
   });
-  test('a relation from a column whose id contains a dot is drawn', async ({ page }) => {
-    await openConfig(page, 'dotted', schema([{ from: 'orders.user.ref', to: 'users.id' }]));
+  test('a relation from a column with a dash in its id is drawn', async ({ page }) => {
+    await openConfig(page, 'dashed', schema([{ from: 'orders.user-ref', to: 'users.id' }]));
     await expect(page.locator('.fw-schema-relation')).toHaveCount(1, { timeout: 3000 });
   });
 });

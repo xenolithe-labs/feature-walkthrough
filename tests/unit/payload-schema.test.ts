@@ -109,3 +109,62 @@ describe('schema', () => {
     ]);
   });
 });
+
+describe('the fields of an update', () => {
+  const graph = (fields: Record<string, unknown>, target = 'a') =>
+    ({
+      id: 'mini',
+      title: 'Mini',
+      layout: {
+        panes: [
+          {
+            id: 'g',
+            panel: 'graph',
+            content: {
+              initial: true,
+              nodes: [
+                { id: 'a', label: 'A' },
+                { id: 'b', label: 'B' },
+              ],
+              edges: [{ from: 'a', to: 'b' }],
+            },
+          },
+        ],
+      },
+      steps: [
+        {
+          id: 's',
+          title: 'S',
+          calls: [{ id: 'c', label: 'C', effects: { g: [{ update: target, fields }] } }],
+        },
+      ],
+    }) as WalkthroughInput;
+
+  it('accepts the fields a node has', () => {
+    expect(rules(graph({ label: 'New', sub: 'more', tone: 'warn' }))).toEqual([]);
+  });
+
+  it('rejects a misspelt field, a tone that is not one, and a value that is not text', () => {
+    expect(rules(graph({ lable: 'New' }))).toEqual(['graph/unknown-field']);
+    expect(rules(graph({ tone: 'banana' }))).toEqual(['graph/bad-tone']);
+    expect(rules(graph({ label: 5 }))).toEqual(['graph/bad-field']);
+  });
+
+  it('rejects fields on an edge, which has none', () => {
+    expect(rules(graph({ label: 'x' }, 'a.b'))).toEqual(['graph/unknown-field']);
+  });
+
+  it('knows a table from a column in a schema pane', () => {
+    expect(rules(config({ model: [{ update: 'user', fields: { tone: 'good' } }] }))).toEqual([]);
+    expect(rules(config({ model: [{ update: 'user.id', fields: { type: 'uuid' } }] }))).toEqual([]);
+    expect(rules(config({ model: [{ update: 'user.id', fields: { sub: 'x' } }] }))).toEqual([
+      'schema/unknown-field',
+    ]);
+  });
+});
+
+describe('ids', () => {
+  it('no longer accept the "set" verb, which no panel used', () => {
+    expect(rules(config({ body: [{ set: 1 } as Record<string, unknown>] }))).toEqual(['schema']);
+  });
+});

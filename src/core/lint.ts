@@ -229,7 +229,7 @@ function checkSummary(
     for (const call of step.calls) {
       for (const effect of effectsOf(pane, call)) {
         const { verb, id } = effectTarget(effect);
-        if (id !== undefined && verb !== 'focus' && verb !== 'set') actual[verb].add(id);
+        if (id !== undefined && verb !== 'focus') actual[verb].add(id);
       }
     }
     const written = step.summary[pane.id];

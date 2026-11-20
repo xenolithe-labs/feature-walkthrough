@@ -629,7 +629,7 @@ export class Recorder {
   }
 
   private slot(stack: StackState, depth: number): string {
-    return `${stack.id}.${depth}`;
+    return `${stack.id}-${depth}`;
   }
 
   private start(): void {
@@ -762,7 +762,7 @@ export class Recorder {
   }
 
   private trackRow(view: GridState, row: number): Cell[] {
-    const rowId = `${view.id}.r${row}`;
+    const rowId = `${view.id}-r${row}`;
     return new Proxy(view.data[row]!, {
       get: (target, prop, receiver) => {
         if (
@@ -874,7 +874,7 @@ export class Recorder {
               ...view.columns.map((label, index) => ({ id: `c${index}`, label, mono: true })),
             ],
             rows: view.rows.map((label, row) => ({
-              id: `${view.id}.r${row}`,
+              id: `${view.id}-r${row}`,
               cells: {
                 label,
                 ...Object.fromEntries(

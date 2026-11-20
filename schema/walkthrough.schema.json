@@ -9,7 +9,7 @@
         },
         "id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
         },
         "title": {
           "type": "string",
@@ -31,7 +31,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
               },
               "title": {
                 "type": "string",
@@ -56,7 +56,7 @@
                 "properties": {
                   "id": {
                     "type": "string",
-                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                   },
                   "panel": {
                     "type": "string",
@@ -92,7 +92,7 @@
           "type": "object",
           "propertyNames": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
           },
           "additionalProperties": {}
         },
@@ -104,7 +104,7 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
               },
               "title": {
                 "type": "string",
@@ -117,7 +117,7 @@
                 "type": "object",
                 "propertyNames": {
                   "type": "string",
-                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                 },
                 "additionalProperties": {
                   "type": "object",
@@ -126,28 +126,28 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                       }
                     },
                     "update": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                       }
                     },
                     "read": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                       }
                     },
                     "remove": {
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                       }
                     }
                   },
@@ -162,7 +162,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "label": {
                       "type": "string",
@@ -170,11 +170,11 @@
                     },
                     "from": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "to": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "text": {
                       "type": "string"
@@ -251,13 +251,13 @@
                     },
                     "show": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "effects": {
                       "type": "object",
                       "propertyNames": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                       },
                       "additionalProperties": {
                         "type": "array",
@@ -266,25 +266,24 @@
                           "properties": {
                             "add": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             },
                             "update": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             },
                             "read": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             },
                             "remove": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             },
                             "focus": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             },
-                            "set": {},
                             "fields": {
                               "type": "object",
                               "propertyNames": {
@@ -301,7 +300,7 @@
                       "type": "object",
                       "propertyNames": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                       },
                       "additionalProperties": {}
                     }
@@ -348,7 +347,7 @@
               },
               "id": {
                 "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
               },
               "title": {
                 "type": "string",
@@ -370,7 +369,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "title": {
                       "type": "string",
@@ -395,7 +394,7 @@
                       "properties": {
                         "id": {
                           "type": "string",
-                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                         },
                         "panel": {
                           "type": "string",
@@ -431,7 +430,7 @@
                 "type": "object",
                 "propertyNames": {
                   "type": "string",
-                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                 },
                 "additionalProperties": {}
               },
@@ -443,7 +442,7 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                     },
                     "title": {
                       "type": "string",
@@ -456,7 +455,7 @@
                       "type": "object",
                       "propertyNames": {
                         "type": "string",
-                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                       },
                       "additionalProperties": {
                         "type": "object",
@@ -465,28 +464,28 @@
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             }
                           },
                           "update": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             }
                           },
                           "read": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             }
                           },
                           "remove": {
                             "type": "array",
                             "items": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                             }
                           }
                         },
@@ -501,7 +500,7 @@
                         "properties": {
                           "id": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                           },
                           "label": {
                             "type": "string",
@@ -509,11 +508,11 @@
                           },
                           "from": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                           },
                           "to": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                           },
                           "text": {
                             "type": "string"
@@ -590,13 +589,13 @@
                           },
                           "show": {
                             "type": "string",
-                            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                           },
                           "effects": {
                             "type": "object",
                             "propertyNames": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                             },
                             "additionalProperties": {
                               "type": "array",
@@ -605,25 +604,24 @@
                                 "properties": {
                                   "add": {
                                     "type": "string",
-                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                                   },
                                   "update": {
                                     "type": "string",
-                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                                   },
                                   "read": {
                                     "type": "string",
-                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                                   },
                                   "remove": {
                                     "type": "string",
-                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                                   },
                                   "focus": {
                                     "type": "string",
-                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
                                   },
-                                  "set": {},
                                   "fields": {
                                     "type": "object",
                                     "propertyNames": {
@@ -640,7 +638,7 @@
                             "type": "object",
                             "propertyNames": {
                               "type": "string",
-                              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
                             },
                             "additionalProperties": {}
                           }

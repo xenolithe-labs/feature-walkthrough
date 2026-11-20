@@ -21,6 +21,7 @@ import {
   own,
 } from '../../core';
 import { exitPoint, type Box } from '../_diagram/Diagram';
+import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
 import './boxes.css';
@@ -313,6 +314,9 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
         }
       }
     });
+    problems.push(
+      ...fieldProblems(pane, walkthrough, (id) => (byId.has(id) ? ['label', 'sub', 'tone'] : [])),
+    );
     return problems;
   },
 };

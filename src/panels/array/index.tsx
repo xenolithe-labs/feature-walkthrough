@@ -42,7 +42,7 @@ import {
 } from './model';
 import './array.css';
 
-const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'set', 'fields'];
+const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'fields'];
 const CELL_FIELDS = ['value', 'tone'];
 const POINTER_FIELDS = ['at', 'label', 'tone'];
 const RANGE_FIELDS = ['from', 'to', 'label', 'tone'];

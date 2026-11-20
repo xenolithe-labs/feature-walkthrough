@@ -78,7 +78,8 @@ A config answers three questions:
 | What shows in each panel?      | `layout.panes[]`               | The panel type and its `content`: everything the pane can ever show                                   |
 | Which step, and in what state? | `steps[].calls[]`              | Card text and `effects` per pane. A pane's state at a call is the fold of its effects up to that call |
 
-Effects are `add`, `update`, `read`, `remove`, `focus` and `set`. The JSON Schema of the shared
+Effects are `add`, `update`, `read`, `remove` and `focus`. Ids use letters, digits, `_` and `-`;
+dots and colons are reserved for ids the engine builds, such as `table.column` and `from.to`. The JSON Schema of the shared
 shape is in [`schema/walkthrough.schema.json`](schema/walkthrough.schema.json).
 
 ## Develop

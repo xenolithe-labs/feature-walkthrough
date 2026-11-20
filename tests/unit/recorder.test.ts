@@ -271,27 +271,27 @@ describe('function calls', () => {
     const config = recursive('manual');
     const calls = config.steps.flatMap((step) => step.calls);
     expect(calls[0]!.effects!.stack).toEqual([
-      { add: 'stack.0' },
-      { update: 'stack.0', fields: { label: 'sum(2)', sub: '' } },
+      { add: 'stack-0' },
+      { update: 'stack-0', fields: { label: 'sum(2)', sub: '' } },
     ]);
     expect(calls[1]!.effects!.stack).toEqual([
-      { add: 'stack.1' },
-      { update: 'stack.1', fields: { label: 'sum(1)', sub: '' } },
+      { add: 'stack-1' },
+      { update: 'stack-1', fields: { label: 'sum(1)', sub: '' } },
     ]);
     expect(calls[2]!.effects!.stack).toEqual([
-      { update: 'stack.1', fields: { tone: 'good', sub: 'returns 1' } },
+      { update: 'stack-1', fields: { tone: 'good', sub: 'returns 1' } },
     ]);
     // The popped frame goes at the start of the next call; the caller's own return joins it.
     expect(calls[3]!.effects!.stack).toEqual([
-      { remove: 'stack.1' },
-      { update: 'stack.0', fields: { tone: 'good', sub: 'returns 3' } },
+      { remove: 'stack-1' },
+      { update: 'stack-0', fields: { tone: 'good', sub: 'returns 3' } },
     ]);
     const boxes = (
       config.layout.panes.find((pane) => pane.id === 'stack')!.content as {
         boxes: { parent?: string }[];
       }
     ).boxes;
-    expect(boxes.map((box) => box.parent)).toEqual([undefined, 'stack.0']);
+    expect(boxes.map((box) => box.parent)).toEqual([undefined, 'stack-0']);
     expect(lint(config).problems.map(formatProblem)).toEqual([]);
   });
 
