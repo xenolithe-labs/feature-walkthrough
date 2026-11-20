@@ -480,6 +480,20 @@ body {
   font-weight: 600;
 }
 
+/* What the step is for: quieter than the words of the call, and the same on every call of it. */
+.fw-card-step-text {
+  color: var(--fw-muted);
+  font-size: 0.85rem;
+}
+
+.fw-card-text code,
+.fw-card-step-text code {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--fw-surface-2);
+  font: 0.9em var(--fw-mono);
+}
+
 .fw-card-title {
   margin: 0 0 6px;
   font-size: 1.15rem;

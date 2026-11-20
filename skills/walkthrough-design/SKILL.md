@@ -30,7 +30,7 @@ If you cannot ask the requester for step 1, write your best guess, mark each lin
 ## 1. Reader and outcome
 
 1. **Reader:** who, in one line ("a backend developer who has used OAuth but never read the spec").
-2. **Knows / does not know:** the terms they know and the terms they do not. Define each unknown term once, or cut it. Where: in the call that first needs it; in the intro only if more than one step depends on it. If many terms are unknown, the outcome is probably two outcomes: split the walkthrough.
+2. **Knows / does not know:** the terms they know and the terms they do not. Define each unknown term once, or cut it. Where: in the call that first needs it; in the intro only if more than one step depends on it, and only if the reader is sure to see the intro (check the tool shows it in every layout). If many terms are unknown, the outcome is probably two outcomes: split the walkthrough.
 3. **Afterwards they can:** one observable ability, with a verb you could test: predict, explain to someone else, spot the bug, choose between A and B. "Understand" is not a test.
 4. **Test question:** the question that checks line 3, with its written answer. The walkthrough exists to make the reader able to give that answer.
 
@@ -70,7 +70,7 @@ Choose two or three views. A fourth needs a reason you can state in one sentence
 Rules:
 
 - **Each view answers a different question** ("who is talking?", "what does the store hold now?"). Name the question per view. If two views answer the same one, drop one.
-- **Pair what happens with what it changes, when the subject has both.** Most subjects need one view of the events (messages, code lines, a decision path) and one of the state they change (a table, a graph, an array). If the subject has no messages or code (a recalculation, a layout pass), two views of the state are enough and the list of calls is the events view: do not add a flow chart only to have one. Add a third view only for a detail the first two hide (exact bytes, the exact line), and only if it fits on screen beside the other two at reading size; if it does not, its content goes in the text. [N3: concrete step plus whole-state view]
+- **Pair what happens with what it changes, when the subject has both.** Most subjects need one view of the events (messages, code lines, a decision path) and one of the state they change (a table, a graph, an array). If the subject has no messages or code (a recalculation, a layout pass), two views of the state are enough and the list of calls is the events view: do not add a flow chart only to have one. Add a third view only for something the first two cannot hold (exact bytes, the exact line, or a second kind of state such as who has run as against what is stored), and only if all three can be seen at once, without scrolling, on an ordinary laptop screen in the layout readers get by default: build it and look. If they cannot, first try folding the third view's few items into the state view as rows; only then move its content to the text. [N3: concrete step plus whole-state view]
 - **A view is wrong when:** it never changes across the whole walkthrough (make it static context or cut it); it holds one or two elements (put them in the call text); the reader must scroll or zoom to read it (split the subject); the reader must work out which row matches which node (give the thing one name and one value everywhere).
 - **Same thing, same name, same value** in every view that shows it.
 - **Schematic beats realistic.** Draw what the idea needs and no more. [L2]
@@ -81,11 +81,11 @@ Rules:
 
 **A call is one idea.** Say what happens in one sentence with a single verb. Split when the sentence needs "and then", or when the reader could plausibly be wrong about the order. Do **not** split an atomic event with several consequences (a transfer that debits and credits, a rollback that releases locks and wakes a waiter): splitting shows a state that never existed. Split only when the consequences have different causes. Each message in a sequence is its own call.
 
-**A step is a phase the reader can name.** Typically 3 to 7 steps of 1 to 5 calls. [P] Name it with a noun or short phrase in the reader's words ("Exchange the code", not "Phase 3"). Put a boundary where the reader's question changes, where control passes to another actor, or where a stable state is reached that the reader can take in before moving on. Give a step a one-sentence purpose and, if state changed, a closing sentence on where things stand. [N1: orientation, summaries]
+**A step is a phase the reader can name.** Typically 3 to 7 steps of 1 to 5 calls. [P] Name it with a noun or short phrase in the reader's words ("Exchange the code", not "Phase 3"). Put a boundary where the reader's question changes, where control passes to another actor, or where a stable state is reached that the reader can take in before moving on. Give a step a one-sentence purpose and, if state changed, a closing sentence on where things stand. [N1: orientation, summaries] If the tool does not show a step's own text to the reader, the purpose belongs in the step's first call and the recap in its last; check before relying on it.
 
 **Opening.** Start with the first real call, preceded by a sentence of context, or with a named opening call. If the run starts from state that already exists (a sheet, a table, a cluster), show that state from the first call and mark only the part each opening call talks about. Build a view up only when the things are created during the run. Never trade a still layout for a late entrance.
 
-**Closing.** End on a call whose final state lets the reader read the answer off the views (what changed, what was left alone), and say once why the mechanism matters.
+**Closing.** End on the last real event, with a final state that lets the reader read the answer off the views (what changed, what was left alone), and say once why the mechanism matters. The closing is that event's call, not an extra one.
 
 **A call that changes nothing** (a check that declines, a wait) is still a call when the reader needs to see it happen; say what was looked at and what the outcome was.
 
@@ -104,7 +104,7 @@ Rules:
 Each call has a name and a text.
 
 - **Name = what happens**, in a short verb phrase with the real command, message or value where it fits (`POST /token`, "Mark A3 dirty"). If the real thing is long (an SQL statement), shorten it and keep its distinguishing part.
-- **Text = what changed, why, and what to notice.** State the change with names and values, old and new ("balance 40 becomes 25": after the call the old value is gone from the view). Say what it means, not where it is on screen. Keep it to about 40 words in up to three sentences; a colon or semicolon that joins two statements counts as a sentence break. Over that, split the call or cut. When the demands below do not all fit, keep the change and its values first, then why, and drop the rest. [P]
+- **Text = what changed, why, and what to notice.** State the change with names and values, old and new ("balance 40 becomes 25": after the call the old value is gone from the view). Say what it means, not where it is on screen. Use as few words as state the change: many calls need under 20. About 40 words in three sentences is the ceiling, not the size to aim for; a colon or semicolon that joins two statements counts as a sentence break. If most of your calls are near the ceiling, the calls are carrying two ideas or the views are not carrying the values: fix that instead of trimming. When the demands below do not all fit, keep the change and its values first, then why, and drop the rest. A prediction question (section 6) does not count toward the limit. [P]
 - **Stand alone.** A reader who jumps to any call should be able to follow it, given only the intro's definitions. So the text names things by their own names or values ("the row for order 17"), not by position, colour, "this" or "above". [W1, A3]
 - **Do not narrate the layout** ("an arrow goes from the client to the server"). Exceptions to "tie text to something highlighted": a step's purpose and recap sentences, and a prediction prompt.
 - **One new term per call,** defined in the call that first needs it (section 1 says when the intro is the better place), in the reader's words. No forward references ("as we will see"). [L6]
@@ -153,9 +153,9 @@ Each call has a name and a text.
 ## 10. Test it
 
 0. **Two rounds.** Test the storyboard first, because changes are cheap there; test again on the built walkthrough, because views change what the text needs to say.
-1. **Storyboard on paper:** one card per call with name, text and a sketch of each view's state. Read the cards aloud. Fix on paper.
+1. **Storyboard on paper:** one card per call with name, text and a sketch of each view's state. Fix on paper.
 2. **Test on three to five people from the intended audience** (separately for clearly different audiences). Ask the test question before and after. Watch them step through, asking them to think aloud; do not explain or hint. Note where they stall, go back, misread or say "wait". Revise, then test on new readers: several small rounds find more than one large one. [W2, W3]
-3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent only the intro and the call names and texts, in order, no views. Ask it to (a) answer the test question, (b) list every term or value it could not derive from the text, treating anything not defined there as unknown even if it knows it, (c) list every state change the text does not state, (d) list every sentence it had to read twice. "The intro" is the title and opening lines the reader sees before the first call. Give the test question only after the read, so it does not steer the reading. This tests only the text path, and a model's prior knowledge hides gaps, so report it as a weaker test.
+3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent only the intro and the call names and texts, in order, no views. Ask it to (a) answer the test question, (b) list every term or value it could not derive from the text, treating as unknown anything the text does not define, except the terms on the reader record's "knows" line, which you hand over as a list, (c) list every state change the text does not state, (d) list every sentence it had to read twice. "The intro" is the title and opening lines the reader sees before the first call. Give the step names along with the call names. Give the test question only after the read, so it does not steer the reading. Act on (c) and (d) first: they find more than (b). This tests only the text path, and a model's prior knowledge hides gaps, so report it as a weaker test.
 4. **Evidence caveat.** Most of the research behind these rules is from short lab lessons, not interactive multi-view explanations. The reader test is the authority.
 
 ## Worked examples
@@ -181,9 +181,9 @@ Run it on the draft and the design record. Answer yes or no. Any "no" is a findi
 
 **Purpose**
 
-1. Is the reader named in one line?
+1. Is the reader named in one line, with what they know?
 2. Is the outcome stated as a verb you could test (not "understand")?
-3. Are the test question and its answer written down?
+3. Are the test question and its answer written down, and does the walkthrough's final state show that answer?
 4. Can the answer be read from the final state and the final call text?
 5. Does the intro list at least one thing left out?
 6. Is each term the reader does not know defined once, before its first use?

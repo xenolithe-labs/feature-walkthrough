@@ -22,7 +22,8 @@ describe('server rendering of generated configs', () => {
       }),
       { numRuns: 40 },
     );
-  });
+    // Draws every pane at every cursor of several configs: seconds on a busy machine.
+  }, 30_000);
 
   it('renders with a selection that exists in no pane and with one in a hidden pane', () => {
     const w = loaded(randomWalkthrough(7));

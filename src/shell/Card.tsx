@@ -82,6 +82,23 @@ function Section({ section, selection }: { section: CardSection; selection: Sele
   );
 }
 
+/**
+ * Text from a config, with anything between backticks shown as code. Everything is still drawn
+ * as text: a backtick only chooses a typeface, it cannot add markup.
+ */
+function Prose({ text }: { text: string }) {
+  const parts = text.split('`');
+  // An odd number of backticks means one is a stray: show the text as written.
+  if (parts.length % 2 === 0) return <>{text}</>;
+  return (
+    <>
+      {parts.map((part, index) =>
+        index % 2 === 1 ? <code key={index}>{part}</code> : <span key={index}>{part}</span>,
+      )}
+    </>
+  );
+}
+
 export function Card({
   card,
   selection,
@@ -105,6 +122,11 @@ export function Card({
         Step {position.step} of {position.steps} · Call {position.call} of {position.calls}
       </p>
       <p className="fw-card-step">{card.stepTitle}</p>
+      {card.stepText !== undefined && (
+        <p className="fw-card-step-text">
+          <Prose text={card.stepText} />
+        </p>
+      )}
       <h2 className="fw-card-title">{card.title}</h2>
       {(card.from !== undefined || card.to !== undefined) && (
         <p className="fw-card-lanes">
@@ -127,7 +149,11 @@ export function Card({
           ))}
         </p>
       )}
-      {card.text !== undefined && <p className="fw-card-text">{card.text}</p>}
+      {card.text !== undefined && (
+        <p className="fw-card-text">
+          <Prose text={card.text} />
+        </p>
+      )}
       {card.where !== undefined && <p className="fw-card-where">{card.where}</p>}
       {selection.id !== undefined && (
         <p className="fw-selected">
