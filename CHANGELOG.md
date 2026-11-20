@@ -13,7 +13,7 @@ The first release.
 - **Command line**: `feature-walkthrough <file>` serves a config; `lint` checks it; `check` adds
   design and layout findings, stats and a text trace for agents; `build` writes one self-contained
   HTML file; `highlight` adds syntax colours; `schema` prints the JSON Schema; `skills` lists and
-  installs the agent skills.
+  installs the agent skills; `help [command]` explains each one.
 - **Library**: the `Walkthrough` component, the engine, the registry of panels, a recorder that turns
   a real run of an algorithm into a config, and the checker, for use in a React app.
 - **Agent skills**: `feature-walkthrough` (the config and the write, check, fix, show loop) and

@@ -39,3 +39,30 @@ test('check exits 1 for a config with errors, 2 when it is called wrongly', () =
   expect(run('check').status).toBe(2);
   expect(run('check', file, '--only', 'nonsense').status).toBe(2);
 });
+
+test('help: the general usage, the details of one command, and an unknown command', () => {
+  const run = (...args: string[]) =>
+    spawnSync(process.execPath, ['dist/cli/index.js', ...args], { encoding: 'utf8' });
+
+  const general = run('help');
+  expect(general.status).toBe(0);
+  for (const command of ['lint', 'check', 'build', 'highlight', 'schema', 'skills', 'help']) {
+    expect(general.stdout).toContain(`feature-walkthrough ${command}`);
+  }
+  // Nothing at all, and --help, say the same.
+  expect(run().stdout).toBe(general.stdout);
+  expect(run('--help').stdout).toBe(general.stdout);
+
+  for (const command of ['serve', 'lint', 'check', 'build', 'highlight', 'schema', 'skills']) {
+    const one = run('help', command);
+    expect(one.status, command).toBe(0);
+    expect(one.stdout, command).toContain('Usage:');
+    expect(one.stdout, command).not.toBe(general.stdout);
+    // "<command> --help" is the same text.
+    if (command !== 'serve') expect(run(command, '--help').stdout, command).toBe(one.stdout);
+  }
+
+  const unknown = run('help', 'nope');
+  expect(unknown.status).toBe(2);
+  expect(unknown.stderr).toContain('no command named "nope"');
+});

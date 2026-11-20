@@ -7,6 +7,7 @@
  * feature-walkthrough highlight <file>   write the config with syntax colours worked out
  * feature-walkthrough schema             print the JSON Schema of a config
  * feature-walkthrough skills [install]   list or copy the agent skills that ship with the package
+ * feature-walkthrough help [command]     show the usage, or the details of one command
  *
  * A file is a JSON config, or a JavaScript or TypeScript module whose default
  * export is a config.
@@ -46,7 +47,8 @@ const USAGE = `Usage:
   feature-walkthrough highlight <file> [-o out]  write the config as JSON with syntax colours added
   feature-walkthrough schema                 print the JSON Schema of a config
   feature-walkthrough skills [install]       list the agent skills in this package, or copy them into
-                                             ./.claude/skills (run "skills --help" for the options)
+                                             ./.claude/skills
+  feature-walkthrough help [command]         show this text, or the details of one command
 
 Options:
   -o, --out <path>   where build writes (default: <file name>.html)
@@ -57,6 +59,70 @@ Options:
   -v, --version      show the version
 
 A file is a JSON config, or a JavaScript or TypeScript module whose default export is a config.`;
+
+const FILE =
+  'A file is a JSON config, or a JavaScript or TypeScript module whose default export is a config.';
+
+/** What `help <command>` prints for the commands that have no usage text of their own. */
+const COMMAND_HELP: Record<string, string> = {
+  serve: `Usage:
+  feature-walkthrough <file>
+  feature-walkthrough serve <file>
+
+Checks the config, then serves the viewer on this machine only and opens it in the browser.
+Problems are printed here and listed on the page too. The file is read again on every request,
+so refresh the page after an edit. Ctrl+C stops it.
+
+Options:
+  -p, --port <n>   port to serve on (default: 4400, or the next free one)
+      --no-open    do not open the browser
+      --no-color   show code plain: do not work out syntax colours
+
+${FILE}`,
+  lint: `Usage:
+  feature-walkthrough lint <file...>
+
+Checks each config and prints one line per problem: severity, rule, where, and what is wrong.
+For graph and flow panes it also runs the layout and warns about the picture (an edge through a
+node, a diagram too wide to read). Exits 1 if any file has an error, 0 otherwise. Warnings do not
+change the exit code.
+
+For design findings, stats, a text trace and JSON output, use "check".
+
+${FILE}`,
+  build: `Usage:
+  feature-walkthrough build <file> [-o out.html]
+
+Checks the config and writes one self-contained HTML file with the viewer and the config in it.
+It needs no server and no network: open it, attach it, or host it anywhere.
+
+Options:
+  -o, --out <path>   where to write (default: <file name>.html)
+      --no-color     show code plain: do not work out syntax colours
+
+${FILE}`,
+  highlight: `Usage:
+  feature-walkthrough highlight <file> [-o out.json]
+
+Writes the config as JSON with syntax colours worked out for every code source that names a
+language. "serve" and "build" do this by themselves; use this for a config that is loaded some
+other way, such as by address with ?src=. Prints to standard output unless -o is given.
+
+${FILE}`,
+  schema: `Usage:
+  feature-walkthrough schema
+
+Prints the JSON Schema of a config: the shape every panel shares. The exact shapes of each
+panel's content are in the feature-walkthrough skill's reference ("skills show feature-walkthrough").`,
+};
+
+/** The help for one command, or undefined when there is no such command. */
+function helpFor(command: string | undefined): string | undefined {
+  if (command === undefined || command === 'help') return USAGE;
+  if (command === 'check') return CHECK_USAGE;
+  if (command === 'skills') return SKILLS_USAGE;
+  return Object.hasOwn(COMMAND_HELP, command) ? COMMAND_HELP[command] : undefined;
+}
 
 async function read(file: string): Promise<unknown> {
   const path = resolve(file);
@@ -238,9 +304,8 @@ async function main(argv: string[]): Promise<number> {
   }
   const { values, positionals } = parsed;
   if (values.help) {
-    console.log(
-      positionals[0] === 'check' ? CHECK_USAGE : positionals[0] === 'skills' ? SKILLS_USAGE : USAGE,
-    );
+    // "--help" after a command shows that command's help; after a file name, the general one.
+    console.log(helpFor(positionals[0]) ?? USAGE);
     return 0;
   }
   if (values.version) {
@@ -249,6 +314,17 @@ async function main(argv: string[]): Promise<number> {
   }
 
   const [command, ...rest] = positionals;
+  if (command === 'help') {
+    const text = helpFor(rest[0]);
+    if (text === undefined) {
+      console.error(
+        `no command named "${rest[0]}". Commands: serve, lint, check, build, highlight, schema, skills`,
+      );
+      return 2;
+    }
+    console.log(text);
+    return 0;
+  }
   if (command === 'lint') return lint(rest);
   if (command === 'check') {
     return runCheck(
@@ -297,6 +373,11 @@ async function main(argv: string[]): Promise<number> {
 
   // Anything else is a file to show: "serve <file>" or just "<file>".
   const files = command === 'serve' ? rest : positionals;
+  // Run with nothing at all: show what it can do.
+  if (positionals.length === 0) {
+    console.log(USAGE);
+    return 0;
+  }
   if (files.length !== 1) {
     console.error(USAGE);
     return 2;
