@@ -71,10 +71,15 @@ for (const walkthrough of walkthroughs) {
     // move by design, but the cells they move over must not. The event slots and offsets of a
     // bus and the instants and ticks of a timeline have fixed places too: they are measured from
     // the scrolling content they sit in, which a reveal may scroll.
+    // The rows of a table are included when a table pane is always on the page (not one that
+    // shares a slot, which is not there at the first call). They are measured from the table.
+    const fixedTable = walkthrough.layout.panes.some(
+      (pane) => pane.panel === 'table' && pane.role !== 'focus',
+    );
     const places = () =>
       page
         .locator(
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick',
+          `.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-by-field, .fw-ring-key-hit${fixedTable ? ', .fw-table tbody tr' : ''}`,
         )
         .evaluateAll((nodes) =>
           nodes.map((node) => {
@@ -83,7 +88,8 @@ for (const walkthrough of walkthroughs) {
             }
             const box = node.getBoundingClientRect();
             const pane = (
-              node.closest('.fw-bus-grid, .fw-tl-inner') ?? node.closest('.fw-pane')!
+              node.closest('.fw-bus-grid, .fw-tl-inner, .fw-table, .fw-by-inner') ??
+              node.closest('.fw-pane')!
             ).getBoundingClientRect();
             return [
               node.getAttribute('data-entity') ?? node.textContent,
@@ -886,6 +892,8 @@ test('focus view: the marked items of every staged pane are in view, small or la
     '#w=bfs&s=2&c=4',
     '#w=quicksort&s=5&c=3',
     '#w=react-render&s=2&c=2',
+    '#w=kafka-broker-failure&s=3&c=1',
+    '#w=aws-scp-inheritance&s=2&c=1',
   ];
   for (const size of [
     { width: 1440, height: 900 },
@@ -1061,3 +1069,353 @@ test('code and sequence additions fit a phone in both views, with no sideways pa
     }
   }
 });
+test('table: legend tones, group headers, a meter and a marked column, with rows that keep their height', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=kafka-broker-failure&s=1&c=1');
+  const table = page.locator('.fw-pane[data-panel="table"]');
+  // Headers keep the case they were written in.
+  await expect(table.locator('thead th').first()).toHaveText('Partition');
+  // Two group headers span the table, and they are not elements.
+  await expect(table.locator('tr.fw-table-group th')).toHaveText([
+    'Topic orders',
+    'Topic payments',
+  ]);
+  await expect(table.locator('tr.fw-table-group th').first()).toHaveAttribute('colspan', '6');
+  // A cell whose text is a legend value has that tone, and the legend is under the table.
+  await expect(table.locator('tr[data-entity="orders-0"] td[data-column="b1"]')).toHaveAttribute(
+    'data-cell-tone',
+    'good',
+  );
+  await expect(table.locator('.fw-table-legend li')).toHaveCount(4);
+  // A meter shows the number and a warning past its threshold.
+  const lag = (id: string) => table.locator(`tr[data-entity="${id}"] td[data-column="lag"]`);
+  await expect(lag('orders-1')).toHaveAttribute('data-warn', 'true');
+  await expect(lag('orders-0')).not.toHaveAttribute('data-warn', 'true');
+  await expect(lag('orders-1').locator('[role="meter"]')).toHaveAttribute('aria-valuenow', '38');
+  // The marked column: its header and cells, and the rows do not fade.
+  await expect(table.locator('th[data-entity="col.b2"]')).toHaveAttribute('data-col-mark', 'read');
+  await expect(table.locator('tr[data-entity="orders-0"] td[data-column="b2"]')).toHaveClass(
+    /is-col-hit/,
+  );
+  await expect(table.locator('tr[data-entity="orders-0"]')).not.toHaveClass(/is-faded/);
+
+  const heights = () =>
+    table
+      .locator('tbody tr')
+      .evaluateAll((rows) => rows.map((row) => row.getBoundingClientRect().height));
+  const before = await heights();
+  for (let step = 1; step < 10; step += 1) await page.keyboard.press('ArrowRight');
+  expect(await heights()).toEqual(before);
+  // The column header is a selectable element: it selects across panes.
+  await table.locator('th[data-entity="col.b2"]').click();
+  await expect(page).toHaveURL(/sel=col\.b2/);
+  expect(errors).toEqual([]);
+});
+
+test('tree: ancestors open for the call, the reader can close one, Up and Down move, and Right still steps the call', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // Sandbox is collapsed until a call touches something inside it.
+  await open(page, '#w=aws-scp-inheritance&s=1&c=1');
+  const tree = page.locator('.fw-pane[data-panel="tree"]');
+  const row = (id: string) => tree.locator(`[role="treeitem"][data-entity="${id}"]`);
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'false');
+  await expect(row('ou-sandbox').locator('.fw-tree-hidden')).toHaveText('4 hidden');
+  await expect(row('acct-sandbox')).toHaveCount(0);
+
+  await page.keyboard.press('ArrowRight');
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'true');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-mark', 'read');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-depth', '3');
+
+  // Enter selects across panes.
+  await row('acct-sandbox').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=acct-sandbox/);
+
+  // The reader closes Sandbox: it says it hides what the call touches.
+  await row('ou-sandbox').locator('.fw-tree-twisty').click();
+  await expect(row('ou-sandbox').locator('.fw-tree-hidden')).toContainText('1 touched');
+
+  // Up and Down move between nodes; Left and Right are not taken by the tree.
+  await row('root').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect(row('p-root-full')).toBeFocused();
+  await page.keyboard.press('End');
+  await expect(row('acct-mgmt')).toBeFocused();
+  await page.keyboard.press('Home');
+  await expect(row('root')).toBeFocused();
+  expect(await position(page)).toBe('2.1');
+  await page.keyboard.press('ArrowRight');
+  expect(await position(page)).toBe('3.1');
+  await page.keyboard.press('ArrowLeft');
+  expect(await position(page)).toBe('2.1');
+  // The move: the account is now one level up, and absent or closed nodes keep the rows they had.
+  await page.goto('/#w=aws-scp-inheritance&s=5&c=1');
+  await expect(row('acct-sandbox')).toHaveAttribute('data-depth', '2');
+  await expect(row('ou-sandbox')).toHaveAttribute('aria-expanded', 'false');
+  expect(errors).toEqual([]);
+});
+
+// ---- the bytes panel ----
+
+const field = (page: Page, id: string) => page.locator(`.fw-by-field[data-entity="${id}"]`);
+
+test('bytes: a call marks fields, shows their words, and a straddling field is one field', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  // The SYN-ACK: sequence 300, acknowledgment 101, SYN and ACK set.
+  await open(page, '#w=tcp-handshake&s=3&c=1');
+  await expect(field(page, 'seg.seq').first()).toHaveAttribute('data-mark', 'updated');
+  await expect(field(page, 'seg.seq').first().locator('.fw-by-select')).toHaveAttribute(
+    'aria-label',
+    /Sequence Number, bits 32–63, value 300/,
+  );
+  await expect(field(page, 'seg.ack')).toHaveAttribute('data-mark', 'updated');
+  await expect(page.locator('.fw-by-note[data-field="seg.sport"]')).toContainText('bits 0–15');
+  await expect(page.locator('.fw-by-more')).toContainText('more marked');
+
+  // On a phone the 32-bit rows are drawn 16 to a row, so the sequence number is two pieces.
+  await expect(page.locator('.fw-by-grid').first()).toHaveAttribute('data-width', '16');
+  await expect(field(page, 'seg.seq')).toHaveCount(2);
+  await expect(field(page, 'seg.seq').nth(1)).toHaveAttribute('data-part', '2/2');
+  // Only the first piece can be reached with the keyboard.
+  await expect(field(page, 'seg.seq').nth(1).locator('.fw-by-select')).toHaveAttribute(
+    'tabindex',
+    '-1',
+  );
+  // Choosing the second piece chooses the field: both pieces show it.
+  await field(page, 'seg.seq').nth(1).locator('.fw-by-select').click();
+  await expect(page).toHaveURL(/sel=seg\.seq/);
+  await expect(field(page, 'seg.seq').first()).toHaveClass(/is-selected/);
+  await expect(field(page, 'seg.seq').nth(1)).toHaveClass(/is-selected/);
+
+  // No page-wide sideways scroll at phone width.
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+
+  // A flag is reachable with the keyboard and chosen with Enter.
+  await field(page, 'seg.syn').locator('.fw-by-select').focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=seg\.syn/);
+  expect(errors).toEqual([]);
+});
+
+test('bytes: at desktop width the header keeps its 32-bit rows and nothing moves between calls', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=tcp-handshake&s=2&c=1&v=focus');
+  await expect(page.locator('.fw-by-grid').first()).toHaveAttribute('data-width', '32');
+  await expect(field(page, 'seg.seq')).toHaveCount(1);
+
+  const places = () =>
+    page.locator('.fw-by-frame[data-entity="seg"] .fw-by-field').evaluateAll((nodes) => {
+      const grid = nodes[0]!.closest('.fw-by-grid')!.getBoundingClientRect();
+      return nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        return [
+          node.getAttribute('data-entity'),
+          Math.round(box.left - grid.left),
+          Math.round(box.top - grid.top),
+        ];
+      });
+    });
+  const before = await places();
+  expect(before.length).toBeGreaterThan(10);
+  for (let index = 0; index < 5; index += 1) await page.keyboard.press('ArrowRight');
+  expect(await places()).toEqual(before);
+});
+
+test('bytes: on the focus stage the panel fills its frame and scrolls inside it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=tcp-handshake&s=4&c=1&v=focus');
+  const pane = page.locator('.fw-stage-pane[data-panel="bytes"]');
+  await expect(pane).toBeVisible();
+  const [root, frame] = await Promise.all([
+    pane.locator('.fw-bytes').boundingBox(),
+    pane.boundingBox(),
+  ]);
+  expect(root!.y + root!.height).toBeLessThanOrEqual(frame!.y + frame!.height + 1);
+  // The frame the call adds is in view inside the scrolling root.
+  const added = await pane.locator('.fw-by-frame[data-entity="last"]').boundingBox();
+  expect(added!.y).toBeGreaterThanOrEqual(root!.y - 1);
+  expect(added!.y).toBeLessThan(root!.y + root!.height);
+});
+
+test('bytes: a segment links to the decoded header in a payload pane', async ({ page }) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=jwe-compact&s=2&c=2');
+  await expect(field(page, 'jwe.header')).toHaveAttribute('data-mark', 'updated');
+  await expect(field(page, 'jwe.ekey').locator('.fw-by-value')).toHaveText(/^C39XATK/);
+  // The cursor sits at the start of segment 2.
+  await expect(page.locator('.fw-by-cursor[data-entity="jwe.cursor"]')).toHaveCount(1);
+  await page.locator('.fw-by-link[data-ref="header"]').click();
+  await expect(page).toHaveURL(/sel=header/);
+  await expect(page.locator('.fw-payload[data-entity="header"]')).toHaveClass(/is-selected/);
+  // And back: the payload's link selects the segment.
+  await page.locator('.fw-pl-ref[data-ref="jwe.header"]').click();
+  await expect(page).toHaveURL(/sel=jwe\.header/);
+  await expect(field(page, 'jwe.header')).toHaveClass(/is-selected/);
+
+  // The bytes frame appears with a gap for the long ciphertext and an ASCII gutter.
+  await page.goto('/#w=jwe-compact&s=3&c=1');
+  await page.reload();
+  await expect(page.locator('.fw-by-frame[data-entity="raw"]')).toHaveAttribute(
+    'data-mark',
+    'added',
+  );
+  await expect(page.locator('.fw-by-field.is-gap')).toHaveCount(1);
+  await expect(page.locator('.fw-by-ascii').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+test('ring: a joining node marks the keys that change owner and the arc, which no config lists', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(3);
+  await expect(page.locator('.fw-ring-changed')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-keys tr.is-moved')).toHaveCount(3);
+  await expect(page.locator('.fw-ring-keys tr.is-moved').first()).toContainText(
+    'moved from node-13',
+  );
+  // Each moved key says so in words for a screen reader, not only by its shape.
+  await expect(page.locator('.fw-ring-key.is-moved').first()).toHaveAttribute(
+    'aria-label',
+    /moved from node-13 to node-10/,
+  );
+  // Next call: the marks belong to the call that moved the keys.
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(0);
+  await expect(page.locator('.fw-ring-changed')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('ring: a lookup draws the walk from the key to its owner and replica; a down node is skipped', async ({
+  page,
+}) => {
+  await open(page, '#w=consistent-hashing&s=2&c=2');
+  const walk = page.locator('[data-walk="user-105"]');
+  await expect(walk).toHaveCount(1);
+  await expect(walk.locator('.fw-ring-badge-text')).toHaveText(['1', '2']);
+  await expect(walk.locator('[data-visit="owner"]')).toHaveCount(1);
+
+  await open(page, '#w=consistent-hashing&s=4&c=3');
+  const down = page.locator('[data-walk="user-100"]');
+  await expect(down.locator('[data-visit="skipped"]')).toHaveCount(1);
+  await expect(down.locator('.fw-ring-badge-text')).toHaveText(['×', '1', '2']);
+  await expect(page.locator('.fw-ring-token.is-down')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-hint').first()).toBeVisible();
+});
+
+test('ring: selecting a key or node anywhere selects it everywhere, from the keyboard too', async ({
+  page,
+}) => {
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  await page.locator('.fw-ring-keys').getByRole('button', { name: 'user:103' }).click();
+  await expect(page).toHaveURL(/sel=user-103/);
+  await expect(page.locator('.fw-ring-key.is-selected')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-key.is-selected')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-walk="user-103"]')).toHaveCount(1);
+
+  // A ring token is reachable by Tab and selects with Enter.
+  const token = page.locator('.fw-ring-token').first();
+  await token.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=node-\d+\.0/);
+
+  // A node row selects the node: its arcs stay, the others dim.
+  await page
+    .locator('.fw-ring-nodes')
+    .getByRole('button', { name: /node-10/ })
+    .click();
+  await expect(page).toHaveURL(/sel=node-10/);
+  await expect(page.locator('.fw-ring-arc.is-dim').first()).toBeVisible();
+});
+
+test('ring: the legend and the tables keep their rows as nodes and keys come and go', async ({
+  page,
+}) => {
+  const rows = () =>
+    page
+      .locator('.fw-ring')
+      .evaluate((root) =>
+        [...root.querySelectorAll('.fw-ring-nodes tbody tr, .fw-ring-keys tbody tr')].map((row) =>
+          Math.round(row.getBoundingClientRect().top - root.getBoundingClientRect().top),
+        ),
+      );
+  await open(page, '#w=consistent-hashing&s=1&c=1');
+  const before = await rows();
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  expect(await rows()).toEqual(before);
+  await expect(page.locator('.fw-ring-nodes tr[data-state="absent"]')).toHaveCount(0);
+  await open(page, '#w=consistent-hashing&s=1&c=1');
+  await expect(page.locator('.fw-ring-nodes tr[data-state="absent"]')).toHaveCount(1);
+});
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`ring: in the focus view the ring fits its frame and the tables scroll inside it (${scheme})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ colorScheme: scheme });
+    await open(page, '#w=consistent-hashing&s=3&c=1&v=focus');
+    const pane = page
+      .locator('.fw-stage-pane[data-panel="ring"], .fw-stage-pane:has(.fw-ring)')
+      .first();
+    await expect(pane).toBeVisible();
+    const fit = await page.evaluate(() => {
+      const ring = document.querySelector('.fw-stage .fw-ring') as HTMLElement;
+      const frame = ring.parentElement!.getBoundingClientRect();
+      const box = ring.getBoundingClientRect();
+      const svg = ring.querySelector('.fw-ring-svg')!.getBoundingClientRect();
+      return {
+        inside: box.bottom <= frame.bottom + 1 && box.right <= frame.right + 1,
+        svgWide: svg.width,
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(fit.inside).toBe(true);
+    expect(fit.svgWide).toBeGreaterThan(250);
+    expect(fit.pageOverflow).toBe(0);
+  });
+}
+
+test('ring: at phone width the ring is as wide as the pane and its labels do not leave it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  const box = await page.evaluate(() => {
+    const svg = document.querySelector('.fw-ring-svg')!.getBoundingClientRect();
+    const labels = [...document.querySelectorAll('.fw-ring-tag text')].map((node) =>
+      node.getBoundingClientRect(),
+    );
+    return {
+      width: svg.width,
+      left: Math.min(...labels.map((rect) => rect.left)),
+      right: Math.max(...labels.map((rect) => rect.right)),
+    };
+  });
+  expect(box.width).toBeGreaterThan(300);
+  expect(box.left).toBeGreaterThanOrEqual(0);
+  expect(box.right).toBeLessThanOrEqual(390);
+});
+
+for (const cursor of ['s=3&c=1', 's=4&c=1']) {
+  test(`ring: on a phone the focus view stages the ring for the call that moves keys (${cursor})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page, `#w=consistent-hashing&${cursor}&v=focus`);
+    await expect(page.locator('.fw-stage .fw-ring')).toBeVisible();
+    await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(3);
+  });
+}

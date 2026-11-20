@@ -1,6 +1,8 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, tree). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, bytes). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, hash ring). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -105,6 +107,8 @@ but you name them in effects:
 | A column of a schema table | `table.column` | `order.user_id`      |
 | A relation without an `id` | `from:to`      | `order.user_id:user` |
 | A cell of an array         | `array.index`  | `items.3`            |
+| A column of a table pane   | `col.column`   | `col.lag`            |
+| A token of a ring node     | `node.index`   | `node-10.0`          |
 
 `update` may only set fields the element has. A misspelt field, or a tone that is not a tone, is a
 lint error.
@@ -120,19 +124,48 @@ graph). Selecting it in one pane then selects it in the other.
 
 Exact shapes are in [`reference.md`](reference.md), generated from the lint schemas.
 
-| Panel      | Use it for                                   | Elements                                                        | Present at start |
-| ---------- | -------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| `sequence` | Messages between lanes over time             | lanes, calls                                                    | lanes            |
-| `graph`    | Things and relationships that build up       | nodes, edges                                                    | no               |
-| `flow`     | A flow chart that calls walk through         | nodes, edges                                                    | yes              |
-| `boxes`    | Nesting: modules, components, frames         | boxes, edges                                                    | yes              |
-| `table`    | Rows of data that calls read and change      | rows                                                            | yes              |
-| `code`     | Source text, with the lines in question      | sources                                                         | yes              |
-| `payload`  | Message and object bodies, field by field    | payloads                                                        | yes              |
-| `schema`   | Tables or types, columns and relations       | tables, columns, relations                                      | yes              |
-| `array`    | A row of cells with pointers and ranges      | cells, pointers, ranges                                         | cells            |
-| `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
-| `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `tree`     | An outline: files, DOM, accounts, an AST          | nodes                                                           | yes                      |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ---------------------------------------------     | --------------------------------------------------------------- | -----------------        |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `bytes`    | Bit and byte layouts: headers, frames, tokens     | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame        |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `ring`     | Consistent hashing, partition ownership, replicas | nodes, tokens, keys                                             | all but `initial: false` |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown. Optional content, all by call id:
@@ -156,10 +189,38 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   and `tone`. `direction` is `RIGHT` or `DOWN`.
 - **`boxes`**: boxes `{ id, label, sub?, parent? }`; `parent` nests one box inside another.
   `direction` is `row` or `column`.
-- **`table`**: `columns` `{ id, label, mono? }` and `rows` `{ id, cells: { columnId: "text" } }`.
+- **`table`**: `columns` `{ id, label, mono?, meter? }` and `rows` `{ id, cells: { columnId: "text" }, group? }`.
   Cell values are strings. `update` with `fields` keyed by column id changes cells. Add
   `"cells": ["columnId"]` to a `read` to mark single cells and not the whole row. No column may have
-  the id `tone`.
+  the id `tone`. Headers keep the case you write. Optional, and none changes a table that does not
+  use them:
+  - `legend`: `{ "L": { "tone": "good", "label": "leader" } }` (tones `good`, `warn`, `muted`; the
+    tone may be left out). A cell whose text is a legend key is drawn with that tone, and the legend
+    is shown under the table. Use it for placement matrices and heat-map grids: change a cell with
+    `update`, and its tone follows.
+  - `group` on a row: consecutive rows with the same group get a header row that spans the table.
+    Keep a group's rows together (lint warns otherwise). Group headers are not elements.
+  - `meter: { max, warn? }` on a column: its cells must be numbers written as text (`"38"`). They
+    are drawn as a bar and the number, and a number above `warn` is toned. Lint rejects a cell, or
+    an `update` value, that is not a number or is outside 0 to `max`. A legend does not apply to a
+    meter column.
+  - `{ "read": "col.lag" }` marks a whole column (`col.` and the column id). A column is always
+    present: it is read, never added, removed or updated.
+- **`tree`**: `nodes` `{ id, label, sub?, kind?, tone?, parent?, parents?, collapsed?, initial? }`.
+  `parent` hangs a node under another; children keep declaration order. `kind` is a short word
+  drawn before the label (`OU`, `dir`). `update` can set `label`, `sub`, `tone`, `collapsed`
+  (true or false) and `parent`, which moves the node and its subtree: only to an id listed in the
+  node's `parents`, or back to the parent it was declared with. Lint rejects any other move, a
+  cycle (also one that only a sequence of moves makes), a move under an absent node, and an `add`
+  under an absent parent. Depth, indentation and connector lines are worked out. For the call, every
+  ancestor of a touched node is opened, even if it is `collapsed`; the reader can close one with
+  its twisty or Space, which wins for that call, and the closed node then says how many nodes it
+  hides and how many of them the call touches. A call that sets `collapsed: true` on a node and
+  also touches something inside it shows the node open for that call; the collapse applies from
+  the next. Absent nodes keep their row. Removing a node drops its changes, so a moved node comes
+  back where it was declared. The pane scrolls to the first touched node. Keys: Up, Down, Home and
+  End move between nodes, Enter selects, Space opens or closes; Left and Right are left to the
+  walkthrough.
 - **`code`**: `sources` `{ id, title, lang?, text }`. Mark lines with
   `{ "read": "sourceId", "lines": [3, [7, 9]] }`; line numbers start at 1 and `[7, 9]` is a range.
   Any effect on a source brings it to the front. Set `lang` (`js`, `python`, `sql`, `hcl`, ...) and
@@ -237,6 +298,47 @@ kind?: run|wait|lease, state? }` and `limits` `{ id, row, after, from, reset?, u
   `by` or by the end of the span `from` names. Lint rejects an instant on an unknown row, a span
   that ends before it starts, times off the axis, and a call that touches something that has not
   happened yet at that call.
+- **`bytes`**: `frames` `{ id, title, unit, fields: [{ id, label?, short?, size?, variable?, value?,
+decoded?, link?, counts?, tone? }], width?, ascii?, separator?, length?, inside?, cursor? }`. `unit` is
+  `bits` (rows of `width`, 32 by default, with a bit ruler; each field `size` is in bits), `bytes` (rows
+  of 8 or 16 as a hex dump, `ascii: true` adds a gutter; `size` in bytes) or `segments` (text pieces
+  joined by `separator`, for a JWT or JWE; the size is the text). A field's element id is
+  `frame.field` (`tcp.syn`); a frame with a `cursor` `{ at, label }` has `frame.cursor`. `value` is a
+  number or `0x01bb` / `0b101` in a bits frame, hex pairs (`16 03 03`) in a bytes frame, the text in a
+  segments frame; `decoded` is what it means (`443`). Offsets, rows, a field that straddles a row
+  (drawn in two pieces that mark and select as one), the length and a variable field's gap are derived,
+  never written. A `variable` field has a `size` (its length here; rows past the second are a gap) or
+  none (it runs on and must be last). `length` on a frame and `counts` on a field
+  (`{ of: "body" }` or `{ of: { from, to }, per: 32 }`, for a Data Offset or a length field) are
+  checked by lint, at every call. `link` is `{ "$ref": "id", "text": "…" }`, the same as in `payload`.
+  `inside: "frame.field"` draws a frame indented under the field that carries it. `read` marks a field,
+  `update` takes `fields.value`, `decoded`, `tone` (a frame takes `title`, `sub`, `tone`; the cursor
+  `at` as an offset or `null`, `label`). Add and remove act on whole frames; fields have no presence
+  of their own. At a narrow pane the rows are halved (32 to 16 bits) so labels stay readable; a field
+  of 1 or 2 bits reads sideways, using `short` if given.
+
+- **`ring`**: a hash space drawn as a ring, for consistent hashing and replica placement. Content:
+  `size` (positions are the integers `0` to `size - 1`, and the ring wraps), `replication` (how many
+  nodes hold a key, the owner included), `nodes` `{ id, label?, positions: [..], state?, initial? }`
+  and `keys` `{ id, at, label? }`. Each position of a node is a token (a virtual node); its element
+  id is `node.index` from 0 (`node-10.0`). Write positions as hashes of real names, computed in
+  code, not picked by hand. A key belongs to the first token at or after it going clockwise; a token
+  owns the arc that ends at it; the replicas are the next distinct nodes. **None of this is
+  written**: the owner and replicas of every key, each node's share of the ring, and **which keys
+  changed owner in a call** (drawn as diamonds, with a bracket round the arc that changed hands) are
+  all derived. `add` / `remove` a node is a join / leave (its tokens come and go with it);
+  `update` a node with `fields.state` (`up`, `suspect`, `down`); `update` a token or key with
+  `fields.at` moves it with one update; `add` a key puts it on the ring; `read` a key is a lookup
+  and draws the clockwise walk to its owner and replicas (a selected key shows its walk too). A
+  node that is `down` is skipped: owners and replicas are the first `replication` healthy nodes
+  along the walk, as with a sloppy quorum in the Dynamo paper; `suspect` is not skipped. Hint
+  storage and replay, and data streaming, are not modelled. Arcs are coloured per node and each
+  node also has its own pattern; a legend table gives state, share, keys owned and held. It is
+  drawn for 3 to 6 nodes with 1 to 8 tokens each: beyond 24 tokens only the tokens a call or the
+  reader points at are labelled, and beyond six nodes colours repeat with a different pattern, so
+  the legend carries the names. Lint: `ring/position-out-of-range`, `ring/duplicate-position` (also
+  after a move), `ring/replication-too-high`, `ring/under-replicated` (warning),
+  `ring/token-effect`, `ring/absent-token`, `ring/unknown-field`, `ring/bad-field`.
 
 ### Panes that share a slot
 

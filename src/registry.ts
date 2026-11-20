@@ -3,14 +3,17 @@ import { Registry } from './core';
 import { arrayPanel } from './panels/array';
 import { boxesPanel } from './panels/boxes';
 import { busPanel } from './panels/bus';
+import { bytesPanel } from './panels/bytes';
 import { codePanel } from './panels/code';
 import { flowPanel } from './panels/flow';
 import { graphPanel } from './panels/graph';
 import { payloadPanel } from './panels/payload';
+import { ringPanel } from './panels/ring';
 import { schemaPanel } from './panels/schema';
 import { sequencePanel } from './panels/sequence';
 import { tablePanel } from './panels/table';
 import { timelinePanel } from './panels/timeline';
+import { treePanel } from './panels/tree';
 
 /**
  * The panel types and annotation plugins this build ships with.
@@ -29,5 +32,8 @@ export function createRegistry(): Registry {
     .registerPanel(arrayPanel)
     .registerPanel(busPanel)
     .registerPanel(timelinePanel)
+    .registerPanel(treePanel)
+    .registerPanel(bytesPanel)
+    .registerPanel(ringPanel)
     .registerAnnotation(statusAnnotation);
 }

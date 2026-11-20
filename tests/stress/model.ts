@@ -16,7 +16,8 @@ const VERBS = ['add', 'update', 'read', 'remove', 'focus'] as const;
 export function modelAt(w: ResolvedWalkthrough, s: number, c: number): Record<string, ModelPane> {
   const out: Record<string, ModelPane> = {};
   for (const pane of w.panes) {
-    const present: string[] = pane.entities.filter((e) => e.initial).map((e) => e.id);
+    const present: string[] = // A table's columns (col.<id>) are always there to be read and are not part of the state.
+      pane.entities.filter((e) => e.initial && !e.id.startsWith('col.')).map((e) => e.id);
     const patches = new Map<string, Map<string, unknown>>();
     let focus: string | undefined;
 

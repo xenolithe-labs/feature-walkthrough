@@ -432,6 +432,21 @@ Effects on this panel take the shared verbs only.
           },
           "mono": {
             "type": "boolean"
+          },
+          "meter": {
+            "type": "object",
+            "properties": {
+              "max": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "warn": {
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": ["max"],
+            "additionalProperties": false
           }
         },
         "required": ["id", "label"],
@@ -461,11 +476,37 @@ Effects on this panel take the shared verbs only.
             "type": "string",
             "enum": ["muted", "warn", "good", "none"]
           },
+          "group": {
+            "type": "string",
+            "minLength": 1
+          },
           "initial": {
             "type": "boolean"
           }
         },
         "required": ["id", "cells"],
+        "additionalProperties": false
+      }
+    },
+    "legend": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "tone": {
+            "type": "string",
+            "enum": ["good", "warn", "muted"]
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["label"],
         "additionalProperties": false
       }
     },
@@ -1577,6 +1618,373 @@ Effects on this panel take the shared verbs only.
     }
   },
   "required": ["axis", "rows"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
+## Panel `tree`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "nodes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sub": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "parent": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "parents": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+            }
+          },
+          "collapsed": {
+            "type": "boolean"
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "label"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["nodes"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
+## Panel `bytes`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "frames": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sub": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "enum": ["bits", "bytes", "segments"]
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 128
+          },
+          "ascii": {
+            "default": false,
+            "type": "boolean"
+          },
+          "ruler": {
+            "default": true,
+            "type": "boolean"
+          },
+          "separator": {
+            "default": ".",
+            "type": "string",
+            "minLength": 1
+          },
+          "length": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "inside": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+          },
+          "cursor": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "default": 0,
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "default": "next",
+                "type": "string",
+                "minLength": 1
+              },
+              "tone": {
+                "type": "string",
+                "enum": ["muted", "warn", "good", "none"]
+              }
+            },
+            "additionalProperties": false
+          },
+          "fields": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                },
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "short": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "size": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 1048576
+                },
+                "variable": {
+                  "default": false,
+                  "type": "boolean"
+                },
+                "value": {
+                  "type": ["string", "number"]
+                },
+                "decoded": {
+                  "type": "string"
+                },
+                "link": {
+                  "type": "object",
+                  "properties": {
+                    "$ref": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$"
+                    },
+                    "text": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["$ref"],
+                  "additionalProperties": false
+                },
+                "counts": {
+                  "type": "object",
+                  "properties": {
+                    "of": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                            },
+                            "to": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+                            }
+                          },
+                          "required": ["from", "to"],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "per": {
+                      "default": 1,
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": ["of"],
+                  "additionalProperties": false
+                },
+                "tone": {
+                  "type": "string",
+                  "enum": ["muted", "warn", "good", "none"]
+                }
+              },
+              "required": ["id"],
+              "additionalProperties": false
+            }
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "title", "unit", "fields"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["frames"],
+  "additionalProperties": false
+}
+```
+
+Effects on this panel take the shared verbs only.
+
+## Panel `ring`
+
+`content`:
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "size": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 9007199254740991
+    },
+    "replication": {
+      "default": 1,
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "nodes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "label": {
+            "type": "string"
+          },
+          "positions": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "state": {
+            "default": "up",
+            "type": "string",
+            "enum": ["up", "suspect", "down"]
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "positions"],
+        "additionalProperties": false
+      }
+    },
+    "keys": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "at": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string",
+            "enum": ["muted", "warn", "good", "none"]
+          },
+          "initial": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "at"],
+        "additionalProperties": false
+      }
+    },
+    "initial": {
+      "default": true,
+      "type": "boolean"
+    }
+  },
+  "required": ["size", "nodes"],
   "additionalProperties": false
 }
 ```
