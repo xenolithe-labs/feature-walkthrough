@@ -106,7 +106,7 @@ export const valueChangeUnstated: Rule = {
       out.push({
         path: [...item.path, 'text'],
         call: item.key,
-        message: `call "${item.key}" changes a value (${changes.slice(0, 3).join('; ')}${changes.length > 3 ? '; ...' : ''}) and its text mentions neither the old nor the new value. Say what it becomes, and what it was when the old value meant something ("balance 40 becomes 25")`,
+        message: `call "${item.key}" changes a value (${changes.slice(0, 3).join('; ')}${changes.length > 3 ? '; ...' : ''}) and its text mentions neither the old nor the new value. Say what it becomes, and what it was when the old value meant something ("balance 40 becomes 25"), unless a pane shows the value so plainly that the words would only repeat it`,
       });
     }
     return out.length <= 6
