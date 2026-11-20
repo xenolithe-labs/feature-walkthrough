@@ -135,7 +135,8 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   are addressed by dot path, with array positions as numbers: `entries.1.hash`. Mark fields with
   `{ "read": "payloadId", "paths": ["tree", "entries.0"] }`; change them with
   `{ "update": "payloadId", "fields": { "entries.1.hash": "new value" } }`. Paths must already
-  exist, and keys must not contain dots. A leaf written as `{ "$ref": "elementId", "text": "shown" }`
+  exist. A key that contains a dot or a backslash is written with a backslash before it: the key
+  `a.b` under `meta` is the path `meta.a\.b`. A leaf written as `{ "$ref": "elementId", "text": "shown" }`
   is a link that selects that element in every pane. `raw` (`{ label, text }`) adds a plain-text
   view; do not combine it with `fields` updates, because the text will not change.
 - **`schema`**: `tables` `{ id, label, sub?, columns: [{ id, label?, type?, key?, note? }] }` and

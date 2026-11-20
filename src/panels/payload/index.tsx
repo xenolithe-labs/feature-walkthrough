@@ -4,7 +4,8 @@
  * `content.payloads` lists structured values: a message, a token, a stored
  * object. A call can mark single fields by path,
  * `{ read: "commit", paths: ["tree", "parents.0"] }`, and change them,
- * `{ update: "index", fields: { "entries.1.hash": "f7a2…" } }`. A leaf written
+ * `{ update: "index", fields: { "entries.1.hash": "f7a2…" } }`. A dot inside a key is
+ * written `\.` in a path. A leaf written
  * as `{ "$ref": "<id>", "text": "…" }` is a link: choosing it selects that
  * element in every pane that has it. `raw` adds a second, plain-text view.
  */
@@ -26,7 +27,7 @@ import {
 } from '../../core';
 import { TONES, changesSection, toneOf } from '../_shared/changes';
 import { revealScroll } from '../_shared/reveal';
-import { hasPath, isLeaf, isRef, members, patched, setPath } from './paths';
+import { hasPath, isLeaf, isRef, joinPath, members, patched, setPath } from './paths';
 import './payload.css';
 
 const PayloadSchema = z.strictObject({
@@ -157,12 +158,12 @@ function Field({
         <span className="fw-pl-key">{name}</span>
         <span className="fw-pl-items">
           {members(value).map(([key, item]) => {
-            const inner = shared.marks.get(`${path}.${key}`);
+            const inner = shared.marks.get(joinPath(path, key));
             return (
               <span
                 key={key}
                 className={`fw-pl-item${inner === undefined ? '' : ` is-${inner}`}`}
-                data-path={`${path}.${key}`}
+                data-path={joinPath(path, key)}
                 data-mark={inner}
               >
                 <span className="fw-pl-key">{key}</span>
@@ -187,7 +188,7 @@ function Field({
               key={key}
               name={key}
               value={item}
-              path={`${path}.${key}`}
+              path={joinPath(path, key)}
               depth={depth + 1}
               shared={shared}
             />
@@ -296,7 +297,14 @@ function PayloadView({
             ) : (
               <div className="fw-pl-children is-top">
                 {members(value).map(([key, item]) => (
-                  <Field key={key} name={key} value={item} path={key} depth={0} shared={shared} />
+                  <Field
+                    key={key}
+                    name={key}
+                    value={item}
+                    path={joinPath('', key)}
+                    depth={0}
+                    shared={shared}
+                  />
                 ))}
               </div>
             )}

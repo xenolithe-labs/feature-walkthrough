@@ -11,6 +11,7 @@ import {
   READABLE_ZOOM,
 } from '../../src/panels/_diagram/layout';
 import { revealScroll } from '../../src/panels/_shared/reveal';
+import { hasPath, joinPath, setPath, splitPath } from '../../src/panels/payload/paths';
 import { minLaneGap } from '../../src/panels/sequence';
 import { createRegistry } from '../../src/registry';
 
@@ -185,5 +186,54 @@ describe('sequence lanes', () => {
     expect(minLaneGap(['x'.repeat(100)])).toBe(150);
     // Words that wrap do not widen the lane.
     expect(minLaneGap(['a long title made of short words'])).toBe(88);
+  });
+});
+
+describe('payload paths with dots in keys', () => {
+  const value = { meta: { 'a.b': 1, 'c\\d': 2, plain: [{ 'x.y': 3 }] } };
+
+  it('split and join are inverse, and a path without a backslash reads as before', () => {
+    expect(splitPath('entries.1.hash')).toEqual(['entries', '1', 'hash']);
+    expect(splitPath('meta.a\\.b')).toEqual(['meta', 'a.b']);
+    expect(splitPath('meta.c\\\\d')).toEqual(['meta', 'c\\d']);
+    for (const keys of [['meta', 'a.b'], ['x'], ['a\\', 'b.c.d'], ['']]) {
+      expect(splitPath(keys.reduce((path, key) => joinPath(path, key), ''))).toEqual(keys);
+    }
+  });
+
+  it('find and change a field whose key has a dot', () => {
+    expect(hasPath(value, 'meta.a\\.b')).toBe(true);
+    expect(hasPath(value, 'meta.a.b')).toBe(false);
+    expect(hasPath(value, 'meta.plain.0.x\\.y')).toBe(true);
+    expect(setPath(value, 'meta.a\\.b', 9)).toEqual({
+      meta: { 'a.b': 9, 'c\\d': 2, plain: [{ 'x.y': 3 }] },
+    });
+  });
+
+  it('mark such a field in the rendered payload and lint it', () => {
+    const config = {
+      id: 'dots',
+      title: 'Dots',
+      layout: {
+        panes: [
+          {
+            id: 'p',
+            panel: 'payload',
+            content: { payloads: [{ id: 'body', title: 'Body', value }] },
+          },
+        ],
+      },
+      steps: [
+        {
+          id: 's',
+          title: 'S',
+          calls: [
+            { id: 'c', label: 'read', effects: { p: [{ read: 'body', paths: ['meta.a\\.b'] }] } },
+          ],
+        },
+      ],
+    };
+    const html = render(config, 'p', 0, 0);
+    expect(html).toContain('data-path="meta.a\\.b" data-mark="read"');
   });
 });
