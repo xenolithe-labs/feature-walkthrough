@@ -30,11 +30,7 @@ import {
   slotProblems,
   splitEnd,
   valueText,
-  widestValues,
   type EdgeLike,
-  type RecordGeometry,
-  type RecordShape,
-  type SlotDecl,
 } from './slots';
 
 /** The fields a node may have to be a record. */

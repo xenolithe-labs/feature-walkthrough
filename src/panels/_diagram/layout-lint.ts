@@ -330,3 +330,13 @@ export async function paneProblems(
   }
   return out;
 }
+
+/**
+ * The finding provider for diagram layout: one resolved walkthrough in, warnings out, with paths
+ * relative to the walkthrough (as the `check` command's providers expect). Register it as
+ * `{ id: 'diagram-layout', run: analyseDiagramLayout }`. It imports nothing that needs a browser
+ * or a stylesheet, so it runs under plain Node.
+ */
+export function analyseDiagramLayout(walkthrough: ResolvedWalkthrough): Promise<Problem[]> {
+  return walkthroughProblems(walkthrough, []);
+}
