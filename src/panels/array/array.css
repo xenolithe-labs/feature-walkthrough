@@ -22,10 +22,9 @@
 
 .fw-array-grid {
   display: grid;
-  grid-template-columns: repeat(var(--n), minmax(34px, 56px));
-  column-gap: 4px;
+  grid-template-columns: repeat(var(--n), minmax(28px, 48px));
+  column-gap: 3px;
   row-gap: 4px;
-  width: max-content;
 }
 
 .fw-array-cell {
@@ -101,6 +100,7 @@
   border-style: dotted;
   background: transparent;
   color: var(--fw-muted);
+  opacity: 0.6;
 }
 
 .fw-array-cell.is-selected,

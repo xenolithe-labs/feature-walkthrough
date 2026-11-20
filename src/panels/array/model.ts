@@ -83,7 +83,7 @@ export function entitiesOf(content: ArrayContent) {
     ...content.arrays.flatMap((array) =>
       Array.from({ length: slotCount(array) }, (_, index) => ({
         id: cellId(array.id, index),
-        label: `${array.label ?? array.id}[${index}]`,
+        label: `${array.id}[${index}]`,
         initial: index < array.cells.length && (array.initial ?? content.initial),
       })),
     ),

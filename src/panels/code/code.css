@@ -139,3 +139,16 @@
   box-shadow: 0 0 0 1.5px var(--fw-removed);
   text-decoration: line-through;
 }
+
+/* With part of the line marked, the line itself only gets a faint tint. */
+.fw-code-line.has-expr.is-read {
+  background: color-mix(in srgb, var(--fw-read-bg) 40%, transparent);
+}
+
+.fw-code-line.has-expr.is-updated {
+  background: color-mix(in srgb, var(--fw-updated-bg) 40%, transparent);
+}
+
+.fw-code-line.has-expr.is-added {
+  background: color-mix(in srgb, var(--fw-added-bg) 40%, transparent);
+}

@@ -93,7 +93,7 @@ function Cell({
   const mark = markOf(id, shared.current);
   const value = cellValue(array, index, shared.state.patches);
   const select = () => shared.toggle(id);
-  const label = `${array.label ?? array.id}[${index}]`;
+  const label = `${array.id}[${index}]`;
   return (
     <div
       className={`fw-array-cell ${shown ? `is-${mark}` : 'is-absent'}${shared.selected === id ? ' is-selected' : ''}`}
