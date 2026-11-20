@@ -29,7 +29,7 @@ import {
   type Problem,
   type Touched,
 } from '../../core';
-import { changesSection, text, toneOf } from '../_shared/changes';
+import { changesSection, text, toneOf, uniqueLabels } from '../_shared/changes';
 import { fieldProblems } from '../_shared/fields';
 import { useRevealTouched } from '../_shared/reveal';
 import {
@@ -494,7 +494,7 @@ function cardSections({
   current: Effect[];
   pane: { title: string };
 }): CardSection[] {
-  const labels = new Map(entitiesOf(content).map((entity) => [entity.id, entity.label]));
+  const labels = uniqueLabels(entitiesOf(content));
   const rows: { key: string; value: string }[] = [];
   const touchedNow = touched(current);
   const subjects = subjectsOf(content, touchedNow);

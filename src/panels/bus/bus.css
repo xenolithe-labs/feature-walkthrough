@@ -120,6 +120,10 @@
   padding-right: 96px;
 }
 
+.fw-bus-channel:not([data-kind='topic']) .fw-bus-grid {
+  grid-template-columns: auto repeat(var(--n), minmax(84px, 120px));
+}
+
 .fw-bus-lane {
   align-self: center;
   padding-right: 8px;

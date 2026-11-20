@@ -3,11 +3,13 @@ import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
+import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
 import { oauthPkce } from './oauth-pkce';
 import { reactRender } from './react-render';
 import { spreadsheet } from './spreadsheet';
+import { temporalHeartbeat } from './temporal-heartbeat';
 import { terraformApply } from './terraform-apply';
 
 /** The demos bundled with the page. Each one is plain config. */
@@ -23,6 +25,8 @@ export const demos: ConfigInput = {
     bfsDemo,
     editDistanceDemo,
     kafkaConsumerGroup,
+    temporalHeartbeat,
+    eventbridgeRouting,
   ],
 };
 
