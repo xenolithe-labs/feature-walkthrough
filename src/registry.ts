@@ -11,6 +11,7 @@ import { schemaPanel } from './panels/schema';
 import { sequencePanel } from './panels/sequence';
 import { tablePanel } from './panels/table';
 import { timelinePanel } from './panels/timeline';
+import { treePanel } from './panels/tree';
 
 /**
  * The panel types and annotation plugins this build ships with.
@@ -29,5 +30,6 @@ export function createRegistry(): Registry {
     .registerPanel(arrayPanel)
     .registerPanel(busPanel)
     .registerPanel(timelinePanel)
+    .registerPanel(treePanel)
     .registerAnnotation(statusAnnotation);
 }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createFolder, loadConfig, type ElementsState, type WalkthroughInput } from '../../src/core';
+import {
+  createFolder,
+  loadConfig,
+  type ElementsState,
+  type WalkthroughInput,
+} from '../../src/core';
 import {
   columnElement,
   groupRuns,
@@ -120,7 +125,8 @@ describe('table lint', () => {
   });
 
   it('rejects an update that writes a bad meter value, and one that is not text', () => {
-    const update = (value: unknown) => config(content, [[{ update: 'p0', fields: { lag: value } }]]);
+    const update = (value: unknown) =>
+      config(content, [[{ update: 'p0', fields: { lag: value } }]]);
     expect(rules(update('101'))).toEqual(['table/bad-field']);
     expect(rules(update('n/a'))).toEqual(['table/bad-field']);
     expect(rules(update(50))).toEqual(['table/bad-field']);
@@ -164,7 +170,11 @@ describe('table lint', () => {
     ).toEqual(['table/unused-legend']);
     // A value that only a call writes counts as used.
     const written = config(
-      { columns: content.columns, rows: [{ id: 'a', cells: { part: 'a' } }], legend: { Z: { label: 'zed' } } },
+      {
+        columns: content.columns,
+        rows: [{ id: 'a', cells: { part: 'a' } }],
+        legend: { Z: { label: 'zed' } },
+      },
       [[{ update: 'a', fields: { b1: 'Z' } }]],
     );
     expect(rules(written)).toEqual([]);
@@ -180,7 +190,10 @@ describe('table lint', () => {
   });
 
   it('existing tables, with none of the new content, are unchanged', () => {
-    const plain = config({ columns: [{ id: 'k', label: 'K' }], rows: [{ id: 'r', cells: { k: 'v' } }] });
+    const plain = config({
+      columns: [{ id: 'k', label: 'K' }],
+      rows: [{ id: 'r', cells: { k: 'v' } }],
+    });
     expect(loadConfig(plain, createRegistry()).problems).toEqual([]);
   });
 });
