@@ -151,6 +151,11 @@ export const LayoutSchema = z.strictObject({
    * current call touches large and lists the rest. A reader's own choice and a link's `v=` win.
    */
   view: z.enum(['grid', 'focus']).optional(),
+  /**
+   * Whether short transitions show what changed between two calls. Off unless set. A link's `m=`
+   * and a reader's own choice win, and a system that asks for reduced motion always wins.
+   */
+  motion: z.boolean().optional(),
 });
 export type Layout = z.infer<typeof LayoutSchema>;
 

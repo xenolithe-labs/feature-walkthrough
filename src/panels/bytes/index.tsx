@@ -50,6 +50,7 @@ import {
   type FrameDecl,
   type Piece,
 } from './model';
+import { describeBytes } from './describe';
 import './bytes.css';
 
 interface BytesState extends ElementsState {
@@ -773,6 +774,7 @@ export const bytesPanel: PanelType<BytesContent, BytesState> = {
   entities: entitiesOf,
   init,
   reduce,
+  describe: describeBytes,
   Component: BytesView,
   cardSections,
   lint: bytesLint,

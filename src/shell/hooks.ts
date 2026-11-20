@@ -2,10 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   decodeHash,
   encodeHash,
+  isSpeed,
   isView,
+  resolveMotion,
   shapeOf,
   type Cursor,
   type ResolvedWalkthrough,
+  type Speed,
   type View,
 } from '../core';
 
@@ -83,6 +86,76 @@ export function useView(
     }
   }, []);
   return { view: fromAddress ?? chosen ?? authorDefault ?? 'grid', choose };
+}
+
+const MOTION_KEY = 'feature-walkthrough:motion';
+const SPEED_KEY = 'feature-walkthrough:speed';
+
+function stored(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function store(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // The choice still holds for this visit.
+  }
+}
+
+/** Whether the system asks for less motion. Followed live. */
+export function useReducedMotion(): boolean {
+  const query = '(prefers-reduced-motion: reduce)';
+  const [reduced, setReduced] = useState(() => window.matchMedia(query).matches);
+  useEffect(() => {
+    const list = window.matchMedia(query);
+    const onChange = () => setReduced(list.matches);
+    list.addEventListener('change', onChange);
+    return () => list.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
+
+/**
+ * Whether transitions run, and whether Play is on offer. See `resolveMotion` for the order of
+ * the switches. The reader's choice is kept per browser, like the theme and the view.
+ */
+export function useMotion(
+  fromAddress: boolean | undefined,
+  authorDefault: boolean | undefined,
+): { on: boolean; reduced: boolean; chosen: boolean | undefined; choose(next: boolean): void } {
+  const reduced = useReducedMotion();
+  const [chosen, setChosen] = useState<boolean | undefined>(() => {
+    const value = stored(MOTION_KEY);
+    return value === 'on' ? true : value === 'off' ? false : undefined;
+  });
+  const choose = useCallback((next: boolean) => {
+    setChosen(next);
+    store(MOTION_KEY, next ? 'on' : 'off');
+  }, []);
+  return {
+    on: resolveMotion(fromAddress, chosen, authorDefault, reduced),
+    reduced,
+    chosen,
+    choose,
+  };
+}
+
+/** How fast Play steps. Kept per browser. */
+export function useSpeed(): [Speed, (next: Speed) => void] {
+  const [speed, setSpeed] = useState<Speed>(() => {
+    const value = stored(SPEED_KEY);
+    return isSpeed(value) ? value : 'normal';
+  });
+  const choose = useCallback((next: Speed) => {
+    setSpeed(next);
+    store(SPEED_KEY, next);
+  }, []);
+  return [speed, choose];
 }
 
 /** The cursor, kept in step with the URL hash in both directions. */

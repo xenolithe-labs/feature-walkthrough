@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * feature-walkthrough [serve] <file>     check a config, then show it in the browser
- * feature-walkthrough lint <file...>     check configs
+ * feature-walkthrough lint <file...>     check configs (fast)
+ * feature-walkthrough check <file...>    lint, plus design findings, stats and a trace of what a reader sees
  * feature-walkthrough build <file>       write one self-contained HTML file
  * feature-walkthrough highlight <file>   write the config with syntax colours worked out
  * feature-walkthrough schema             print the JSON Schema of a config
@@ -17,8 +18,10 @@ import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { configJsonSchema, formatProblem, loadConfig } from '../src/core';
+import { CHECK_USAGE, runCheck } from './check';
 import { addTokens } from './highlight';
 import { injectConfig } from './inject';
+import { providers } from './providers';
 
 // Panels import their stylesheets. Outside a bundler those are empty modules.
 register(
@@ -34,6 +37,8 @@ const { createRegistry } = await import('../src/registry');
 const USAGE = `Usage:
   feature-walkthrough <file>                 check the config, then show it in the browser
   feature-walkthrough lint <file...>         check configs; exits 1 if any has an error
+  feature-walkthrough check <file...>        lint, plus design findings, stats and a trace of what a reader
+                                             sees; --json for agents (run "check --help" for the options)
   feature-walkthrough build <file> [-o out]  write one self-contained HTML file
   feature-walkthrough highlight <file> [-o out]  write the config as JSON with syntax colours added
   feature-walkthrough schema                 print the JSON Schema of a config
@@ -204,6 +209,11 @@ async function main(argv: string[]): Promise<number> {
         port: { type: 'string', short: 'p' },
         'no-open': { type: 'boolean' },
         'no-color': { type: 'boolean' },
+        json: { type: 'boolean' },
+        call: { type: 'string' },
+        only: { type: 'string' },
+        'max-warnings': { type: 'string' },
+        trace: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -215,7 +225,7 @@ async function main(argv: string[]): Promise<number> {
   }
   const { values, positionals } = parsed;
   if (values.help) {
-    console.log(USAGE);
+    console.log(positionals[0] === 'check' ? CHECK_USAGE : USAGE);
     return 0;
   }
   if (values.version) {
@@ -225,6 +235,26 @@ async function main(argv: string[]): Promise<number> {
 
   const [command, ...rest] = positionals;
   if (command === 'lint') return lint(rest);
+  if (command === 'check') {
+    return runCheck(
+      {
+        files: rest,
+        json: values.json === true,
+        call: values.call,
+        only: values.only,
+        maxWarnings: values['max-warnings'],
+        trace: values.trace === true,
+      },
+      {
+        read,
+        registry: createRegistry(),
+        providers,
+        version: typeof __VERSION__ === 'undefined' ? 'dev' : __VERSION__,
+        out: (text) => process.stdout.write(`${text}\n`),
+        err: (text) => console.error(text),
+      },
+    );
+  }
   if (command === 'schema') {
     console.log(JSON.stringify(configJsonSchema(), null, 2));
     return 0;

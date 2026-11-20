@@ -54,6 +54,7 @@ import {
   type State,
   type TimelineState,
 } from './model';
+import { describeTimeline } from './describe';
 import './timeline.css';
 
 const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'fields'];
@@ -461,6 +462,7 @@ export const timelinePanel: PanelType<TimelineContent, TimelineState> = {
     moved: undefined,
   }),
   reduce,
+  describe: describeTimeline,
   Component: TimelineView,
   cardSections,
   lint: (pane, walkthrough) => {

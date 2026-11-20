@@ -10,16 +10,85 @@ reader moves through it one call at a time. You write the JSON; you never write 
 
 ## The loop
 
+You cannot see the result, so ask the checker what the reader will see.
+
 1. Write the config (start from [`example.json`](example.json)).
-2. Check it: `npx feature-walkthrough lint flow.json`. It exits 1 on errors and prints one line per
-   problem with the path, such as `steps[2].calls[0].effects.graph[1]`.
-3. Fix every error and every warning, then lint again until it prints `ok`.
-4. Show it: `npx feature-walkthrough flow.json` serves it locally, or
+2. Check it: `npx feature-walkthrough check flow.json --json`. The document has `summary` (counts and
+   `exitCode`), and for each walkthrough `problems`, `findings`, `stats` and, when asked for, `trace`.
+   It exits 1 on config errors and 2 when it was called wrongly.
+3. Fix every `problems` entry (each has a `path`, for example `steps[2].calls[0].effects.graph[1]`),
+   and check again until there are no errors and no warnings. A walkthrough with errors gets no
+   findings, stats or trace yet.
+4. Read `findings`. Each is a `warning` (fix it) or an `info` (look; keep it if it is on purpose),
+   with a `rule`, the `path` to edit, a `message` that says what to do, and the `source` in the
+   design guidance (the `walkthrough-design` skill) it comes from. Then look at `stats`: words per
+   call, how many calls touch nothing.
+5. For each call you are unsure of, read what the reader sees there:
+   `npx feature-walkthrough check flow.json --call <step id>.<call id>` (the `call` of a finding is
+   already in that form; `2.1` means step 2, call 1). `--trace` does every call and is long. Check
+   that each pane shows what the call's text says, and that nothing the text names is missing.
+6. Show it: `npx feature-walkthrough flow.json` serves it locally, or
    `npx feature-walkthrough build flow.json -o flow.html` writes one self-contained HTML file.
    Both add syntax colours to code panes. To get colours into a JSON file that is loaded some
    other way, run `npx feature-walkthrough highlight flow.json -o flow.coloured.json`.
 
-Do not hand over a config that has not passed `lint`.
+Do not hand over a config that has errors or warnings you have not looked at.
+`npx feature-walkthrough lint flow.json` is the fast subset (problems only, as text, on stderr); use
+it for a quick edit-and-check, and `check` before you hand over.
+
+`check` options: `--only problems,design,layout,stats,trace` picks groups (config errors are always
+reported), `--max-warnings 0` exits 1 if any warning is left, and several files may be given. The
+shape of the JSON is the JSON Schema `feature-walkthrough/check-result.schema.json` (`schema/check-result.schema.json` in the package).
+
+What `--json` looks like, cut down, for a copy of `example.json` in which the call `miss.reply-1` has
+no text (the example itself checks clean):
+
+```json
+{
+  "summary": { "errors": 0, "warnings": 1, "infos": 1, "exitCode": 0 },
+  "files": [
+    {
+      "file": "flow.json",
+      "walkthroughs": [
+        {
+          "id": "cache-read",
+          "status": "checked",
+          "problems": [],
+          "findings": [
+            {
+              "severity": "warning",
+              "rule": "design/text-missing",
+              "at": "steps[0].calls[3].text",
+              "call": "miss.reply-1",
+              "message": "call \"miss.reply-1\" has no text; the reader sees only its name. Say what changed, with its values, and why it matters",
+              "source": "walkthrough-design section 5 (...), checklist 17"
+            }
+          ],
+          "stats": { "calls": 6, "words": { "mean": 10, "overCeiling": 0, "withoutText": 1 } }
+        }
+      ]
+    }
+  ]
+}
+```
+
+What `--call hit.get-2` prints for `example.json` (the `>x<` marks a value the call touched, `x*` a thing it touched; the
+last pane lines say what the reader sees, and the stage is what the Focus view puts on screen):
+
+```text
+step 2 "Second read: a hit" · call 1 "GET /user/7" [hit.get-2] · client -> service
+  step text: The same user is asked for again.
+  text (21 words): This time user 7 is in the cache, and its hits go from 0 to 1. The database is not asked.
+  focus view, stage of 3: exchange, path, cache (largest: path) [path: touched, cache: touched, exchange: touched]
+  pane exchange "Exchange" (sequence): added get-2
+    message "GET /user/7": client -> service, drawn as call
+  pane path "Decision" (flow): read get, cached, cached.reply
+    nodes 5 of 5: get "GET /user/7" terminal*, cached "In the cache?" decision*, query "Query the database", ...
+    edges 5 of 5: get -> cached, cached -> reply "yes"*, cached -> query "no", query -> fill, fill -> reply
+  pane cache "Cache" (table): updated user-7
+    1 of 1 rows shown; columns: key, value, hits
+    user-7 (updated): key=user:7 value={name: "Ada"} hits=>1<
+```
 
 ## The config answers three questions
 
@@ -379,6 +448,18 @@ and a link's `v=focus` or `v=grid` in the address override it. Because Focus fol
 write the effects of each call with care: a pane a call is about but has no effect on is not
 brought forward (a `read` is enough).
 
+### Motion and Play
+
+Motion is the reader's, and off by default: short transitions (about 0.2 s) that show what changed
+from the call before to this one. Nothing in the config scripts it, and nothing depends on it: it
+is derived from the effects, every call looks the same at rest, and meaning is never carried by
+motion alone. Set `"layout": { "motion": true }` to open with it on. A reader's own choice (the
+Motion button in the header) and a link's `m=1` or `m=0` override that, `m=0` also removes Play, and
+a system that asks for reduced motion always wins. A **Play** button in the navigation bar steps
+through the calls at a pace that follows the words on each card (Space starts and stops it). Write
+each card so it can be read in a few seconds; a long card makes Play slow, not stuck. Play adds no
+config.
+
 ### Annotations
 
 The `status` annotation puts a labelled chip on calls. Declare the statuses once at
@@ -395,8 +476,10 @@ on a call. See `reference.md`.
   linked, `payload` when it is what a message or stored object contains, `schema` when it is how
   types or tables relate. Two or three visible panes is usually right; put the rest in a shared
   slot with `"role": "focus"`.
-- Declare everything in content first, then write the calls. Lint tells you about ids that do not
-  exist, elements added twice and effects on elements that are not present.
+- Declare everything in content first, then write the calls. `check` tells you about ids that do not
+  exist, elements added twice and effects on elements that are not present, and then about calls
+  with no text, text that is too long, calls that mark nothing, and values changed without being
+  named.
 - Use made-up but realistic values, and keep them consistent from call to call.
 - Only state facts you can support. Put spec or doc pointers in `where`.
 

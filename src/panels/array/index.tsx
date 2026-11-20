@@ -40,6 +40,7 @@ import {
   type PointerDecl,
   type RangeDecl,
 } from './model';
+import { describeArray } from './describe';
 import './array.css';
 
 const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'fields'];
@@ -356,6 +357,7 @@ export const arrayPanel: PanelType<ArrayContent, ElementsState> = {
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeArray,
   Component: ArrayView,
   cardSections,
   lint: (pane, walkthrough) => {

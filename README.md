@@ -50,6 +50,8 @@ Write a JSON config, then:
 ```sh
 npx feature-walkthrough flow.json                      # check it, then show it in the browser
 npx feature-walkthrough lint flow.json                 # check only; exits 1 on errors
+npx feature-walkthrough check flow.json --json         # lint, design findings, stats, for agents
+npx feature-walkthrough check flow.json --call s1.c2   # what a reader sees at one call, as text
 npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
 npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config
@@ -62,6 +64,17 @@ stays small enough to embed anywhere. `--no-color` turns them off.
 If the config has problems, `lint` prints each one with its path, and the page lists them too.
 [`skills/feature-walkthrough/example.json`](skills/feature-walkthrough/example.json) is a small
 complete config, and the files in `src/walkthroughs/` are larger ones.
+
+`check` is for tools that write configs and cannot see the result. It reports everything `lint`
+does, then design findings (a call with no text, text over the word ceiling, a call that marks
+nothing, a value changed without being named, more than three panes at once, and so on, each with
+the part of the design guidance it comes from), stats, and with `--call <step>.<call>` a text trace
+of what each pane shows at that call and which panes the Focus view puts on stage. `--json` prints
+one document whose shape is [`schema/check-result.schema.json`](schema/check-result.schema.json);
+`--max-warnings <n>` makes warnings fail the run; exit codes are 0 clean, 1 config errors, 2 usage
+error. The same checks are exported for other tools (`reviewConfig`, `designFindings`, `traceOf`
+from the package), and asynchronous checks such as diagram layout plug in through
+`cli/providers.ts`.
 
 Inside a React app:
 
@@ -77,7 +90,7 @@ The hosted page can also show any JSON config it is allowed to fetch: add `?src=
 ### For coding agents
 
 [`skills/feature-walkthrough/`](skills/feature-walkthrough/SKILL.md) is a skill that teaches an
-agent the config, each panel's shapes and the write, lint, fix, show loop. Copy the folder into
+agent the config, each panel's shapes and the write, check, fix, show loop. Copy the folder into
 your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
 package.
 
@@ -104,7 +117,25 @@ browser), a link can ask for one with `v=focus` or `v=grid`, and a config can se
 `layout.view`.
 
 Keys: ← → move one call, Shift ← → move one step. The address always points at the current call
-(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>&v=<view>`), so any call can be linked to.
+(`#w=<walkthrough>&s=<step>&c=<call>&sel=<selected element>&v=<view>&m=<0|1>`), so any call can be linked to.
+
+**Motion** is off unless someone turns it on. With it on, a step of one call takes about 0.2 s to
+show what changed: a pointer slides to its new cell, a bracket grows, a "now" marker moves, a
+meter bar fills, something added fades in, a changed value settles. It never carries meaning on its
+own (every call looks the same at rest, and the colours and marks are the same with it off), the
+author scripts none of it, and a second step within a third of a second just snaps, so fast
+stepping is never slower. Turn it on with the Motion button in the header (kept per browser), with
+`m=1` in the address (`m=0` forces it off), or with `"layout": { "motion": true }` in the config.
+The address wins, then the reader's choice, then the config. A system that asks for reduced motion
+always wins: nothing moves.
+
+**Play** steps through the calls on its own, so a reader can watch a walkthrough run. It is in the
+navigation bar (Space also starts and stops it when focus is not in a control), with a speed of
+Slower, Normal or Faster. It stays on a call for a time that grows with the words on the card (about
+2.5 s plus a quarter of a second a word, between 3 and 15 s at Normal), waits while the pointer or
+focus is in the panes or the card, and stops on any key or click, when the tab is hidden and at the
+last call. A thin line under the button shows the time left. It works with motion off and with
+reduced motion (it just steps), and `m=0` takes it away. Screen readers are told only that it started or stopped.
 
 ## The config
 
@@ -144,6 +175,7 @@ Releases and the credentials they need are described in [`docs/release.md`](docs
 - `src/panels/`, `src/annotations/` — panel types and annotation plugins, registered in `src/registry.ts`.
 - `src/walkthroughs/` — the bundled demo configs.
 - `src/recorder/` — the trace recorder: run an algorithm, get a config. No React.
+- `src/review/` — the checker behind `check`: design rules, stats, the trace. No React.
 - `cli/` — the `feature-walkthrough` command.
 - `skills/` — the skill for coding agents; `reference.md` in it is generated.
 

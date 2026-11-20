@@ -88,6 +88,9 @@
                 "grid",
                 "focus"
               ]
+            },
+            "motion": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -433,6 +436,9 @@
                       "grid",
                       "focus"
                     ]
+                  },
+                  "motion": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

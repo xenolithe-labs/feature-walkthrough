@@ -24,6 +24,7 @@ import { exitPoint, type Box } from '../_diagram/Diagram';
 import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
+import { describeBoxes } from './describe';
 import './boxes.css';
 
 const BoxSchema = z.strictObject({
@@ -261,6 +262,7 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeBoxes,
   Component: BoxesView,
   cardSections: ({ content, current, pane }) =>
     changesSection(

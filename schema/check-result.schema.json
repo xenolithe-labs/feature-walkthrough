@@ -1,0 +1,778 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "number",
+      "const": 1
+    },
+    "tool": {
+      "type": "string",
+      "const": "feature-walkthrough"
+    },
+    "version": {
+      "type": "string"
+    },
+    "options": {
+      "type": "object",
+      "properties": {
+        "only": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The groups that were asked for. Empty: all but trace."
+        },
+        "call": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "maxWarnings": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stageCapacity": {
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "only",
+        "call",
+        "maxWarnings",
+        "stageCapacity"
+      ],
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "readError": {
+            "description": "The file could not be read or parsed.",
+            "type": "string"
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "error",
+                    "warning"
+                  ]
+                },
+                "rule": {
+                  "type": "string",
+                  "description": "The lint rule id, for example \"unknown-id\"."
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "description": "Where in the config, as keys and indexes from the file root."
+                },
+                "at": {
+                  "type": "string",
+                  "description": "The path as text, for example steps[2].calls[0].text."
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "severity",
+                "rule",
+                "path",
+                "at",
+                "message"
+              ],
+              "additionalProperties": false,
+              "description": "A problem `lint` reports. An error means the config cannot be shown."
+            },
+            "description": "Problems that belong to no walkthrough, such as a bad collection."
+          },
+          "walkthroughs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Position in the file, from 0."
+                },
+                "id": {
+                  "description": "Null when the file gives none.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "title": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  },
+                  "description": "[\"walkthroughs\", n] in a collection, [] otherwise."
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "checked",
+                    "not-checked"
+                  ],
+                  "description": "not-checked: it has config errors, so findings, stats and trace were skipped."
+                },
+                "problems": {
+                  "description": "Config problems: errors and lint warnings.",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "severity": {
+                        "type": "string",
+                        "enum": [
+                          "error",
+                          "warning"
+                        ]
+                      },
+                      "rule": {
+                        "type": "string",
+                        "description": "The lint rule id, for example \"unknown-id\"."
+                      },
+                      "path": {
+                        "type": "array",
+                        "items": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        },
+                        "description": "Where in the config, as keys and indexes from the file root."
+                      },
+                      "at": {
+                        "type": "string",
+                        "description": "The path as text, for example steps[2].calls[0].text."
+                      },
+                      "message": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "severity",
+                      "rule",
+                      "path",
+                      "at",
+                      "message"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A problem `lint` reports. An error means the config cannot be shown."
+                  }
+                },
+                "findings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "severity": {
+                        "type": "string",
+                        "enum": [
+                          "warning",
+                          "info"
+                        ],
+                        "description": "warning: worth fixing. info: look, and keep it if it is deliberate."
+                      },
+                      "rule": {
+                        "type": "string",
+                        "description": "\"design/<name>\", or the id a layout provider gives."
+                      },
+                      "group": {
+                        "type": "string",
+                        "enum": [
+                          "design",
+                          "layout"
+                        ]
+                      },
+                      "path": {
+                        "type": "array",
+                        "items": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        },
+                        "description": "Where in the config, as keys and indexes from the file root."
+                      },
+                      "at": {
+                        "type": "string",
+                        "description": "The path as text, for example steps[2].calls[0].text."
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "What is wrong and what to do about it."
+                      },
+                      "source": {
+                        "type": "string",
+                        "description": "Which part of the design guidance the rule comes from."
+                      },
+                      "call": {
+                        "description": "\"<step id>.<call id>\" when the finding is about a call.",
+                        "type": "string"
+                      },
+                      "count": {
+                        "description": "How many calls the finding stands for, when it sums up several. Default 1.",
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "severity",
+                      "rule",
+                      "group",
+                      "path",
+                      "at",
+                      "message",
+                      "source"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Feedback on a config that loads: how it could be better, not why it will not load."
+                  }
+                },
+                "stats": {
+                  "type": "object",
+                  "properties": {
+                    "steps": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "calls": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "callsPerStep": {
+                      "type": "object",
+                      "properties": {
+                        "min": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "max": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "mean": {
+                          "type": "number",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "min",
+                        "max",
+                        "mean"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "words": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "mean": {
+                          "type": "number",
+                          "minimum": 0,
+                          "description": "Words per call, over all calls."
+                        },
+                        "median": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "longest": {
+                          "type": "object",
+                          "properties": {
+                            "words": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "call": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "words",
+                            "call"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "overCeiling": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Calls over about 40 words, or past three sentences."
+                        },
+                        "withoutText": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "total",
+                        "mean",
+                        "median",
+                        "longest",
+                        "overCeiling",
+                        "withoutText"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "panes": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "elements": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Elements the panes declare, all panes together."
+                    },
+                    "touchedPerCall": {
+                      "type": "object",
+                      "properties": {
+                        "mean": {
+                          "type": "number",
+                          "minimum": 0
+                        },
+                        "max": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "zero": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Calls that touch nothing in any pane."
+                        }
+                      },
+                      "required": [
+                        "mean",
+                        "max",
+                        "zero"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "perPane": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "pane": {
+                            "type": "string"
+                          },
+                          "panel": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "fixed",
+                              "focus"
+                            ]
+                          },
+                          "elements": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "callsTouching": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Calls that add, update, read or remove something here."
+                          },
+                          "callsChanging": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Calls that add, update or remove something here."
+                          }
+                        },
+                        "required": [
+                          "pane",
+                          "panel",
+                          "role",
+                          "elements",
+                          "callsTouching",
+                          "callsChanging"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "steps",
+                    "calls",
+                    "callsPerStep",
+                    "words",
+                    "panes",
+                    "elements",
+                    "touchedPerCall",
+                    "perPane"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Counts that show the shape of a walkthrough."
+                },
+                "trace": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "step": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "From 1."
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "id",
+                          "title"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "call": {
+                        "type": "object",
+                        "properties": {
+                          "index": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "Within the step, from 1."
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "type": "string",
+                            "description": "\"<step id>.<call id>\": what --call takes."
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "from": {
+                            "type": "string"
+                          },
+                          "to": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "where": {
+                            "type": "string"
+                          },
+                          "words": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "index",
+                          "id",
+                          "key",
+                          "label",
+                          "words"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "focus": {
+                        "description": "The focus pane shown at this call, if any.",
+                        "type": "string"
+                      },
+                      "stage": {
+                        "type": "object",
+                        "properties": {
+                          "capacity": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991,
+                            "description": "How many panes the stage is sized for."
+                          },
+                          "panes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "What the Focus view puts on stage, in layout order."
+                          },
+                          "primary": {
+                            "description": "The pane given the most room.",
+                            "type": "string"
+                          },
+                          "reasons": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "Why each pane is on stage: touched, recent, default, swapped, ..."
+                          }
+                        },
+                        "required": [
+                          "capacity",
+                          "panes",
+                          "reasons"
+                        ],
+                        "additionalProperties": false,
+                        "description": "What the Focus view shows for this call."
+                      },
+                      "panes": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "panel": {
+                              "type": "string"
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "fixed",
+                                "focus"
+                              ]
+                            },
+                            "did": {
+                              "type": "object",
+                              "properties": {
+                                "added": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "updated": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "read": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "removed": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "added",
+                                "updated",
+                                "read",
+                                "removed"
+                              ],
+                              "additionalProperties": false,
+                              "description": "What this call does to the pane, by element id."
+                            },
+                            "lines": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "The pane as a reader sees it after the call. `>x<` and `x*` mark what the call touched."
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "title",
+                            "panel",
+                            "role",
+                            "did",
+                            "lines"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "description": "The panes on screen in the Grid view at this call."
+                      },
+                      "hidden": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Focus panes that are not shown at this call."
+                      }
+                    },
+                    "required": [
+                      "step",
+                      "call",
+                      "stage",
+                      "panes",
+                      "hidden"
+                    ],
+                    "additionalProperties": false,
+                    "description": "What a reader sees at one call."
+                  }
+                }
+              },
+              "required": [
+                "index",
+                "id",
+                "title",
+                "path",
+                "status"
+              ],
+              "additionalProperties": false,
+              "description": "One walkthrough of a file."
+            }
+          }
+        },
+        "required": [
+          "file",
+          "problems",
+          "walkthroughs"
+        ],
+        "additionalProperties": false,
+        "description": "One file."
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "files": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "walkthroughs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "errors": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Config errors. Any error makes the exit code 1."
+        },
+        "warnings": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "Lint warnings and design or layout warnings together."
+        },
+        "infos": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "exitCode": {
+          "anyOf": [
+            {
+              "type": "number",
+              "const": 0
+            },
+            {
+              "type": "number",
+              "const": 1
+            }
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the exit code is not 0; empty when it is."
+        }
+      },
+      "required": [
+        "files",
+        "walkthroughs",
+        "errors",
+        "warnings",
+        "infos",
+        "exitCode",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "tool",
+    "version",
+    "options",
+    "files",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "description": "The result of `feature-walkthrough check --json`."
+}

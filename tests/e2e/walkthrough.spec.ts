@@ -1017,8 +1017,12 @@ test('sequence: fragments, branches, styles and notes are drawn and reachable', 
   expect(await dash('token-error')).not.toBe('none');
   expect(await dash('verify')).toBe('none');
   // Messages stay where they were when later ones appear.
-  const y = async (id: string) =>
-    (await page.locator(`.fw-seq-message[data-entity="${id}"] .fw-seq-hit`).boundingBox())!.y;
+  // Measured inside the drawing, not on screen: the pane scrolls to the message each call is about.
+  const y = (id: string) =>
+    page.locator(`.fw-seq-message[data-entity="${id}"] .fw-seq-hit`).evaluate((node) => {
+      const drawing = node.closest('svg')!.getBoundingClientRect();
+      return Math.round(node.getBoundingClientRect().top - drawing.top);
+    });
   const before = await y('token-response');
   await page.keyboard.press('ArrowLeft');
   expect(await y('token-response')).toBe(before);
