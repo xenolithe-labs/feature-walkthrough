@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { decodeHash, encodeHash, shapeOf, type Cursor, type ResolvedWalkthrough } from '../core';
+import {
+  decodeHash,
+  encodeHash,
+  isView,
+  shapeOf,
+  type Cursor,
+  type ResolvedWalkthrough,
+  type View,
+} from '../core';
 
 export type Theme = 'light' | 'dark';
 
@@ -44,6 +52,37 @@ export function useTheme(): { theme: Theme; toggle(): void } {
   }, [theme]);
 
   return { theme, toggle };
+}
+
+const VIEW_KEY = 'feature-walkthrough:view';
+
+function storedView(): View | undefined {
+  try {
+    const value = window.localStorage.getItem(VIEW_KEY);
+    return isView(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The view to show. In order of preference: the one the address names, the reader's own earlier
+ * choice (kept per browser, like the theme), the author's default, and the grid.
+ */
+export function useView(
+  fromAddress: View | undefined,
+  authorDefault: View | undefined,
+): { view: View; choose(next: View): void } {
+  const [chosen, setChosen] = useState<View | undefined>(storedView);
+  const choose = useCallback((next: View) => {
+    setChosen(next);
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // The choice still holds for this visit.
+    }
+  }, []);
+  return { view: fromAddress ?? chosen ?? authorDefault ?? 'grid', choose };
 }
 
 /** The cursor, kept in step with the URL hash in both directions. */

@@ -81,6 +81,13 @@
                 ],
                 "additionalProperties": false
               }
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "grid",
+                "focus"
+              ]
             }
           },
           "required": [
@@ -419,6 +426,13 @@
                       ],
                       "additionalProperties": false
                     }
+                  },
+                  "view": {
+                    "type": "string",
+                    "enum": [
+                      "grid",
+                      "focus"
+                    ]
                   }
                 },
                 "required": [

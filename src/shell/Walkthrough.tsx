@@ -17,12 +17,15 @@ import {
   type Problem,
   type Registry,
   type ResolvedWalkthrough,
+  type Cursor,
   type Selection,
+  type View,
   flatIndex,
   totalCalls,
 } from '../core';
 import { Card } from './Card';
-import { useCursor, useTheme, type Theme } from './hooks';
+import { Focus } from './Focus';
+import { useCursor, useTheme, useView, type Theme } from './hooks';
 import './shell.css';
 
 export function Problems({ problems, title }: { problems: Problem[]; title: string }) {
@@ -66,16 +69,26 @@ function Shell({
   const folder = useMemo(() => createFolder(walkthrough), [walkthrough]);
   const { s, c } = clamp(shape, cursor.s, cursor.c);
 
+  const { view, choose } = useView(cursor.view, walkthrough.source.layout.view);
+  const chooseView = useCallback(
+    (next: View) => {
+      choose(next);
+      setCursor({ ...cursor, w: walkthrough.id, s, c, view: next });
+    },
+    [choose, cursor, setCursor, walkthrough.id, s, c],
+  );
+
   const go = useCallback(
     (to: { s: number; c: number }) => setCursor({ ...cursor, w: walkthrough.id, ...to }),
     [cursor, setCursor, walkthrough.id],
   );
   const select = useCallback(
     (id: string | undefined) => {
-      const next = { w: walkthrough.id, s, c };
+      const next: Cursor = { w: walkthrough.id, s, c };
+      if (cursor.view !== undefined) next.view = cursor.view;
       setCursor(id === undefined ? next : { ...next, sel: id });
     },
-    [setCursor, walkthrough.id, s, c],
+    [setCursor, walkthrough.id, s, c, cursor.view],
   );
   const selection: Selection = useMemo(() => ({ id: cursor.sel, select }), [cursor.sel, select]);
 
@@ -100,6 +113,15 @@ function Shell({
   const views = useMemo(() => folder.at(s, c), [folder, s, c]);
   const card = useMemo(() => buildCard(walkthrough, s, c, views), [walkthrough, s, c, views]);
   const focusId = folder.focusPane(s, c);
+  const root = useRef<HTMLDivElement | null>(null);
+  // A row of steps that scrolls sideways keeps the current one in sight.
+  useEffect(() => {
+    const row = root.current?.querySelector<HTMLElement>('.fw-steps ol');
+    const here = row?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (row === null || row === undefined || here === null || here === undefined) return;
+    if (row.scrollWidth <= row.clientWidth) return;
+    row.scrollLeft = here.offsetLeft - (row.clientWidth - here.offsetWidth) / 2;
+  }, [s, view]);
   const outline = useRef<HTMLDetailsElement | null>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const step = walkthrough.steps[s]!;
@@ -116,7 +138,14 @@ function Shell({
   }, [cursor.sel, walkthrough]);
 
   return (
-    <div className="fw" data-walkthrough={walkthrough.id} data-step={s + 1} data-call={c + 1}>
+    <div
+      className="fw"
+      ref={root}
+      data-walkthrough={walkthrough.id}
+      data-step={s + 1}
+      data-call={c + 1}
+      data-view={view}
+    >
       <header className="fw-head">
         <div className="fw-head-text">
           {walkthroughs.length > 1 ? (
@@ -124,7 +153,14 @@ function Shell({
               <span className="fw-visually-hidden">Walkthrough</span>
               <select
                 value={walkthrough.id}
-                onChange={(event) => setCursor({ w: event.target.value, s: 0, c: 0 })}
+                onChange={(event) =>
+                  setCursor({
+                    w: event.target.value,
+                    s: 0,
+                    c: 0,
+                    ...(cursor.view === undefined ? {} : { view: cursor.view }),
+                  })
+                }
               >
                 {walkthroughs.map((item) => (
                   <option key={item.id} value={item.id}>
@@ -135,11 +171,36 @@ function Shell({
             </label>
           ) : null}
           <h1>{walkthrough.title}</h1>
-          {walkthrough.lead !== undefined && <p className="fw-lead">{walkthrough.lead}</p>}
+          {walkthrough.lead !== undefined && (
+            <p className="fw-lead" title={view === 'focus' ? walkthrough.lead : undefined}>
+              {walkthrough.lead}
+            </p>
+          )}
         </div>
-        <button type="button" className="fw-theme" onClick={onToggleTheme}>
-          {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-        </button>
+        <div className="fw-head-controls">
+          <div className="fw-views" role="group" aria-label="View">
+            {(
+              [
+                ['grid', 'Grid', 'Every pane at once'],
+                ['focus', 'Focus', 'The panes this call touches, large'],
+              ] as const
+            ).map(([id, label, hint]) => (
+              <button
+                key={id}
+                type="button"
+                className="fw-view"
+                aria-pressed={view === id}
+                title={hint}
+                onClick={() => chooseView(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <button type="button" className="fw-theme" onClick={onToggleTheme}>
+            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          </button>
+        </div>
       </header>
 
       <nav className="fw-steps" aria-label="Steps">
@@ -260,36 +321,52 @@ function Shell({
         </div>
       </div>
 
-      <div className="fw-body">
-        <div className="fw-panes" data-count={visible.length}>
-          {visible.map((pane) => {
-            const view = views[pane.id]!;
-            const ctx: PanelContext = {
-              walkthrough,
-              pane,
-              call,
-              current: view.current,
-              selection,
-              theme,
-            };
-            const Panel = pane.panel.Component;
-            return (
-              <section
-                key={pane.id}
-                className="fw-pane"
-                data-pane={pane.id}
-                data-panel={pane.panel.id}
-              >
-                <h2 className="fw-pane-title">{pane.title}</h2>
-                <div className="fw-pane-body">
-                  <Panel state={view.state} content={pane.content} ctx={ctx} />
-                </div>
-              </section>
-            );
-          })}
+      {view === 'focus' ? (
+        <Focus
+          key={walkthrough.id}
+          walkthrough={walkthrough}
+          folder={folder}
+          s={s}
+          c={c}
+          call={call}
+          views={views}
+          selection={selection}
+          theme={theme}
+        >
+          <Card card={card} selection={selection} selectedLabel={selectedLabel} compact />
+        </Focus>
+      ) : (
+        <div className="fw-body">
+          <div className="fw-panes" data-count={visible.length}>
+            {visible.map((pane) => {
+              const view = views[pane.id]!;
+              const ctx: PanelContext = {
+                walkthrough,
+                pane,
+                call,
+                current: view.current,
+                selection,
+                theme,
+              };
+              const Panel = pane.panel.Component;
+              return (
+                <section
+                  key={pane.id}
+                  className="fw-pane"
+                  data-pane={pane.id}
+                  data-panel={pane.panel.id}
+                >
+                  <h2 className="fw-pane-title">{pane.title}</h2>
+                  <div className="fw-pane-body">
+                    <Panel state={view.state} content={pane.content} ctx={ctx} />
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          <Card card={card} selection={selection} selectedLabel={selectedLabel} />
         </div>
-        <Card card={card} selection={selection} selectedLabel={selectedLabel} />
-      </div>
+      )}
 
       <footer className="fw-legend" aria-label="Legend">
         {LEGEND.map(([mark, label]) => (
