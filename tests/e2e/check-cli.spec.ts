@@ -1,5 +1,7 @@
 import { spawnSync } from 'node:child_process';
-import { writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { CheckResultSchema } from '../../src/review';
 import { demos } from '../../src/walkthroughs';
@@ -10,8 +12,8 @@ const run = (...args: string[]) =>
 
 const demo = 'walkthroughs' in demos ? demos.walkthroughs[0]! : demos;
 
-test('the built command line prints one JSON document for check --json on a demo', ({}, testInfo) => {
-  const file = testInfo.outputPath('demo.json');
+test('the built command line prints one JSON document for check --json on a demo', () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'fw-check-')), 'demo.json');
   writeFileSync(file, JSON.stringify(demo));
   const result = run('check', file, '--json', '--call', '1.1');
   expect(result.status).toBe(0);
@@ -28,8 +30,8 @@ test('the built command line prints one JSON document for check --json on a demo
   expect(parsed.summary.exitCode).toBe(0);
 });
 
-test('check exits 1 for a config with errors, 2 when it is called wrongly', ({}, testInfo) => {
-  const file = testInfo.outputPath('bad.json');
+test('check exits 1 for a config with errors, 2 when it is called wrongly', () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'fw-check-')), 'bad.json');
   writeFileSync(file, JSON.stringify({ id: 'x', title: 'X' }));
   const bad = run('check', file, '--json');
   expect(bad.status).toBe(1);

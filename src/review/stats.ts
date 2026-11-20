@@ -6,6 +6,10 @@ const round = (value: number) => Math.round(value * 10) / 10;
 const mean = (values: number[]) =>
   values.length === 0 ? 0 : round(values.reduce((sum, value) => sum + value, 0) / values.length);
 
+// Not Math.max(...values): a spread of a very long list overflows the stack.
+const most = (values: number[]) => values.reduce((a, b) => Math.max(a, b), 0);
+const least = (values: number[]) => values.reduce((a, b) => Math.min(a, b), Infinity);
+
 function median(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -33,7 +37,7 @@ export function statsOf({ walkthrough, calls, elements }: Analysis): Stats {
   return {
     steps: walkthrough.steps.length,
     calls: calls.length,
-    callsPerStep: { min: Math.min(...sizes), max: Math.max(...sizes), mean: mean(sizes) },
+    callsPerStep: { min: least(sizes), max: most(sizes), mean: mean(sizes) },
     words: {
       total: words.reduce((sum, value) => sum + value, 0),
       mean: mean(words),
@@ -46,7 +50,7 @@ export function statsOf({ walkthrough, calls, elements }: Analysis): Stats {
     elements: [...elements.values()].reduce((sum, pane) => sum + pane.size, 0),
     touchedPerCall: {
       mean: mean(touchedCounts),
-      max: Math.max(0, ...touchedCounts),
+      max: most(touchedCounts),
       zero: touchedCounts.filter((count) => count === 0).length,
     },
     perPane: walkthrough.panes.map((pane) => ({

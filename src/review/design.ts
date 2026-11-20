@@ -42,10 +42,9 @@ export function designFindings(
       });
     }
   }
-  const order = (finding: Finding) => {
-    const call = analysis.calls.find((item) => finding.call === item.key);
-    return call?.index ?? -1;
-  };
+  const index = new Map(analysis.calls.map((item) => [item.key, item.index]));
+  const order = (finding: Finding) =>
+    finding.call === undefined ? -1 : (index.get(finding.call) ?? -1);
   return found
     .map((finding, position) => ({ finding, position }))
     .sort(
