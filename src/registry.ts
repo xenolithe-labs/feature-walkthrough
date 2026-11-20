@@ -7,6 +7,7 @@ import { codePanel } from './panels/code';
 import { flowPanel } from './panels/flow';
 import { graphPanel } from './panels/graph';
 import { payloadPanel } from './panels/payload';
+import { ringPanel } from './panels/ring';
 import { schemaPanel } from './panels/schema';
 import { sequencePanel } from './panels/sequence';
 import { tablePanel } from './panels/table';
@@ -29,5 +30,6 @@ export function createRegistry(): Registry {
     .registerPanel(arrayPanel)
     .registerPanel(busPanel)
     .registerPanel(timelinePanel)
+    .registerPanel(ringPanel)
     .registerAnnotation(statusAnnotation);
 }

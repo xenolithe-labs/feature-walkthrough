@@ -4,6 +4,7 @@ import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
+import { consistentHashing } from './consistent-hashing';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
 import { kafkaConsumerGroup } from './kafka-consumer-group';
@@ -27,6 +28,7 @@ export const plainDemos: WalkthroughInput[] = [
   kafkaConsumerGroup,
   temporalHeartbeat,
   eventbridgeRouting,
+  consistentHashing,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */

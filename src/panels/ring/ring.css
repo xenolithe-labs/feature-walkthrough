@@ -1,0 +1,474 @@
+/* Six node colours, each with its own pattern as well, so a node is never told apart by colour
+   alone. Beyond six nodes the colours repeat with a different pattern. */
+.fw-ring {
+  --fw-ring-c0: #7aa7f0;
+  --fw-ring-c1: #f0a65e;
+  --fw-ring-c2: #6cc890;
+  --fw-ring-c3: #d596d5;
+  --fw-ring-c4: #e2d066;
+  --fw-ring-c5: #72ccd2;
+  --fw-ring-ink: rgba(20, 24, 33, 0.62);
+  --fw-ring-walk: #1b1f27;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  align-content: start;
+  align-items: start;
+  max-height: 800px;
+  padding: 12px;
+  overflow: auto;
+}
+
+:root[data-theme='dark'] .fw-ring {
+  --fw-ring-c0: #3f6fc0;
+  --fw-ring-c1: #bf7a30;
+  --fw-ring-c2: #3a9561;
+  --fw-ring-c3: #9a5c9a;
+  --fw-ring-c4: #a3922f;
+  --fw-ring-c5: #3a9399;
+  --fw-ring-ink: rgba(244, 247, 252, 0.7);
+  --fw-ring-walk: #e7eaf0;
+}
+
+@container (min-width: 640px) {
+  .fw-ring {
+    grid-template-columns: minmax(280px, 1.1fr) minmax(0, 1fr);
+  }
+}
+
+.fw-ring-plot {
+  min-width: 0;
+}
+
+.fw-ring-svg {
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+  aspect-ratio: 450 / 372;
+  margin: 0 auto;
+  overflow: visible;
+  font: 13px var(--fw-mono);
+}
+
+.fw-ring-key-help {
+  margin: 4px 0 0;
+  color: var(--fw-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.fw-ring-disc {
+  fill: var(--fw-surface-2);
+}
+
+.fw-ring-edge {
+  fill: none;
+  stroke: var(--fw-ring-ink);
+  stroke-width: 1.2;
+}
+
+.fw-ring-empty {
+  fill: none;
+  stroke: var(--fw-border);
+  stroke-width: 16;
+}
+
+.fw-ring-arc {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.fw-ring-arc.is-dim {
+  opacity: 0.4;
+}
+
+.fw-ring-hint {
+  fill: none;
+  stroke: var(--fw-ring-ink);
+  stroke-width: 2.4;
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
+.fw-ring-sep {
+  stroke: var(--fw-ring-ink);
+  stroke-width: 1.4;
+}
+
+/* The arc that changed hands in this call: a bracket outside the dots. */
+.fw-ring-changed {
+  fill: none;
+  stroke: var(--fw-added);
+  stroke-width: 4;
+  stroke-linecap: butt;
+}
+
+.fw-ring-tag text {
+  fill: var(--fw-text);
+  font-size: 12.5px;
+  paint-order: stroke;
+  stroke: var(--fw-surface);
+  stroke-width: 3px;
+}
+
+.fw-ring-tag.is-down text {
+  fill: var(--fw-muted);
+  text-decoration: line-through;
+}
+
+.fw-ring-leader {
+  stroke: var(--fw-muted);
+  stroke-width: 0.8;
+}
+
+/* ---- tokens ---- */
+.fw-ring-token {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.15s;
+}
+
+.fw-ring-hit {
+  fill: transparent;
+}
+
+.fw-ring-dot {
+  stroke: var(--fw-ring-ink);
+  stroke-width: 1.6;
+}
+
+.fw-ring-token.is-down .fw-ring-dot {
+  stroke-dasharray: 2.5 2.5;
+  opacity: 0.6;
+}
+
+.fw-ring-token.is-suspect .fw-ring-dot {
+  stroke: var(--fw-warn);
+  stroke-width: 2.6;
+}
+
+.fw-ring-cross {
+  fill: none;
+  stroke: var(--fw-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.fw-ring-focus {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2.5;
+}
+
+.fw-ring-token:focus-visible .fw-ring-focus,
+.fw-ring-key:focus-visible .fw-ring-focus {
+  stroke: var(--fw-select);
+}
+
+.fw-ring-token.is-faded {
+  opacity: var(--fw-faded-opacity, 0.68);
+}
+
+.fw-ring-token.is-added .fw-ring-dot {
+  stroke: var(--fw-added);
+  stroke-width: 3;
+}
+
+.fw-ring-token.is-updated .fw-ring-dot {
+  stroke: var(--fw-updated);
+  stroke-width: 3;
+}
+
+.fw-ring-token.is-read .fw-ring-dot {
+  stroke: var(--fw-read);
+  stroke-width: 3;
+}
+
+.fw-ring-token.is-selected .fw-ring-focus {
+  stroke: var(--fw-select);
+}
+
+.fw-ring-ghost {
+  fill: none;
+  stroke: var(--fw-removed);
+  stroke-width: 2;
+  stroke-dasharray: 3 3;
+}
+
+/* ---- keys ---- */
+.fw-ring-key {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.15s;
+}
+
+.fw-ring-key.is-absent {
+  visibility: hidden;
+}
+
+.fw-ring-key-hit {
+  fill: transparent;
+}
+
+.fw-ring-key-dot {
+  fill: var(--fw-text);
+  stroke: var(--fw-surface);
+  stroke-width: 1.5;
+}
+
+.fw-ring-key.is-faded {
+  opacity: var(--fw-faded-opacity, 0.68);
+}
+
+.fw-ring-key.is-added .fw-ring-key-dot {
+  fill: var(--fw-added);
+}
+
+.fw-ring-key.is-updated .fw-ring-key-dot {
+  fill: var(--fw-updated);
+}
+
+.fw-ring-key.is-read .fw-ring-key-dot {
+  fill: var(--fw-read);
+}
+
+.fw-ring-key.is-removed .fw-ring-key-dot {
+  fill: var(--fw-removed);
+}
+
+/* A key whose owner changed is a diamond and not a dot, in the colour of an addition. */
+.fw-ring-key.is-moved {
+  opacity: 1;
+}
+
+.fw-ring-key.is-moved .fw-ring-key-dot {
+  fill: var(--fw-added);
+  stroke: var(--fw-text);
+  stroke-width: 1.6;
+}
+
+.fw-ring-key-ring {
+  fill: none;
+  stroke: var(--fw-added);
+  stroke-width: 1.8;
+  stroke-dasharray: 2.5 2.5;
+}
+
+.fw-ring-key.is-selected .fw-ring-key-dot {
+  stroke: var(--fw-select);
+  stroke-width: 3;
+}
+
+.fw-ring-key-label {
+  fill: var(--fw-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: var(--fw-surface-2);
+  stroke-width: 3px;
+}
+
+/* ---- the lookup walk ---- */
+.fw-ring-spoke,
+.fw-ring-link {
+  stroke: var(--fw-ring-walk);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.fw-ring-walk-arc {
+  fill: none;
+  stroke: var(--fw-ring-walk);
+  stroke-width: 2.4;
+}
+
+.fw-ring-badge {
+  fill: var(--fw-surface);
+  stroke: var(--fw-ring-walk);
+  stroke-width: 1.8;
+}
+
+.fw-ring-badge.is-owner {
+  fill: var(--fw-ring-walk);
+}
+
+.fw-ring-badge.is-skipped {
+  stroke-dasharray: 2.5 2;
+}
+
+.fw-ring-badge-text {
+  fill: var(--fw-ring-walk);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.fw-ring-badge.is-owner + .fw-ring-badge-text {
+  fill: var(--fw-surface);
+}
+
+.fw-ring-again {
+  fill: var(--fw-ring-walk);
+}
+
+.fw-ring-scale text {
+  fill: var(--fw-muted);
+  font-size: 10px;
+  text-anchor: middle;
+}
+
+/* ---- the summary tables ---- */
+.fw-ring-side {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.fw-ring-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.fw-ring-table caption {
+  padding-bottom: 4px;
+  color: var(--fw-muted);
+  font-weight: 600;
+  text-align: left;
+}
+
+.fw-ring-table th,
+.fw-ring-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--fw-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.fw-ring-table thead th {
+  color: var(--fw-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.fw-ring-table tbody th {
+  font-weight: 500;
+}
+
+.fw-ring-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.fw-ring-name {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fw-ring-name:disabled {
+  cursor: default;
+}
+
+.fw-ring-name small {
+  display: block;
+  color: var(--fw-muted);
+  font-size: 0.68rem;
+}
+
+.fw-ring-swatch rect {
+  stroke: var(--fw-ring-ink);
+  stroke-width: 1.2;
+}
+
+.fw-ring-row.is-gone {
+  color: var(--fw-muted);
+}
+
+.fw-ring-row.is-gone .fw-ring-swatch {
+  opacity: 0.45;
+}
+
+.fw-ring-row.is-absent {
+  visibility: hidden;
+}
+
+.fw-ring-row.is-faded {
+  opacity: var(--fw-faded-opacity, 0.68);
+}
+
+.fw-ring-row.is-added,
+.fw-ring-row.is-updated,
+.fw-ring-row.is-read {
+  background: var(--fw-surface-2);
+}
+
+.fw-ring-row.is-added .fw-ring-name {
+  box-shadow: inset 3px 0 var(--fw-added);
+}
+
+.fw-ring-row.is-updated .fw-ring-name {
+  box-shadow: inset 3px 0 var(--fw-updated);
+}
+
+.fw-ring-row.is-read .fw-ring-name {
+  box-shadow: inset 3px 0 var(--fw-read);
+}
+
+.fw-ring-row.is-removed .fw-ring-name {
+  text-decoration: line-through;
+}
+
+.fw-ring-row.is-moved {
+  background: var(--fw-added-bg);
+  opacity: 1;
+}
+
+.fw-ring-row.is-selected .fw-ring-name {
+  background: var(--fw-select-bg);
+  outline: 1.5px solid var(--fw-select);
+}
+
+.fw-ring-state.is-down {
+  color: var(--fw-bad);
+  font-weight: 700;
+}
+
+.fw-ring-state.is-suspect {
+  color: var(--fw-warn);
+  font-weight: 700;
+}
+
+.fw-ring-moved {
+  color: var(--fw-added);
+  font-weight: 700;
+}
+
+.fw-ring-note {
+  color: var(--fw-muted);
+}
+
+/* On the stage the pane is the frame: the ring takes the height there is. */
+.fw-stage .fw-pane-body > .fw-ring {
+  max-height: none;
+}
+
+.fw-ring-key-help {
+  min-height: 3.6em;
+}
+
+.fw-ring-keys td small {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.2;
+}

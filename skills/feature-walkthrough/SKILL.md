@@ -1,6 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, hash ring). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -105,6 +105,7 @@ but you name them in effects:
 | A column of a schema table | `table.column` | `order.user_id`      |
 | A relation without an `id` | `from:to`      | `order.user_id:user` |
 | A cell of an array         | `array.index`  | `items.3`            |
+| A token of a ring node     | `node.index`   | `node-10.0`          |
 
 `update` may only set fields the element has. A misspelt field, or a tone that is not a tone, is a
 lint error.
@@ -120,19 +121,20 @@ graph). Selecting it in one pane then selects it in the other.
 
 Exact shapes are in [`reference.md`](reference.md), generated from the lint schemas.
 
-| Panel      | Use it for                                   | Elements                                                        | Present at start |
-| ---------- | -------------------------------------------- | --------------------------------------------------------------- | ---------------- |
-| `sequence` | Messages between lanes over time             | lanes, calls                                                    | lanes            |
-| `graph`    | Things and relationships that build up       | nodes, edges                                                    | no               |
-| `flow`     | A flow chart that calls walk through         | nodes, edges                                                    | yes              |
-| `boxes`    | Nesting: modules, components, frames         | boxes, edges                                                    | yes              |
-| `table`    | Rows of data that calls read and change      | rows                                                            | yes              |
-| `code`     | Source text, with the lines in question      | sources                                                         | yes              |
-| `payload`  | Message and object bodies, field by field    | payloads                                                        | yes              |
-| `schema`   | Tables or types, columns and relations       | tables, columns, relations                                      | yes              |
-| `array`    | A row of cells with pointers and ranges      | cells, pointers, ranges                                         | cells            |
-| `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
-| `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
+| Panel      | Use it for                                        | Elements                                                        | Present at start         |
+| ---------- | ------------------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `sequence` | Messages between lanes over time                  | lanes, calls                                                    | lanes                    |
+| `graph`    | Things and relationships that build up            | nodes, edges                                                    | no                       |
+| `flow`     | A flow chart that calls walk through              | nodes, edges                                                    | yes                      |
+| `boxes`    | Nesting: modules, components, frames              | boxes, edges                                                    | yes                      |
+| `table`    | Rows of data that calls read and change           | rows                                                            | yes                      |
+| `code`     | Source text, with the lines in question           | sources                                                         | yes                      |
+| `payload`  | Message and object bodies, field by field         | payloads                                                        | yes                      |
+| `schema`   | Tables or types, columns and relations            | tables, columns, relations                                      | yes                      |
+| `array`    | A row of cells with pointers and ranges           | cells, pointers, ranges                                         | cells                    |
+| `bus`      | Events in topics, queues and buses                | channels, events, producers, consumers, cursors, rules, targets | all but events           |
+| `timeline` | Rows along a time axis: heartbeats, timeouts      | rows, instants, spans, limits, `now`                            | all                      |
+| `ring`     | Consistent hashing, partition ownership, replicas | nodes, tokens, keys                                             | all but `initial: false` |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown.
@@ -212,6 +214,29 @@ kind?: run|wait|lease, state? }` and `limits` `{ id, row, after, from, reset?, u
   `by` or by the end of the span `from` names. Lint rejects an instant on an unknown row, a span
   that ends before it starts, times off the axis, and a call that touches something that has not
   happened yet at that call.
+
+- **`ring`**: a hash space drawn as a ring, for consistent hashing and replica placement. Content:
+  `size` (positions are the integers `0` to `size - 1`, and the ring wraps), `replication` (how many
+  nodes hold a key, the owner included), `nodes` `{ id, label?, positions: [..], state?, initial? }`
+  and `keys` `{ id, at, label? }`. Each position of a node is a token (a virtual node); its element
+  id is `node.index` from 0 (`node-10.0`). Write positions as hashes of real names, computed in
+  code, not picked by hand. A key belongs to the first token at or after it going clockwise; a token
+  owns the arc that ends at it; the replicas are the next distinct nodes. **None of this is
+  written**: the owner and replicas of every key, each node's share of the ring, and **which keys
+  changed owner in a call** (drawn as diamonds, with a bracket round the arc that changed hands) are
+  all derived. `add` / `remove` a node is a join / leave (its tokens come and go with it);
+  `update` a node with `fields.state` (`up`, `suspect`, `down`); `update` a token or key with
+  `fields.at` moves it with one update; `add` a key puts it on the ring; `read` a key is a lookup
+  and draws the clockwise walk to its owner and replicas (a selected key shows its walk too). A
+  node that is `down` is skipped: owners and replicas are the first `replication` healthy nodes
+  along the walk, as with a sloppy quorum in the Dynamo paper; `suspect` is not skipped. Hint
+  storage and replay, and data streaming, are not modelled. Arcs are coloured per node and each
+  node also has its own pattern; a legend table gives state, share, keys owned and held. It is
+  drawn for 3 to 6 nodes with 1 to 8 tokens each: beyond 24 tokens only the tokens a call or the
+  reader points at are labelled, and beyond six nodes colours repeat with a different pattern, so
+  the legend carries the names. Lint: `ring/position-out-of-range`, `ring/duplicate-position` (also
+  after a move), `ring/replication-too-high`, `ring/under-replicated` (warning),
+  `ring/token-effect`, `ring/absent-token`, `ring/unknown-field`, `ring/bad-field`.
 
 ### Panes that share a slot
 

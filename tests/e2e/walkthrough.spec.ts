@@ -74,7 +74,7 @@ for (const walkthrough of walkthroughs) {
     const places = () =>
       page
         .locator(
-          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick',
+          '.react-flow__node, .fw-array-cell, .fw-array-index, .fw-bus-event, .fw-bus-offset, .fw-tl-instant, .fw-tl-tick, .fw-ring-key-hit',
         )
         .evaluateAll((nodes) =>
           nodes.map((node) => {
@@ -919,4 +919,138 @@ test('focus view: the marked items of every staged pane are in view, small or la
   const off = page.locator('.fw-rail-item[data-on-stage="false"]');
   if ((await off.count()) > 0) await off.first().click();
   await expectMarkedItemsInView(page);
+});
+
+test('ring: a joining node marks the keys that change owner and the arc, which no config lists', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(3);
+  await expect(page.locator('.fw-ring-changed')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-keys tr.is-moved')).toHaveCount(3);
+  await expect(page.locator('.fw-ring-keys tr.is-moved').first()).toContainText(
+    'moved from node-13',
+  );
+  // Each moved key says so in words for a screen reader, not only by its shape.
+  await expect(page.locator('.fw-ring-key.is-moved').first()).toHaveAttribute(
+    'aria-label',
+    /moved from node-13 to node-10/,
+  );
+  // Next call: the marks belong to the call that moved the keys.
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-ring-key.is-moved')).toHaveCount(0);
+  await expect(page.locator('.fw-ring-changed')).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test('ring: a lookup draws the walk from the key to its owner and replica; a down node is skipped', async ({
+  page,
+}) => {
+  await open(page, '#w=consistent-hashing&s=2&c=2');
+  const walk = page.locator('[data-walk="user-105"]');
+  await expect(walk).toHaveCount(1);
+  await expect(walk.locator('.fw-ring-badge-text')).toHaveText(['1', '2']);
+  await expect(walk.locator('[data-visit="owner"]')).toHaveCount(1);
+
+  await open(page, '#w=consistent-hashing&s=4&c=2');
+  const down = page.locator('[data-walk="user-100"]');
+  await expect(down.locator('[data-visit="skipped"]')).toHaveCount(1);
+  await expect(down.locator('.fw-ring-badge-text')).toHaveText(['×', '1', '2']);
+  await expect(page.locator('.fw-ring-token.is-down')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-hint').first()).toBeVisible();
+});
+
+test('ring: selecting a key or node anywhere selects it everywhere, from the keyboard too', async ({
+  page,
+}) => {
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  await page.locator('.fw-ring-keys').getByRole('button', { name: 'user:103' }).click();
+  await expect(page).toHaveURL(/sel=user-103/);
+  await expect(page.locator('.fw-ring-key.is-selected')).toHaveCount(1);
+  await expect(page.locator('.fw-ring-key.is-selected')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('[data-walk="user-103"]')).toHaveCount(1);
+
+  // A ring token is reachable by Tab and selects with Enter.
+  const token = page.locator('.fw-ring-token').first();
+  await token.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/sel=node-\d+\.0/);
+
+  // A node row selects the node: its arcs stay, the others dim.
+  await page
+    .locator('.fw-ring-nodes')
+    .getByRole('button', { name: /node-10/ })
+    .click();
+  await expect(page).toHaveURL(/sel=node-10/);
+  await expect(page.locator('.fw-ring-arc.is-dim').first()).toBeVisible();
+});
+
+test('ring: the legend and the tables keep their rows as nodes and keys come and go', async ({
+  page,
+}) => {
+  const rows = () =>
+    page
+      .locator('.fw-ring')
+      .evaluate((root) =>
+        [...root.querySelectorAll('.fw-ring-nodes tbody tr, .fw-ring-keys tbody tr')].map((row) =>
+          Math.round(row.getBoundingClientRect().top - root.getBoundingClientRect().top),
+        ),
+      );
+  await open(page, '#w=consistent-hashing&s=1&c=1');
+  const before = await rows();
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  expect(await rows()).toEqual(before);
+  await expect(page.locator('.fw-ring-nodes tr[data-state="absent"]')).toHaveCount(0);
+  await open(page, '#w=consistent-hashing&s=1&c=1');
+  await expect(page.locator('.fw-ring-nodes tr[data-state="absent"]')).toHaveCount(1);
+});
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`ring: in the focus view the ring fits its frame and the tables scroll inside it (${scheme})`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.emulateMedia({ colorScheme: scheme });
+    await open(page, '#w=consistent-hashing&s=3&c=1&v=focus');
+    const pane = page
+      .locator('.fw-stage-pane[data-panel="ring"], .fw-stage-pane:has(.fw-ring)')
+      .first();
+    await expect(pane).toBeVisible();
+    const fit = await page.evaluate(() => {
+      const ring = document.querySelector('.fw-stage .fw-ring') as HTMLElement;
+      const frame = ring.parentElement!.getBoundingClientRect();
+      const box = ring.getBoundingClientRect();
+      const svg = ring.querySelector('.fw-ring-svg')!.getBoundingClientRect();
+      return {
+        inside: box.bottom <= frame.bottom + 1 && box.right <= frame.right + 1,
+        svgWide: svg.width,
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(fit.inside).toBe(true);
+    expect(fit.svgWide).toBeGreaterThan(250);
+    expect(fit.pageOverflow).toBe(0);
+  });
+}
+
+test('ring: at phone width the ring is as wide as the pane and its labels do not leave it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page, '#w=consistent-hashing&s=3&c=1');
+  const box = await page.evaluate(() => {
+    const svg = document.querySelector('.fw-ring-svg')!.getBoundingClientRect();
+    const labels = [...document.querySelectorAll('.fw-ring-tag text')].map((node) =>
+      node.getBoundingClientRect(),
+    );
+    return {
+      width: svg.width,
+      left: Math.min(...labels.map((rect) => rect.left)),
+      right: Math.max(...labels.map((rect) => rect.right)),
+    };
+  });
+  expect(box.width).toBeGreaterThan(300);
+  expect(box.left).toBeGreaterThanOrEqual(0);
+  expect(box.right).toBeLessThanOrEqual(390);
 });
