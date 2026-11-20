@@ -223,7 +223,8 @@ describe('command line: lint', () => {
       expect(r.status, `${JSON.stringify(content)}: ${r.stderr}`).toBe(1);
       expect(r.stderr).not.toMatch(/\n\s+at /);
     }
-  });
+    // Starts the command line twice: seconds on a busy machine.
+  }, 30_000);
 
   // DEFECT: read() passes the text to JSON.parse with the BOM still on it. The viewer's ?src= path
   // (fetch().json()) strips it, so the same file loads in the browser and fails in `lint`

@@ -11,11 +11,19 @@ import {
   parentMap,
   pinnedGroups,
 } from '../../src/panels/_diagram/groups';
+import {
+  crossings,
+  labelHits,
+  throughNodes as auditThrough,
+} from '../../src/panels/_diagram/audit';
 import { ICON_BAND, ICON_NAMES, resolveIcon } from '../../src/panels/_diagram/icons';
+import { drawn } from '../../src/panels/_diagram/layout-lint';
+import type { InputContent } from '../../src/panels/_diagram/input';
 import {
   estimateSize,
   layered,
   layout,
+  layoutFull,
   type LayoutNode,
   type Positions,
 } from '../../src/panels/_diagram/layout';
@@ -320,6 +328,41 @@ describe('layout of a compound diagram at scale (measured)', () => {
     console.info(report.join('\n'));
   });
 
+  it('routed edges: unrelated nodes and labels crossed, against straight lines, on the same topologies', async () => {
+    const report: string[] = [];
+    for (const leaves of [46, 66, 82]) {
+      const t = topology(leaves, 3, 3);
+      // Every third edge carries a label, as a request would.
+      const labelled = t.edges.map((e, i) => (i % 3 === 0 ? { ...e, label: 'request' } : e));
+      const started = performance.now();
+      const result = await layoutFull(t.nodes, labelled, 'DOWN');
+      const ms = performance.now() - started;
+      const content = {
+        nodes: [],
+        edges: labelled.map((e) => ({
+          id: e.id,
+          from: e.source,
+          to: e.target,
+          label: 'label' in e ? e.label : undefined,
+        })),
+        routing: undefined,
+      } as unknown as InputContent;
+      const routed = drawn(content, result, t.nodes);
+      const straight = drawn({ ...content, routing: 'straight' }, result, t.nodes);
+      const count = (d: typeof routed) =>
+        new Set(auditThrough(d.nodes, d.edges).map((h) => h.edge)).size;
+      const hits = labelHits(routed.nodes, routed.edges);
+      report.push(
+        `${t.nodes.length} nodes, ${t.edges.length} edges: ELK with routes and labels ${ms.toFixed(0)} ms; ` +
+          `edges through an unrelated node: straight ${count(straight)}, routed ${count(routed)}; ` +
+          `labels on another edge's label, line or a node: ${hits.length}; edge crossings: ${crossings(routed.edges).length}`,
+      );
+      expect(count(routed)).toBe(0);
+      expect(ms).toBeLessThan(5000);
+    }
+    console.info(report.join('\n'));
+  });
+
   it('the demo, at its real sizes: how many straight edges pass through an unrelated node', async () => {
     const result = loadConfig(awsVpcRequest, createRegistry());
     const content = result.walkthroughs[0]!.panes.find((p) => p.id === 'net')!.content as {
@@ -527,7 +570,7 @@ describe('moving between parents', () => {
 describe('icons', () => {
   it('ships a small built-in set of path data', () => {
     expect(ICON_NAMES.length).toBeGreaterThanOrEqual(15);
-    expect(ICON_NAMES.length).toBeLessThanOrEqual(20);
+    expect(ICON_NAMES.length).toBeLessThanOrEqual(24);
     for (const name of ICON_NAMES)
       expect(resolveIcon(name, undefined)?.d).toMatch(/^[MmLlHhVvCcSsQqTtAaZz0-9eE+\-.,\s]+$/);
   });

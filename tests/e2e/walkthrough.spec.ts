@@ -1,4 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { demos } from '../../src/walkthroughs';
@@ -332,6 +335,42 @@ test('the command line exits 1 and names the problem for a bad config', () => {
   });
   expect(result.status).toBe(1);
   expect(result.stderr).toContain('package.json: error');
+});
+
+test('the command line lint warns about the layout, names the hint, and still exits 0', () => {
+  const content = (routing: string) => ({
+    initial: true,
+    routing,
+    nodes: ['a', 'c', 'b'].map((id) => ({ id, label: id.toUpperCase() })),
+    edges: [
+      { from: 'a', to: 'c' },
+      { from: 'c', to: 'b' },
+      { from: 'a', to: 'b' },
+    ],
+  });
+  const config = (routing: string) => ({
+    id: 'bad',
+    title: 'Bad',
+    layout: { panes: [{ id: 'g', panel: 'graph', content: content(routing) }] },
+    steps: [{ id: 's', title: 'S', calls: [{ id: 'c1', label: 'C', effects: { g: [] } }] }],
+  });
+  const dir = mkdtempSync(join(tmpdir(), 'fw-layout-'));
+  const lint = (routing: string) => {
+    const file = join(dir, `${routing}.json`);
+    writeFileSync(file, JSON.stringify(config(routing)));
+    return spawnSync(process.execPath, ['dist/cli/index.js', 'lint', file], { encoding: 'utf8' });
+  };
+  const first = lint('straight');
+  expect(first.status).toBe(0);
+  expect(first.stderr).toContain(
+    'warning graph/edge-through-node at layout.panes[0].content.edges[2]',
+  );
+  expect(first.stderr).toContain('set routing to "orthogonal"');
+  // The agent applies the hint and lints again: the warning is gone.
+  const second = lint('orthogonal');
+  expect(second.status).toBe(0);
+  expect(second.stderr).not.toContain('edge-through-node');
+  expect(second.stderr).toContain(': ok (1 walkthrough(s))');
 });
 
 test('git demo: a link in a payload selects the same commit in the graph, and raw text can be shown', async ({
@@ -1532,7 +1571,14 @@ test('aws-vpc-request: a read edge shows one dot, reversed for a reply, and none
   const dot = page.locator('.fw-pane[data-panel="graph"] .fw-edge-dot');
   await expect(dot).toHaveCount(1);
   const path = async () => (await dot.locator('animateMotion').getAttribute('path')) ?? '';
-  const ends = (d: string) => d.replace(/[ML]/g, ' ').trim().split(/\s+/);
+  // The first and last point of the path: a routed edge has bends in between.
+  const ends = (d: string) => {
+    const all = d
+      .replace(/[MLCQ]/g, ' ')
+      .trim()
+      .split(/\s+/);
+    return [all[0], all.at(-1)];
+  };
   const forward = ends(await path());
   await page.keyboard.press('ArrowRight');
   await expect(dot).toHaveCount(1);
@@ -1670,12 +1716,10 @@ test('aws-vpc-request: an edge inside a group and an empty group can be selected
   const middle = await page.evaluate(() => {
     const line = document.querySelector(
       '[data-testid="rf__edge-q-a1"] .fw-edge-line',
-    ) as SVGLineElement;
+    ) as SVGGeometryElement;
     const matrix = line.getScreenCTM()!;
-    const [x, y] = [
-      (line.x1.baseVal.value + line.x2.baseVal.value) / 2,
-      (line.y1.baseVal.value + line.y2.baseVal.value) / 2,
-    ];
+    // The middle of the line along its length: a routed edge is a path with bends.
+    const { x, y } = line.getPointAtLength(line.getTotalLength() / 2);
     return { x: matrix.a * x + matrix.c * y + matrix.e, y: matrix.b * x + matrix.d * y + matrix.f };
   });
   await page.mouse.click(middle.x, middle.y);
@@ -1915,4 +1959,202 @@ test('records: a hand-written config with captions on, a node added later and an
   const gapY = Math.max(target.y - (head.y + head.height), head.y - (target.y + target.height), 0);
   expect(Math.hypot(gapX, gapY)).toBeLessThan(4);
   expect(errors).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------
+// Routed edges, hints, placement and the hub layout.
+
+const hintNode = (id: string, extra: object = {}) => ({ id, label: id.toUpperCase(), ...extra });
+const hintConfig = (content: object, calls = 1) => ({
+  id: 'hints',
+  title: 'Hints',
+  layout: { panes: [{ id: 'g', panel: 'graph', content: { initial: true, ...content } }] },
+  steps: [
+    {
+      id: 's',
+      title: 'S',
+      calls: Array.from({ length: calls }, (_, i) => ({
+        id: `c${i}`,
+        label: `Call ${i}`,
+        effects: { g: [] },
+      })),
+    },
+  ],
+});
+
+/** The ends and sampled points of an edge's line in page coordinates, and what kind of line it is. */
+async function edgeEnds(page: Page, edgeId: string) {
+  return page.evaluate((id) => {
+    const line = document.querySelector(
+      `.react-flow__edge[data-id="${id}"] .fw-edge-line`,
+    ) as SVGGeometryElement;
+    const m = line.getScreenCTM()!;
+    const at = (length: number) => {
+      const p = line.getPointAtLength(length);
+      return { x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f };
+    };
+    const total = line.getTotalLength();
+    const samples = Array.from({ length: 41 }, (_, i) => at((total * i) / 40));
+    return {
+      first: at(0),
+      last: at(total),
+      samples,
+      kind: line.tagName,
+      route: (line as unknown as HTMLElement).dataset.route,
+    };
+  }, edgeId);
+}
+
+const boxOfNode = async (page: Page, id: string) =>
+  (await page.locator(`.react-flow__node[data-id="${id}"]`).boundingBox())!;
+
+test('a routed edge is a path with a label on an opaque pill that holds the text', async ({
+  page,
+}) => {
+  await open(page, awsHash(2, 1));
+  const edge = page.locator('.fw-pane[data-panel="graph"] .react-flow__edge').first();
+  await expect(edge.locator('path.fw-edge-line')).toHaveAttribute('data-route', 'orthogonal');
+  const labelled = page.locator('.fw-pane[data-panel="graph"] .fw-edge-labelbox').first();
+  await expect(labelled.locator('rect.fw-edge-pill')).toBeVisible();
+  const fill = await labelled
+    .locator('rect.fw-edge-pill')
+    .evaluate((rect) => getComputedStyle(rect).fill);
+  expect(fill).not.toBe('none');
+  const rect = (await labelled.locator('rect').boundingBox())!;
+  const text = (await labelled.locator('text').boundingBox())!;
+  expect(text.x).toBeGreaterThanOrEqual(rect.x - 1);
+  expect(text.x + text.width).toBeLessThanOrEqual(rect.x + rect.width + 1);
+});
+
+test('hints: pane routing curved, an edge drawn straight, an edge that leaves by a side', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await openConfig(
+    page,
+    'hints-routing',
+    hintConfig({
+      routing: 'curved',
+      direction: 'RIGHT',
+      nodes: [hintNode('a'), hintNode('b'), hintNode('c')],
+      edges: [
+        { id: 'ab', from: 'a', to: 'b' },
+        { id: 'ac', from: 'a', to: 'c', routing: 'straight' },
+        { id: 'bc', from: 'b', to: 'c', fromSide: 'bottom', toSide: 'bottom' },
+      ],
+    }),
+  );
+  await expect(page.locator('.react-flow__node[data-id="c"]')).toBeVisible();
+  await page.waitForTimeout(300);
+  expect((await edgeEnds(page, 'ab')).route).toBe('curved');
+  const straight = await edgeEnds(page, 'ac');
+  expect(straight.kind).toBe('line');
+  expect(straight.route).toBe('straight');
+  // The edge b to c leaves b by its bottom and arrives at c by its bottom.
+  const bc = await edgeEnds(page, 'bc');
+  const b = await boxOfNode(page, 'b');
+  const c = await boxOfNode(page, 'c');
+  expect(Math.abs(bc.first.y - (b.y + b.height))).toBeLessThan(3);
+  expect(Math.abs(bc.last.y - (c.y + c.height))).toBeLessThan(14);
+  expect(errors).toEqual([]);
+});
+
+test('grid placement: cells give the order, the line goes round the node between, and nothing moves', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await openConfig(
+    page,
+    'hints-grid',
+    hintConfig(
+      {
+        nodes: [
+          hintNode('a', { cell: [0, 0] }),
+          hintNode('wall', { cell: [1, 0] }),
+          hintNode('b', { cell: [2, 0] }),
+          hintNode('c', { below: 'wall' }),
+        ],
+        edges: [
+          { id: 'ab', from: 'a', to: 'b' },
+          { id: 'bc', from: 'b', to: 'c' },
+        ],
+      },
+      2,
+    ),
+  );
+  await expect(page.locator('.react-flow__node[data-id="b"]')).toBeVisible();
+  await page.waitForTimeout(300);
+  const ids = ['a', 'wall', 'b', 'c'];
+  const [a, wall, b, c] = await Promise.all(ids.map((id) => boxOfNode(page, id)));
+  expect(a!.x).toBeLessThan(wall!.x);
+  expect(wall!.x).toBeLessThan(b!.x);
+  expect(c!.y).toBeGreaterThan(wall!.y);
+  // The line a to b does not pass through the node between them.
+  const ab = await edgeEnds(page, 'ab');
+  for (const p of ab.samples) {
+    const inside =
+      p.x > wall!.x + 1 &&
+      p.x < wall!.x + wall!.width - 1 &&
+      p.y > wall!.y + 1 &&
+      p.y < wall!.y + wall!.height - 1;
+    expect(inside).toBe(false);
+  }
+  const before = await Promise.all(ids.map((id) => boxOfNode(page, id)));
+  await page.keyboard.press('ArrowRight');
+  expect(await Promise.all(ids.map((id) => boxOfNode(page, id)))).toEqual(before);
+  expect(errors).toEqual([]);
+});
+
+test('hub demo: discs with labels beneath, badges, dashed stand-ins, a key, and curves', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=dependency-vuln&s=6&c=2');
+  const graph = page.locator('.fw-pane[data-panel="graph"]');
+  await expect(graph.locator('.fw-disc').first()).toBeVisible();
+  expect(await graph.locator('.fw-disc').count()).toBeGreaterThan(20);
+  // Two dashed discs stand for collapsed children, and say how many.
+  await expect(graph.locator('.fw-node[data-more]')).toHaveCount(2);
+  await expect(graph.locator('.fw-disc-more').first()).toHaveText(/^\+\d+$/);
+  expect(await graph.locator('.fw-badge').count()).toBeGreaterThanOrEqual(5);
+  // The key names every colour that is used.
+  await expect(graph.locator('.fw-accent-key li')).toHaveText([
+    'Weakness',
+    'Exploit signal',
+    'Exposure',
+  ]);
+  await expect(graph.locator('path.fw-edge-line[data-route="bezier"]').first()).toBeAttached();
+  // The label is beneath the disc, not inside it.
+  const disc = (await graph.locator('.react-flow__node[data-id="adv"] .fw-disc').boundingBox())!;
+  const label = (await graph
+    .locator('.react-flow__node[data-id="adv"] .fw-circle-label')
+    .boundingBox())!;
+  expect(label.y).toBeGreaterThanOrEqual(disc.y + disc.height - 1);
+  // A coloured node is also named in words for a screen reader.
+  await expect(graph.locator('.react-flow__node[data-id="weak"]')).toHaveAttribute(
+    'aria-label',
+    'Weakness classes (Weakness)',
+  );
+  expect(errors).toEqual([]);
+});
+
+test('hub demo and routed diagrams fit a phone: no sideways page scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const hash of ['#w=dependency-vuln&s=6&c=2', awsHash(5, 2), '#w=terraform-apply&s=3&c=3']) {
+    await open(page, hash);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow, hash).toBeLessThanOrEqual(0);
+  }
+});
+
+test('the page legend stays at the foot of the page, also when a diagram has its own colour key', async ({
+  page,
+}) => {
+  await open(page, '#w=dependency-vuln&s=1&c=1');
+  const legend = (await page.locator('footer.fw-legend').boundingBox())!;
+  const panes = (await page.locator('.fw-panes').boundingBox())!;
+  expect(legend.y).toBeGreaterThanOrEqual(panes.y + panes.height - 1);
+  await expect(page.locator('.fw-diagram .fw-accent-key')).toBeVisible();
 });

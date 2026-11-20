@@ -3,18 +3,23 @@
  * along it once when a call reads it.
  */
 import { useInternalNode } from '@xyflow/react';
-import { crossingPoint } from './groups';
-
-type Point = { x: number; y: number };
+import {
+  firstBorderCrossing,
+  flatten,
+  pathOf,
+  reversed,
+  type Point,
+  type RouteStyle,
+} from './route';
 
 /** A small diamond on the line where it meets the border of a boundary group. */
-function Gate({ group, from, to }: { group: string; from: Point; to: Point }) {
+function Gate({ group, line }: { group: string; line: readonly Point[] }) {
   const node = useInternalNode(group);
   if (node === undefined) return null;
   const width = node.measured.width ?? node.width;
   const height = node.measured.height ?? node.height;
   if (width === undefined || height === undefined) return null;
-  const at = crossingPoint({ ...node.internals.positionAbsolute, width, height }, from, to);
+  const at = firstBorderCrossing({ ...node.internals.positionAbsolute, width, height }, line);
   if (at === undefined) return null;
   return (
     <path
@@ -32,15 +37,15 @@ export function stillWanted(): boolean {
   );
 }
 
-/** A dot that runs from one end of the line to the other once, then fades. Not drawn when still. */
-function Dot({ from, to, token }: { from: Point; to: Point; token: string }) {
+/** A dot that runs along the line once, then fades. Not drawn when still. */
+function Dot({ path, token }: { path: string; token: string }) {
   if (stillWanted()) return null;
   return (
     <circle key={token} className="fw-edge-dot" r="4.5" cx="0" cy="0">
       <animateMotion
         dur="0.9s"
         fill="freeze"
-        path={`M${from.x},${from.y} L${to.x},${to.y}`}
+        path={path}
         calcMode="spline"
         keyTimes="0;1"
         keySplines="0.4 0 0.2 1"
@@ -57,27 +62,28 @@ function Dot({ from, to, token }: { from: Point; to: Point; token: string }) {
 }
 
 export function EdgeExtras({
-  from,
-  to,
+  points,
+  style,
   crosses,
   pulse,
   reverse,
 }: {
-  /** Where the line starts and ends (the arrowhead tip). */
-  from: Point;
-  to: Point;
+  /** The route, from where the line starts to the arrowhead tip. */
+  points: readonly Point[];
+  style: RouteStyle;
   crosses: readonly string[] | undefined;
   /** Set to the call's id while a call reads the edge: the dot plays once for each call. */
   pulse: string | undefined;
   reverse: boolean;
 }) {
+  const line = flatten(points, style);
   return (
     <>
       {crosses?.map((group) => (
-        <Gate key={group} group={group} from={from} to={to} />
+        <Gate key={group} group={group} line={line} />
       ))}
       {pulse !== undefined && (
-        <Dot from={reverse ? to : from} to={reverse ? from : to} token={pulse} />
+        <Dot path={pathOf(reverse ? reversed(points) : points, style)} token={pulse} />
       )}
     </>
   );

@@ -68,6 +68,8 @@ export const oauthPkce = defineWalkthrough({
         title: 'What exists now',
         content: {
           direction: 'DOWN',
+          // Edges carry labels, which take a row of their own: compact keeps the chain readable.
+          spacing: 'compact',
           nodes: [
             { id: 'verifier', label: 'code_verifier', sub: 'secret, stays in the app' },
             { id: 'challenge', label: 'code_challenge', sub: 'hash of the verifier' },
