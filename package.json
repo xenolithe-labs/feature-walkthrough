@@ -3,17 +3,25 @@
   "version": "0.1.0",
   "description": "A configurable UI that shows step-by-step walkthroughs of a flow, driven by configuration.",
   "license": "MIT",
+  "author": "Xenolithe Labs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/xenolithe-labs/feature-walkthrough.git"
   },
   "homepage": "https://xenolithe-labs.github.io/feature-walkthrough/",
+  "bugs": {
+    "url": "https://github.com/xenolithe-labs/feature-walkthrough/issues"
+  },
   "keywords": [
     "walkthrough",
     "diagram",
     "sequence-diagram",
     "explainer",
-    "react"
+    "visualization",
+    "documentation",
+    "react",
+    "cli",
+    "agent-skill"
   ],
   "type": "module",
   "bin": {
@@ -26,7 +34,10 @@
       "types": "./dist/lib/index.d.ts",
       "import": "./dist/lib/index.js"
     },
-    "./style.css": "./dist/lib/style.css",
+    "./style.css": {
+      "types": "./types/style.css.d.ts",
+      "default": "./dist/lib/style.css"
+    },
     "./schema.json": "./schema/walkthrough.schema.json",
     "./check-result.schema.json": "./schema/check-result.schema.json",
     "./package.json": "./package.json"
@@ -34,8 +45,16 @@
   "files": [
     "dist",
     "schema",
-    "skills"
+    "skills",
+    "types",
+    "CHANGELOG.md"
   ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -53,7 +72,8 @@
     "build:all": "pnpm build && pnpm build:lib && pnpm build:cli",
     "prepack": "pnpm build:all",
     "skill": "tsx scripts/export-skill.ts",
-    "colours": "tsx scripts/export-colours.ts"
+    "colours": "tsx scripts/export-colours.ts",
+    "release:check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build:all && pnpm e2e && npm publish --dry-run --ignore-scripts"
   },
   "dependencies": {
     "@xyflow/react": "^13.0.2",

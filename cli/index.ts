@@ -6,6 +6,7 @@
  * feature-walkthrough build <file>       write one self-contained HTML file
  * feature-walkthrough highlight <file>   write the config with syntax colours worked out
  * feature-walkthrough schema             print the JSON Schema of a config
+ * feature-walkthrough skills [install]   list or copy the agent skills that ship with the package
  *
  * A file is a JSON config, or a JavaScript or TypeScript module whose default
  * export is a config.
@@ -22,6 +23,7 @@ import { CHECK_USAGE, runCheck } from './check';
 import { addTokens } from './highlight';
 import { injectConfig } from './inject';
 import { providers } from './providers';
+import { SKILLS_USAGE, realIo, runSkills } from './skills';
 
 // Panels import their stylesheets. Outside a bundler those are empty modules.
 register(
@@ -43,6 +45,8 @@ const USAGE = `Usage:
   feature-walkthrough build <file> [-o out]  write one self-contained HTML file
   feature-walkthrough highlight <file> [-o out]  write the config as JSON with syntax colours added
   feature-walkthrough schema                 print the JSON Schema of a config
+  feature-walkthrough skills [install]       list the agent skills in this package, or copy them into
+                                             ./.claude/skills (run "skills --help" for the options)
 
 Options:
   -o, --out <path>   where build writes (default: <file name>.html)
@@ -220,6 +224,9 @@ async function main(argv: string[]): Promise<number> {
         only: { type: 'string' },
         'max-warnings': { type: 'string' },
         trace: { type: 'boolean' },
+        to: { type: 'string' },
+        global: { type: 'boolean' },
+        force: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -231,7 +238,9 @@ async function main(argv: string[]): Promise<number> {
   }
   const { values, positionals } = parsed;
   if (values.help) {
-    console.log(positionals[0] === 'check' ? CHECK_USAGE : USAGE);
+    console.log(
+      positionals[0] === 'check' ? CHECK_USAGE : positionals[0] === 'skills' ? SKILLS_USAGE : USAGE,
+    );
     return 0;
   }
   if (values.version) {
@@ -259,6 +268,12 @@ async function main(argv: string[]): Promise<number> {
         out: (text) => process.stdout.write(`${text}\n`),
         err: (text) => console.error(text),
       },
+    );
+  }
+  if (command === 'skills') {
+    return runSkills(
+      { args: rest, to: values.to, global: values.global === true, force: values.force === true },
+      realIo(),
     );
   }
   if (command === 'schema') {

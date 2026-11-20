@@ -68,6 +68,7 @@ npx feature-walkthrough check flow.json --call s1.c2   # what a reader sees at o
 npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
 npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config
+npx feature-walkthrough skills install                 # copy the agent skills into ./.claude/skills
 ```
 
 Code panes get syntax colours for any language the source names in `lang`. The colours are worked
@@ -102,10 +103,20 @@ The hosted page can also show any JSON config it is allowed to fetch: add `?src=
 
 ### For coding agents
 
+Two skills ship in the npm package. Put them where your agent looks for skills:
+
+```sh
+npx feature-walkthrough skills                    # list them
+npx feature-walkthrough skills install            # copy both into ./.claude/skills
+npx feature-walkthrough skills install --global   # or into ~/.claude/skills, for every project
+npx feature-walkthrough skills install --to <dir> # or into another agent's skills directory
+```
+
+Installing is a plain copy from the package; nothing is downloaded. A skill that is already there
+is left alone unless you pass `--force`.
+
 [`skills/feature-walkthrough/`](skills/feature-walkthrough/SKILL.md) is a skill that teaches an
-agent the config, each panel's shapes and the write, check, fix, show loop. Copy the folder into
-your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
-package.
+agent the config, each panel's shapes and the write, check, fix, show loop.
 
 [`skills/walkthrough-design/`](skills/walkthrough-design/SKILL.md) is a second skill, for the design
 before the config: who the reader is, what to leave out, which views to use, how to cut the flow
