@@ -17,7 +17,9 @@ export function shapeOf(walkthrough: { steps: readonly { calls: readonly unknown
 }
 
 function toInt(value: number): number {
-  return Number.isFinite(value) ? Math.trunc(value) : 0;
+  if (Number.isFinite(value)) return Math.trunc(value);
+  // Too large to hold is still "past the end"; anything else that is not a number is the start.
+  return value === Infinity ? Number.MAX_SAFE_INTEGER : 0;
 }
 
 export function clamp(shape: Shape, s: number, c: number): { s: number; c: number } {

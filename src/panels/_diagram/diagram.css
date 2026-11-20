@@ -228,3 +228,9 @@
   opacity: 1;
   color: var(--fw-select);
 }
+
+/* A loop is a curve, so it must not be filled like a shape. */
+.fw-diagram path.fw-edge-line,
+.fw-diagram path.fw-edge-hit {
+  fill: none;
+}

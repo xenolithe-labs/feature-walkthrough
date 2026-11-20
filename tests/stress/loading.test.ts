@@ -54,10 +54,10 @@ describe('URL hash', () => {
   it('precondition: a large finite number clamps to the last call', () => {
     expect(at('#w=first&s=99999999999999999999&c=1')).toMatchObject({ s: 2 });
   });
-  it.fails('a number too large for a double (1e999) clamps to the last call too', () => {
+  it('a number too large for a double (1e999) clamps to the last call too', () => {
     expect(at('#w=first&s=1e999&c=1e999')).toEqual({ w: 'first', s: 2, c: 3 });
   });
-  it.fails('"Infinity" clamps to the last call too', () => {
+  it('"Infinity" clamps to the last call too', () => {
     expect(at('#w=first&s=Infinity&c=Infinity')).toEqual({ w: 'first', s: 2, c: 3 });
   });
 
@@ -175,7 +175,7 @@ describe('building a page: injectConfig', () => {
   // DEFECT: the config is written as a JavaScript object literal, where "__proto__": value sets the
   // prototype instead of creating a key, so the built page sees a different config from the one
   // `lint` checked and from `?src=` (cli/inject.ts, JSON.stringify output used as source text)
-  it.fails('a key named "__proto__" survives the round trip', () => {
+  it('a key named "__proto__" survives the round trip', () => {
     const config = JSON.parse('{"payload": {"__proto__": {"x": 1}, "y": 2}}') as unknown;
     expect(JSON.stringify(run(config))).toBe(JSON.stringify(config));
   });
@@ -228,7 +228,7 @@ describe('command line: lint', () => {
   // DEFECT: read() passes the text to JSON.parse with the BOM still on it. The viewer's ?src= path
   // (fetch().json()) strips it, so the same file loads in the browser and fails in `lint`
   // (cli/index.ts read). The BOM is what many Windows editors put at the start of a UTF-8 file.
-  it.fails('a file with a UTF-8 byte order mark is read like any other', () => {
+  it('a file with a UTF-8 byte order mark is read like any other', () => {
     const r = lint(
       'bom.json',
       Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(JSON.stringify(ok()))]),
@@ -309,7 +309,7 @@ describe('command line: lint', () => {
     const r = lint('pane.json', JSON.stringify(twoPanes('first')));
     expect(r.status, r.stderr.slice(0, 300)).toBe(0);
   });
-  it.fails('a valid config with a pane named "constructor" lints clean instead of crashing', () => {
+  it('a valid config with a pane named "constructor" lints clean instead of crashing', () => {
     const r = lint('constructor.json', JSON.stringify(twoPanes('constructor')));
     expect(r.status, r.stderr.slice(0, 300)).toBe(0);
   });

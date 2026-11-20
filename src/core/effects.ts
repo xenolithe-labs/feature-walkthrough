@@ -11,10 +11,26 @@ export function effectTarget(effect: Effect): { verb: EffectVerb; id: string | u
   throw new Error('effect has no verb');
 }
 
+/**
+ * The value a record holds under a key of its own. A plain `record[key]` also finds what every
+ * object inherits, so an id such as "constructor" would come back as a function.
+ */
+export function own<T>(
+  record: Readonly<Record<string, T>> | undefined,
+  key: string,
+): T | undefined {
+  return record !== undefined && Object.hasOwn(record, key) ? record[key] : undefined;
+}
+
+/** The effects a call's config writes for a pane. */
+export function writtenEffects(call: Call, paneId: string): Effect[] {
+  return own(call.effects, paneId) ?? [];
+}
+
 /** All effects a call has on a pane: the panel's implicit ones, then the written ones. */
 export function effectsOf(pane: ResolvedPane, call: Call): Effect[] {
   const implicit = pane.panel.implicit?.(call, pane.content) ?? [];
-  const written = call.effects?.[pane.id] ?? [];
+  const written = writtenEffects(call, pane.id);
   return implicit.length === 0 ? written : [...implicit, ...written];
 }
 
@@ -40,6 +56,33 @@ export function initElements(entities: EntityDecl[], value: unknown = undefined)
   };
 }
 
+/**
+ * A copy of a record with one entry set. Built from entries, so a key such as "__proto__" becomes
+ * an ordinary key instead of changing what the copy inherits from.
+ */
+function withEntry<T>(
+  record: Readonly<Record<string, T>>,
+  key: string,
+  value: T,
+): Record<string, T> {
+  return Object.fromEntries([
+    ...Object.entries(record).filter(([name]) => name !== key),
+    [key, value],
+  ]);
+}
+
+/** Fields merged in the order they were last written: a field updated again moves to the end. */
+function mergeFields(
+  old: Readonly<Record<string, unknown>> | undefined,
+  fields: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const written = new Set(Object.keys(fields));
+  return Object.fromEntries([
+    ...Object.entries(old ?? {}).filter(([name]) => !written.has(name)),
+    ...Object.entries(fields),
+  ]);
+}
+
 /** Pure reducer over ElementsState. */
 export function reduceElements(state: ElementsState, effect: Effect): ElementsState {
   const { verb, id } = effectTarget(effect);
@@ -48,8 +91,9 @@ export function reduceElements(state: ElementsState, effect: Effect): ElementsSt
       return state.present.includes(id!) ? state : { ...state, present: [...state.present, id!] };
     case 'remove': {
       if (!state.present.includes(id!)) return state;
-      const patches = { ...state.patches };
-      delete patches[id!];
+      const patches = Object.fromEntries(
+        Object.entries(state.patches).filter(([name]) => name !== id),
+      );
       return {
         ...state,
         present: state.present.filter((other) => other !== id),
@@ -61,7 +105,7 @@ export function reduceElements(state: ElementsState, effect: Effect): ElementsSt
       if (effect.fields === undefined) return state;
       return {
         ...state,
-        patches: { ...state.patches, [id!]: { ...state.patches[id!], ...effect.fields } },
+        patches: withEntry(state.patches, id!, mergeFields(own(state.patches, id!), effect.fields)),
       };
     case 'focus':
       return { ...state, focus: id };

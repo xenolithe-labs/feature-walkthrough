@@ -76,3 +76,10 @@
   background: var(--fw-removed-bg);
   text-decoration: line-through;
 }
+
+.fw-code-empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--fw-muted);
+  font-size: 0.85rem;
+}

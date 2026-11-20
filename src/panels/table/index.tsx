@@ -18,6 +18,8 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
+  writtenEffects,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
@@ -52,7 +54,7 @@ function entitiesOf(content: TableContent) {
   const first = content.columns[0]!.id;
   return content.rows.map((row) => ({
     id: row.id,
-    label: row.cells[first] ?? row.id,
+    label: own(row.cells, first) ?? row.id,
     initial: row.initial ?? content.initial,
   }));
 }
@@ -106,7 +108,7 @@ function TableView({
           {content.rows.map((row) => {
             // A row is shown while it is present, and on the call that removes it.
             const shown = present.has(row.id) || current.removed.has(row.id);
-            const patch = state.patches[row.id];
+            const patch = own(state.patches, row.id);
             const mark = markOf(row.id, current);
             const cells = touchedCells(ctx.current, row.id);
             const narrowed = mark === 'read' && cells.read.size > 0;
@@ -146,7 +148,7 @@ function TableView({
                       className={`${column.mono ? 'is-mono' : ''}${cellMark}`}
                       data-column={column.id}
                     >
-                      {text(patch?.[column.id]) ?? row.cells[column.id] ?? ''}
+                      {text(own(patch, column.id)) ?? own(row.cells, column.id) ?? ''}
                     </td>
                   );
                 })}
@@ -199,7 +201,7 @@ export const tablePanel: PanelType<TableContent, ElementsState> = {
     });
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
-        (call.effects?.[pane.id] ?? []).forEach((effect, e) => {
+        writtenEffects(call, pane.id).forEach((effect, e) => {
           const keys = [
             ...Object.keys(effect.fields ?? {}).filter((key) => key !== 'tone'),
             ...(Array.isArray(effect.cells) ? (effect.cells as unknown[]) : []),

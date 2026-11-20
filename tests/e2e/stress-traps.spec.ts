@@ -76,7 +76,7 @@ test.describe('graph edges', () => {
     await expect(page.locator('.react-flow__edge[data-id="a.b"] .fw-edge-line')).toHaveCount(1);
     expect(errors).toEqual([]);
   });
-  test.fail('a self-loop edge is drawn', async ({ page }) => {
+  test('a self-loop edge is drawn', async ({ page }) => {
     await openConfig(
       page,
       'loop',
@@ -104,7 +104,7 @@ test.describe('graph edges', () => {
     await expect(page.locator('.react-flow__edge')).toHaveCount(2);
     await expect(page.locator('.fw-edge-line')).toHaveCount(2);
   });
-  test.fail('parallel edges are drawn apart', async ({ page }) => {
+  test('parallel edges are drawn apart', async ({ page }) => {
     await openConfig(
       page,
       'parallel',
@@ -255,7 +255,7 @@ test.describe('schema', () => {
     await openConfig(page, 'dotted', schema([{ from: 'orders.user.ref', to: 'users.id' }]));
     await expect(page.locator('.fw-schema-column[data-entity="orders.user.ref"]')).toBeVisible();
   });
-  test.fail('a relation from a column whose id contains a dot is drawn', async ({ page }) => {
+  test('a relation from a column whose id contains a dot is drawn', async ({ page }) => {
     await openConfig(page, 'dotted', schema([{ from: 'orders.user.ref', to: 'users.id' }]));
     await expect(page.locator('.fw-schema-relation')).toHaveCount(1, { timeout: 3000 });
   });
@@ -351,13 +351,10 @@ test.describe('URL hash and selection', () => {
 
   // DEFECT: a number too large for a double becomes Infinity, which toInt maps to 0, so the link opens
   // on step 1 where 99999999999999999999 opens on the last step (src/core/cursor.ts toInt).
-  test.fail(
-    'a cursor of 1e999 opens on the last call, like any other huge number',
-    async ({ page }) => {
-      await openConfig(page, 'long', walk(), '#w=long&s=1e999&c=1');
-      expect(await position(page)).toBe('4.1');
-    },
-  );
+  test('a cursor of 1e999 opens on the last call, like any other huge number', async ({ page }) => {
+    await openConfig(page, 'long', walk(), '#w=long&s=1e999&c=1');
+    expect(await position(page)).toBe('4.1');
+  });
 
   test('a selection that names no element, or one in a hidden focus pane, shows and clears without errors', async ({
     page,
@@ -673,19 +670,20 @@ test.describe('a config that passes lint must not blank the page', () => {
 
   // DEFECT: loadConfig throws for a pane named like an Object.prototype member, and nothing in the
   // viewer catches it, so React unmounts the whole tree (see lint.test.tsx for the cause).
-  test.fail('a pane named "constructor" shows the walkthrough', async ({ page }) => {
+  test('a pane named "constructor" shows the walkthrough', async ({ page }) => {
     const errors = watchErrors(page);
     await openRaw(page, 'blank', twoPanes('constructor'));
     await expect(page.locator('.react-flow__node[data-id="a"]')).toBeAttached({ timeout: 3000 });
     expect(errors).toEqual([]);
   });
 
-  // DEFECT: a $ref whose text is an object makes React throw while rendering the payload pane; with
-  // no error boundary the page goes blank at that call (src/panels/payload/index.tsx Leaf).
-  test.fail('a $ref with text {} shows the walkthrough', async ({ page }) => {
+  // A $ref whose text is an object used to throw while drawing. Lint now refuses it, so the page
+  // lists the problem instead of going blank.
+  test('a $ref with text {} is listed as a problem, not drawn', async ({ page }) => {
     const errors = watchErrors(page);
     await openRaw(page, 'blank', refText({}));
-    await expect(page.locator('[data-ref="d"]')).toBeAttached({ timeout: 3000 });
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('This config has problems');
+    await expect(page.getByText(/payload\/bad-ref/)).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
@@ -829,7 +827,7 @@ test.describe('long unbroken text', () => {
   });
 
   for (const [name, make] of overflowing) {
-    test.fail(`${name}: a 300-character URL does not widen the page`, async ({ page }) => {
+    test(`${name}: a 300-character URL does not widen the page`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 800 });
       await openConfig(page, 'long', config(make));
       await expect(shell(page)).toBeVisible();

@@ -98,11 +98,49 @@ function boxOf(node: ReturnType<typeof useInternalNode>): Box | undefined {
   return { ...node.internals.positionAbsolute, width, height };
 }
 
+/** A loop from a box back to itself, drawn off its right-hand side. */
+function SelfLoop({ box, label, lane }: { box: Box; label: unknown; lane: number }) {
+  const x = box.x + box.width;
+  const top = box.y + box.height * 0.3;
+  const bottom = box.y + box.height * 0.7;
+  const out = 26 + lane * 12;
+  return (
+    <>
+      <path
+        className="fw-edge-hit"
+        d={`M${x},${top} C${x + out},${top - 6} ${x + out},${bottom + 6} ${x + 9},${bottom}`}
+      />
+      <path
+        className="fw-edge-line"
+        d={`M${x},${top} C${x + out},${top - 6} ${x + out},${bottom + 6} ${x + 9},${bottom}`}
+      />
+      <polygon
+        className="fw-edge-head"
+        points={`${x},${bottom} ${x + 10},${bottom - 4.5} ${x + 10},${bottom + 4.5}`}
+      />
+      {typeof label === 'string' && label !== '' && (
+        <text
+          className="fw-edge-label"
+          x={x + out * 0.75 + 4}
+          y={(top + bottom) / 2}
+          textAnchor="start"
+          dominantBaseline="central"
+        >
+          {label}
+        </text>
+      )}
+    </>
+  );
+}
+
 /** A straight edge between the borders of two boxes, wherever they are. */
-const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeProps) {
+const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }: EdgeProps) {
   const from = boxOf(useInternalNode(source));
   const to = boxOf(useInternalNode(target));
   if (from === undefined || to === undefined) return null;
+  // Which of several edges between the same two boxes, in the same direction, this one is.
+  const lane = typeof data?.lane === 'number' ? data.lane : 0;
+  if (source === target) return <SelfLoop box={from} label={label} lane={lane} />;
 
   const a = exitPoint(from, { x: to.x + to.width / 2, y: to.y + to.height / 2 });
   const b = exitPoint(to, { x: from.x + from.width / 2, y: from.y + from.height / 2 });
@@ -112,8 +150,10 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeP
   const uy = (b.y - a.y) / length;
   // Every edge runs a little to one side of the centre line, so that two
   // edges in opposite directions between the same boxes do not overlap.
-  const start = { x: a.x - uy * SIDE, y: a.y + ux * SIDE };
-  const end = { x: b.x - uy * SIDE, y: b.y + ux * SIDE };
+  // A second edge in the same direction runs further out again.
+  const side = SIDE + lane * 11;
+  const start = { x: a.x - uy * side, y: a.y + ux * side };
+  const end = { x: b.x - uy * side, y: b.y + ux * side };
   const base = { x: end.x - ux * 10, y: end.y - uy * 10 };
   const head = [
     `${end.x},${end.y}`,
@@ -337,23 +377,27 @@ export function Diagram({
     }));
   }, [positions, nodes, shownIds, current, selection.id]);
 
-  const flowEdges = useMemo<Edge[]>(
-    () =>
-      edges.map((edge) => {
-        // An edge shows only while both of its ends do.
-        const shown =
-          shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
-        return {
-          id: edge.id,
-          source: edge.source,
-          target: edge.target,
-          type: edge.type ?? 'floating',
-          label: edge.label,
-          className: classOf(edge.id, shown, current, selection.id),
-        };
-      }),
-    [edges, shownIds, current, selection.id],
-  );
+  const flowEdges = useMemo<Edge[]>(() => {
+    // Edges that join the same two nodes in the same direction are counted, so each gets
+    // its own line instead of being drawn on top of the others.
+    const lanes = new Map<string, number>();
+    return edges.map((edge) => {
+      const pair = JSON.stringify([edge.source, edge.target]);
+      const lane = lanes.get(pair) ?? 0;
+      lanes.set(pair, lane + 1);
+      // An edge shows only while both of its ends do.
+      const shown = shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
+      return {
+        data: { lane },
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.type ?? 'floating',
+        label: edge.label,
+        className: classOf(edge.id, shown, current, selection.id),
+      };
+    });
+  }, [edges, shownIds, current, selection.id]);
 
   const toggle = (id: string) => selection.select(selection.id === id ? undefined : id);
 

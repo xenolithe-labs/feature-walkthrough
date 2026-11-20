@@ -109,9 +109,9 @@ export function Card({
       )}
       {card.chips.length > 0 && (
         <p className="fw-chips">
-          {card.chips.map((chip) => (
+          {card.chips.map((chip, position) => (
             <span
-              key={chip.label}
+              key={position}
               className={`fw-chip is-${chip.tone ?? 'neutral'}`}
               title={chip.title}
             >

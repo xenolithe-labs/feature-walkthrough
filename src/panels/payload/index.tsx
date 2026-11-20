@@ -24,6 +24,8 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
+  writtenEffects,
 } from '../../core';
 import { TONES, changesSection, toneOf } from '../_shared/changes';
 import { revealScroll } from '../_shared/reveal';
@@ -243,7 +245,7 @@ function PayloadView({
     <div className="fw-payloads" ref={scroller}>
       {shown.length === 0 && <p className="fw-payloads-empty">Nothing here yet.</p>}
       {shown.map((payload) => {
-        const patch = state.patches[payload.id];
+        const patch = own(state.patches, payload.id);
         const value = patched(payload.value, patch);
         const marks = fieldMarks(ctx.current, payload.id);
         const mark = markOf(payload.id, current);
@@ -315,12 +317,62 @@ function PayloadView({
   );
 }
 
+/**
+ * Links that will not work: an object that has `$ref` but is not a link (so it would be shown as
+ * an ordinary object), and a link to an element that no pane has.
+ */
+function badRefs(
+  value: unknown,
+  at: (string | number)[],
+  known: ReadonlySet<string> | undefined,
+): Problem[] {
+  if (value === null || typeof value !== 'object') return [];
+  if (isRef(value)) {
+    if (known === undefined || known.has(value.$ref)) return [];
+    return [
+      {
+        severity: 'error',
+        rule: 'payload/unknown-ref',
+        path: [...at, '$ref'],
+        message: `the link names "${value.$ref}", which is not an element in any pane`,
+      },
+    ];
+  }
+  if (!Array.isArray(value) && Object.hasOwn(value, '$ref')) {
+    return [
+      {
+        severity: 'error',
+        rule: 'payload/bad-ref',
+        path: at,
+        message: 'a link is { "$ref": "<element id>", "text": "<optional text>" } and nothing else',
+      },
+    ];
+  }
+  return members(value).flatMap(([key, item]) => badRefs(item, [...at, key], known));
+}
+
 export const payloadPanel: PanelType<PayloadContent, ElementsState> = {
   id: 'payload',
   schema: { content: PayloadContent, effect: PayloadEffect },
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
-  reduce: (state, effect) => reduceElements(state, effect),
+  // Replacing a field makes earlier changes inside it meaningless, so they are dropped. Without
+  // this an older change to "a.n" would be applied again on top of a newer value for "a".
+  reduce: (state, effect) => {
+    const id = effect.update;
+    const old = id === undefined ? undefined : own(state.patches, id);
+    if (id === undefined || effect.fields === undefined || old === undefined) {
+      return reduceElements(state, effect);
+    }
+    const replaced = Object.keys(effect.fields).filter((path) => path !== 'tone');
+    const kept = Object.fromEntries(
+      Object.entries(old).filter(([path]) => !replaced.some((top) => path.startsWith(`${top}.`))),
+    );
+    const patches = Object.fromEntries(
+      Object.entries(state.patches).map(([name, patch]) => [name, name === id ? kept : patch]),
+    );
+    return reduceElements({ ...state, patches }, effect);
+  },
   Component: PayloadView,
   cardSections: ({ content, current, pane }) =>
     changesSection(
@@ -328,17 +380,29 @@ export const payloadPanel: PanelType<PayloadContent, ElementsState> = {
       new Map(entitiesOf(content).map((entity) => [entity.id, entity.label])),
       current,
     ),
-  lint: (pane, walkthrough) => {
+  lint: (pane, walkthrough, known) => {
     const content = pane.content as PayloadContent;
     // The values as they stand at each call, so a path is checked against what is there by then.
-    const values = new Map(content.payloads.map((payload) => [payload.id, payload.value]));
+    const declared = new Map(content.payloads.map((payload) => [payload.id, payload.value]));
+    const values = new Map(declared);
     const raws = new Set(content.payloads.filter((p) => p.raw !== undefined).map((p) => p.id));
     const problems: Problem[] = [];
+    const index = walkthrough.layout.panes.findIndex((item) => item.id === pane.id);
+    content.payloads.forEach((payload, position) => {
+      const at = ['layout', 'panes', index, 'content', 'payloads', position, 'value'];
+      problems.push(...badRefs(payload.value, at, known));
+    });
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
-        (call.effects?.[pane.id] ?? []).forEach((effect, e) => {
-          const { id } = effectTarget(effect);
+        writtenEffects(call, pane.id).forEach((effect, e) => {
+          for (const [path, next] of Object.entries(effect.fields ?? {})) {
+            const at = ['steps', s, 'calls', c, 'effects', pane.id, e, 'fields', path];
+            if (path !== 'tone') problems.push(...badRefs(next, at, known));
+          }
+          const { verb, id } = effectTarget(effect);
           if (id === undefined || !values.has(id)) return;
+          // Removing a payload drops what was patched onto it, as the reducer does.
+          if (verb === 'remove') values.set(id, declared.get(id));
           const at = ['steps', s, 'calls', c, 'effects', pane.id, e];
           const missing = (path: string, where: (string | number)[]) =>
             problems.push({

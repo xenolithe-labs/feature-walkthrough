@@ -150,8 +150,8 @@ function Shell({
               >
                 <span className="fw-step-number">{index + 1}</span>
                 <span className="fw-step-title">{item.title}</span>
-                {stepChips(walkthrough, index).map((chip) => (
-                  <span key={chip.label} className={`fw-chip is-${chip.tone ?? 'neutral'}`}>
+                {stepChips(walkthrough, index).map((chip, position) => (
+                  <span key={position} className={`fw-chip is-${chip.tone ?? 'neutral'}`}>
                     {chip.label}
                   </span>
                 ))}

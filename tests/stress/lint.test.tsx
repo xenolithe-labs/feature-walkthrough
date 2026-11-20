@@ -48,7 +48,7 @@ describe('prototype-named ids: a config that passes the contract must not break 
   // DEFECT: call.effects?.[pane.id] finds Object.prototype members, so effectsOf returns the Object
   // function and lint throws "all.forEach is not a function" (src/core/effects.ts:17, lint.ts checkCalls)
   for (const name of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
-    it.fails(`a pane named "${name}" does not make loadConfig throw`, () => {
+    it(`a pane named "${name}" does not make loadConfig throw`, () => {
       expect(() => load(tableWith(name))).not.toThrow();
     });
   }
@@ -72,7 +72,7 @@ describe('status annotation ids', () => {
   });
 
   // DEFECT: config.statuses[data.status] reads Object.prototype (src/annotations/status/index.ts:35, :67)
-  it.fails('a status named "constructor" is reported as undefined, like any other', () => {
+  it('a status named "constructor" is reported as undefined, like any other', () => {
     expect(where(withStatus('constructor'))).toHaveLength(1);
   });
 });
@@ -108,23 +108,20 @@ describe('table cells and rows that share a name with Object.prototype', () => {
   });
 
   // DEFECT: row.cells[column.id] reads Object.prototype when a row omits that cell (src/panels/table/index.tsx:146)
-  it.fails('a column named "constructor" with a row that omits it renders an empty cell', () => {
+  it('a column named "constructor" with a row that omits it renders an empty cell', () => {
     const w = load(table(['constructor', 'd'], [{ id: 'r', cells: { d: 'x' } }])).walkthroughs[0]!;
     expect(renderAll(w).complaints).toEqual([]);
   });
 
   // DEFECT: state.patches[row.id] returns the Object function for a row called "constructor"; its
   // `name` property ("Object") shows up as the cell text (src/panels/table/index.tsx:106, :146)
-  it.fails(
-    'a row named "constructor" does not show the text "Object" in a column named "name"',
-    () => {
-      const w = load(table(['name'], [{ id: 'constructor', cells: { name: 'real value' } }]))
-        .walkthroughs[0]!;
-      const { html } = renderAll(w);
-      expect(html).toContain('real value');
-      expect(html).not.toContain('>Object<');
-    },
-  );
+  it('a row named "constructor" does not show the text "Object" in a column named "name"', () => {
+    const w = load(table(['name'], [{ id: 'constructor', cells: { name: 'real value' } }]))
+      .walkthroughs[0]!;
+    const { html } = renderAll(w);
+    expect(html).toContain('real value');
+    expect(html).not.toContain('>Object<');
+  });
 
   it('precondition for the row case: the same table with another row id shows the real value', () => {
     const w = load(table(['name'], [{ id: 'other', cells: { name: 'real value' } }]))
@@ -182,7 +179,7 @@ describe('code line ranges', () => {
 
   // DEFECT: Math.max(0, ...expand(lines)) overflows the stack for ranges of ~125k lines or more,
   // so loadConfig throws instead of reporting line-out-of-range (src/panels/code/index.tsx:161)
-  it.fails('a huge range is reported, not thrown (spread of 200,000 numbers)', () => {
+  it('a huge range is reported, not thrown (spread of 200,000 numbers)', () => {
     expect(where(hugeRange())).toEqual([
       'code/line-out-of-range @ steps[0].calls[0].effects.c[0].lines',
     ]);
@@ -193,15 +190,10 @@ describe('code line ranges', () => {
   // The 200,000 case above is the same cause.
 
   // DEFECT (lint quality): a reversed range expands to nothing, so the call marks no lines and lint is silent
-  it.fails('a reversed range [5, 3] is reported', () => {
+  it('a reversed range [5, 3] is reported', () => {
     expect(
       errors(code('a\nb\nc\nd\ne\nf', [{ read: 's', lines: [[5, 3]] }])).length,
     ).toBeGreaterThan(0);
-  });
-
-  it('precondition for the reversed range: it loads, and marks nothing', () => {
-    const w = load(code('a\nb\nc\nd\ne\nf', [{ read: 's', lines: [[5, 3]] }])).walkthroughs[0]!;
-    expect(renderAll(w).html).not.toContain('data-mark=');
   });
 
   it('precondition for remove: a text replacement followed by a read of its tail is fine', () => {
@@ -216,19 +208,16 @@ describe('code line ranges', () => {
   // DEFECT: lint tracks line counts across `fields.text` but not across `remove`, while the reducer
   // drops the patch on remove. Lint accepts line 15 of a source that is 3 lines long at that call
   // (src/panels/code/index.tsx lint: `length` map is never reset)
-  it.fails(
-    'a line past the original text is rejected after the source was removed and re-added',
-    () => {
-      const twenty = Array.from({ length: 20 }, (_, i) => `n${i}`).join('\n');
-      const config = code('a\nb\nc', [
-        { update: 's', fields: { text: twenty } },
-        { remove: 's' },
-        { add: 's' },
-        { read: 's', lines: [15] },
-      ]);
-      expect(errors(config).length).toBeGreaterThan(0);
-    },
-  );
+  it('a line past the original text is rejected after the source was removed and re-added', () => {
+    const twenty = Array.from({ length: 20 }, (_, i) => `n${i}`).join('\n');
+    const config = code('a\nb\nc', [
+      { update: 's', fields: { text: twenty } },
+      { remove: 's' },
+      { add: 's' },
+      { read: 's', lines: [15] },
+    ]);
+    expect(errors(config).length).toBeGreaterThan(0);
+  });
 
   it('precondition: the reducer really resets the text on remove and re-add', () => {
     const twenty = Array.from({ length: 20 }, (_, i) => `n${i}`).join('\n');
@@ -261,7 +250,7 @@ describe('code line ranges', () => {
     expect((createFolder(w).at(0, 1).c!.state as ElementsState).present).toEqual([]);
     expect(renderPane(w, w.panes[0]!, 0, 0)).toContain('visible text');
   });
-  it.fails('a removed source is no longer shown at the next call', () => {
+  it('a removed source is no longer shown at the next call', () => {
     const w = removedSource();
     expect(renderPane(w, w.panes[0]!, 0, 1)).not.toContain('visible text');
   });
@@ -333,7 +322,7 @@ describe('payload', () => {
   it('precondition: a $ref to an element of the same walkthrough is accepted', () => {
     expect(load(payload({ link: { $ref: 'd', text: 'self' } })).ok).toBe(true);
   });
-  it.fails('a $ref to an id that no pane has is reported', () => {
+  it('a $ref to an id that no pane has is reported', () => {
     expect(
       errors(payload({ link: { $ref: 'nowhere', text: 'dead link' } })).length,
     ).toBeGreaterThan(0);
@@ -341,74 +330,27 @@ describe('payload', () => {
 
   // DEFECT (lint quality): extra keys next to "$ref" are silently dropped from the display
   // because isRef() makes the whole object a leaf (src/panels/payload/paths.ts:isRef)
-  it.fails(
-    'an object with $ref and other keys is reported instead of silently losing the keys',
-    () => {
-      expect(
-        load(payload({ a: { $ref: 'd', text: 't', hidden: 'lost' } })).problems.length,
-      ).toBeGreaterThan(0);
-    },
-  );
+  it('an object with $ref and other keys is reported instead of silently losing the keys', () => {
+    expect(
+      load(payload({ a: { $ref: 'd', text: 't', hidden: 'lost' } })).problems.length,
+    ).toBeGreaterThan(0);
+  });
 
-  describe('a $ref whose "text" is not a string passes lint and then breaks rendering', () => {
-    const rendered = (config: unknown) => renderAll(load(config).walkthroughs[0]!);
-
-    it('precondition: the same shapes with string text load and render', () => {
-      expect(
-        load(
-          payload({ a: { b: { c: { $ref: 'd', text: 'five' } } }, link: { $ref: 'd', text: 'x' } }),
-        ).ok,
-      ).toBe(true);
-      expect(
-        rendered(payload({ a: { b: { c: { $ref: 'd', text: 'five' } } } })).complaints,
-      ).toEqual([]);
-    });
-
-    it('precondition: the configs used by the expected failures below pass lint', () => {
-      const objectText = payload({ link: { $ref: 'd', text: {} } });
-      const nestedNumber = payload({ a: { b: { c: { $ref: 'd', text: 5 } } } });
-      const viaUpdate = payload({ a: { b: { c: { $ref: 'd', text: 'ok' } } } }, [
-        call('k0'),
-        call('k1', {
-          effects: { p: [{ update: 'd', fields: { a: { b: { c: { $ref: 'd', text: 5 } } } } }] },
-        }),
+  describe('a $ref whose "text" is not a string', () => {
+    // These used to pass lint and then throw while drawing. They are now refused by lint, so they
+    // never reach a page.
+    it('is refused in declared content, with the path of the link', () => {
+      expect(where(payload({ link: { $ref: 'd', text: {} } }))).toEqual([
+        'payload/bad-ref @ layout.panes[0].content.payloads[0].value.link',
       ]);
-      for (const config of [objectText, nestedNumber, viaUpdate]) {
-        expect(load(config).ok, JSON.stringify(load(config).problems)).toBe(true);
-      }
-    });
-
-    // DEFECT: Leaf renders ref.text as a React child, which throws for an object (payload/index.tsx Leaf)
-    it.fails('text: {} does not blank the page', () => {
-      expect(() => rendered(payload({ link: { $ref: 'd', text: {} } }))).not.toThrow();
-    });
-
-    // DEFECT: fitsOneLine calls shown.includes on a number (payload/index.tsx fitsOneLine)
-    it.fails('text: 5 inside a nested object does not throw a TypeError', () => {
-      expect(() => rendered(payload({ a: { b: { c: { $ref: 'd', text: 5 } } } }))).not.toThrow();
-    });
-
-    // The same data arriving through `update` breaks only from that call on.
-    it('precondition: call 0 of an update-introduced bad ref renders fine', () => {
-      const config = payload({ a: { b: { c: { $ref: 'd', text: 'ok' } } } }, [
-        call('k0'),
-        call('k1', {
-          effects: { p: [{ update: 'd', fields: { a: { b: { c: { $ref: 'd', text: 5 } } } } }] },
-        }),
+      expect(where(payload({ a: { b: { c: { $ref: 'd', text: 5 } } } }))).toEqual([
+        'payload/bad-ref @ layout.panes[0].content.payloads[0].value.a.b.c',
       ]);
-      const w = load(config).walkthroughs[0]!;
-      expect(() =>
-        renderAll({ ...w, steps: [{ ...w.steps[0]!, calls: [w.steps[0]!.calls[0]!] }] }),
-      ).not.toThrow();
     });
-    it.fails('an update that installs text: 5 does not throw at its own call', () => {
-      const config = payload({ a: { b: { c: { $ref: 'd', text: 'ok' } } } }, [
-        call('k0'),
-        call('k1', {
-          effects: { p: [{ update: 'd', fields: { a: { b: { c: { $ref: 'd', text: 5 } } } } }] },
-        }),
-      ]);
-      expect(() => rendered(config)).not.toThrow();
+
+    it('is refused when an update would install it', () => {
+      const config = payload({ a: 'x' }, [upd({ a: { $ref: 'd', text: 5 } })]);
+      expect(errors(config).map((p) => p.rule)).toEqual(['payload/bad-ref']);
     });
   });
 
@@ -422,14 +364,14 @@ describe('payload', () => {
 
     // DEFECT: setPath copies members with copy[name] = ..., and for name "__proto__" that assigns
     // the prototype instead of creating a key, so the member vanishes (payload/paths.ts:setPath)
-    it.fails('patching one field keeps a sibling key named "__proto__"', () => {
+    it('patching one field keeps a sibling key named "__proto__"', () => {
       const after = setPath(value(), 'a', 2) as Record<string, unknown>;
       expect(Object.keys(after).sort()).toEqual(['__proto__', 'a']);
     });
 
     // DEFECT: the same assignment makes `fields: { "__proto__": ... }` a silent no-op although lint
     // found the path (hasPath uses Object.entries and succeeds)
-    it.fails('updating a field named "__proto__" changes it', () => {
+    it('updating a field named "__proto__" changes it', () => {
       const after = patched(
         value(),
         JSON.parse('{"__proto__": "changed"}') as Record<string, unknown>,
@@ -459,18 +401,15 @@ describe('payload', () => {
 
   // DEFECT: payload lint, like code lint, keeps its simulated value across `remove`, while the
   // reducer resets patches. A path that only existed through a patch passes lint after remove + add
-  it.fails(
-    'a path that only existed through a patch is rejected after the payload was removed and re-added',
-    () => {
-      const config = payload({ a: 1 }, [
-        upd({ a: { b: 2 } }),
-        call('x', { effects: { p: [{ remove: 'd' }] } }),
-        call('y', { effects: { p: [{ add: 'd' }] } }),
-        call('r', { effects: { p: [{ read: 'd', paths: ['a.b'] }] } }),
-      ]);
-      expect(errors(config).length).toBeGreaterThan(0);
-    },
-  );
+  it('a path that only existed through a patch is rejected after the payload was removed and re-added', () => {
+    const config = payload({ a: 1 }, [
+      upd({ a: { b: 2 } }),
+      call('x', { effects: { p: [{ remove: 'd' }] } }),
+      call('y', { effects: { p: [{ add: 'd' }] } }),
+      call('r', { effects: { p: [{ read: 'd', paths: ['a.b'] }] } }),
+    ]);
+    expect(errors(config).length).toBeGreaterThan(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -533,24 +472,17 @@ describe('lint quality: one cause should give one clear problem with the right p
 
   // DEFECT (lint quality): a box cycle reports every box that hangs below the cycle as being "inside
   // itself", though only the two in the loop are (src/panels/boxes/index.tsx lint)
-  it.fails(
-    'a two-box cycle with a bystander child is exactly two problems, none about the bystander',
-    () => {
-      const boxes = [
-        { id: 'x', label: 'X', parent: 'y' },
-        { id: 'y', label: 'Y', parent: 'x' },
-        { id: 'z', label: 'Z', parent: 'x' },
-      ];
-      const config = wrap(
-        'w',
-        [{ id: 'b', panel: 'boxes', content: { boxes } }],
-        steps([call('k')]),
-      );
-      const found = where(config);
-      expect(found).toHaveLength(2);
-      expect(found.join('\n')).not.toContain('boxes[2]');
-    },
-  );
+  it('a two-box cycle with a bystander child is exactly two problems, none about the bystander', () => {
+    const boxes = [
+      { id: 'x', label: 'X', parent: 'y' },
+      { id: 'y', label: 'Y', parent: 'x' },
+      { id: 'z', label: 'Z', parent: 'x' },
+    ];
+    const config = wrap('w', [{ id: 'b', panel: 'boxes', content: { boxes } }], steps([call('k')]));
+    const found = where(config);
+    expect(found).toHaveLength(2);
+    expect(found.join('\n')).not.toContain('boxes[2]');
+  });
 
   it('precondition for the cycle: a plain two-box loop is one problem per box in the loop', () => {
     const boxes = [
@@ -597,7 +529,7 @@ describe('lint quality: one cause should give one clear problem with the right p
     );
     expect(where(config)).toEqual(['duplicate-id @ layout.panes[1].id']);
   });
-  it.fails('duplicate pane ids with an effect on the second pane stay one problem', () => {
+  it('duplicate pane ids with an effect on the second pane stay one problem', () => {
     const config = wrap(
       'w',
       [

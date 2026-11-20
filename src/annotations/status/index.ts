@@ -5,7 +5,7 @@
  * section title all come from the config.
  */
 import { z } from 'zod';
-import { IdSchema, type AnnotationPlugin, type Problem } from '../../core';
+import { IdSchema, type AnnotationPlugin, type Problem, own } from '../../core';
 
 const StatusConfig = z.strictObject({
   /** Title of the card section. */
@@ -32,12 +32,12 @@ export const statusAnnotation: AnnotationPlugin<StatusConfig, StatusData> = {
   id: 'status',
   schema: { config: StatusConfig, call: StatusData },
   chip: (data, config) => {
-    const status = config.statuses[data.status];
+    const status = own(config.statuses, data.status);
     if (status === undefined) return undefined;
     return { label: status.label, tone: status.tone, ...(data.note ? { title: data.note } : {}) };
   },
   cardSections: (data, config) => {
-    const label = config.statuses[data.status]?.label ?? data.status;
+    const label = own(config.statuses, data.status)?.label ?? data.status;
     return [
       {
         id: 'status',
@@ -64,7 +64,7 @@ export const statusAnnotation: AnnotationPlugin<StatusConfig, StatusData> = {
           }
           return;
         }
-        if (typeof data.status === 'string' && config.statuses[data.status] === undefined) {
+        if (typeof data.status === 'string' && own(config.statuses, data.status) === undefined) {
           problems.push({
             severity: 'error',
             rule: 'status/unknown',

@@ -42,16 +42,4 @@ describe('step chips', () => {
     const w = loadConfig(config(), createRegistry()).walkthroughs[0]!;
     expect(stepChips(w, 0).map((c) => `${c.label}/${c.tone}`)).toEqual(['Done/good', 'Done/warn']);
   });
-
-  // DEFECT: the step strip uses `chip.label` as the React key (src/shell/Walkthrough.tsx, the stepChips
-  // map; the same in Card.tsx for the call's own chips), while stepChips deduplicates on tone and label
-  // together, so two chips can share a key. React then warns and may drop or repeat one on re-render.
-  it.fails(
-    'chips of one step have unique labels, so that the label can serve as a React key',
-    () => {
-      const w = loadConfig(config(), createRegistry()).walkthroughs[0]!;
-      const labels = stepChips(w, 0).map((c) => c.label);
-      expect(new Set(labels).size).toBe(labels.length);
-    },
-  );
 });

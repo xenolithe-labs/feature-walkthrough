@@ -70,7 +70,11 @@ export interface PanelType<Content = unknown, State = unknown> {
     call: Call;
     pane: ResolvedPane;
   }): CardSection[];
-  lint?(pane: ResolvedPane, walkthrough: Walkthrough): Problem[];
+  /**
+   * Panel-specific problems. `elementIds` holds every element id of every pane, for panels
+   * whose content can point at elements elsewhere.
+   */
+  lint?(pane: ResolvedPane, walkthrough: Walkthrough, elementIds: ReadonlySet<string>): Problem[];
 }
 
 // Panels differ in their Content and State types; the registry holds them all.

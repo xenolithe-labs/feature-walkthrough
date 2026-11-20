@@ -19,6 +19,7 @@ import {
   type PanelContext,
   type PanelType,
   type Problem,
+  own,
 } from '../../core';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
@@ -89,12 +90,19 @@ function entitiesOf(content: SchemaContent) {
   ];
 }
 
-/** The table an end of a relation belongs to: the end itself, or the part before the dot. */
+/**
+ * The table an end of a relation belongs to: the end itself, or the table whose id it starts
+ * with. Ids may contain dots, so the longest matching table wins.
+ */
 function tableOf(end: string, tables: ReadonlySet<string>): string | undefined {
   if (tables.has(end)) return end;
-  const dot = end.lastIndexOf('.');
-  const table = dot < 0 ? undefined : end.slice(0, dot);
-  return table !== undefined && tables.has(table) ? table : undefined;
+  let best: string | undefined;
+  for (const table of tables) {
+    if (end.startsWith(`${table}.`) && (best === undefined || table.length > best.length)) {
+      best = table;
+    }
+  }
+  return best;
 }
 
 interface Rect {
@@ -211,7 +219,7 @@ function SchemaView({
     <div className="fw-schema" ref={frame}>
       <div className="fw-schema-tables">
         {content.tables.map((table) => {
-          const patch = state.patches[table.id];
+          const patch = own(state.patches, table.id);
           const visible = shown.has(table.id);
           return (
             <section
@@ -239,7 +247,7 @@ function SchemaView({
               {table.columns.map((column) => {
                 const id = `${table.id}.${column.id}`;
                 if (!shown.has(id)) return null;
-                const columnPatch = state.patches[id];
+                const columnPatch = own(state.patches, id);
                 const type = text(columnPatch?.type) ?? column.type;
                 const note = text(columnPatch?.note) ?? column.note;
                 return (

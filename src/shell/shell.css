@@ -70,6 +70,8 @@ body {
   max-width: 1500px;
   margin: 0 auto;
   padding: 16px;
+  /* A long word or address breaks instead of pushing the page sideways. This is inherited. */
+  overflow-wrap: break-word;
 }
 
 .fw button,
@@ -181,6 +183,12 @@ body {
   border-radius: 18px;
   background: var(--fw-surface);
   text-align: left;
+}
+
+/* A long word in a step title breaks inside its button instead of widening the page. */
+.fw-step > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .fw-step[aria-current='step'] {

@@ -1,3 +1,4 @@
+import { own } from './effects';
 import type { PaneViews } from './fold';
 import type { Lane } from './schema';
 import type { CardSection, Chip, ResolvedWalkthrough } from './types';
@@ -72,7 +73,7 @@ export function buildCard(
 
   const chips: Chip[] = [];
   for (const { plugin, config } of walkthrough.annotations) {
-    const data: unknown = call.annotations?.[plugin.id];
+    const data: unknown = own(call.annotations, plugin.id);
     if (data === undefined) continue;
     const chip = plugin.chip?.(data, config);
     if (chip !== undefined) chips.push(chip);
@@ -108,7 +109,7 @@ export function stepChips(walkthrough: ResolvedWalkthrough, s: number): Chip[] {
   const seen = new Set<string>();
   for (const call of step.calls) {
     for (const { plugin, config } of walkthrough.annotations) {
-      const data: unknown = call.annotations?.[plugin.id];
+      const data: unknown = own(call.annotations, plugin.id);
       if (data === undefined) continue;
       const chip = plugin.chip?.(data, config);
       if (chip === undefined) continue;

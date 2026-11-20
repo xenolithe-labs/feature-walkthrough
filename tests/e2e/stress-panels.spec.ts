@@ -69,7 +69,7 @@ for (const [nodes, fanout, budget] of [
 // The 3 s budget is about 2.5 times below what was measured: a pass on much faster hardware does not
 // mean the defect is fixed; a worker or a timeout would make the page responsive in any case.
 // That 100/594 loads without a lint problem is checked in tests/stress/scale.test.tsx.
-test.fail('a graph of 100 nodes and 594 edges is laid out within 3 s', async ({ page }) => {
+test('a graph of 100 nodes and 594 edges is laid out within 3 s', async ({ page }) => {
   test.setTimeout(90_000);
   const started = Date.now();
   await openConfig(page, 'dense', bigGraph(100, 6), '#w=big-graph&s=1&c=1');

@@ -17,7 +17,7 @@
  * Panel types and annotation plugins add their own rules through `lint`.
  */
 import type { ZodError } from 'zod';
-import { effectTarget, effectsOf } from './effects';
+import { effectTarget, effectsOf, own, writtenEffects } from './effects';
 import type { Registry } from './registry';
 import {
   CollectionSchema,
@@ -168,7 +168,7 @@ function resolveAnnotations(
   for (const id of used) {
     const plugin = registry.annotation(id);
     if (plugin === undefined) {
-      if (walkthrough.annotations?.[id] !== undefined) {
+      if (own(walkthrough.annotations, id) !== undefined) {
         problems.push({
           severity: 'error',
           rule: 'unknown-annotation',
@@ -178,14 +178,14 @@ function resolveAnnotations(
       }
       continue;
     }
-    const config = plugin.schema.config.safeParse(walkthrough.annotations?.[id]);
+    const config = plugin.schema.config.safeParse(own(walkthrough.annotations, id));
     if (!config.success) {
       problems.push(...fromZod(config.error, [...prefix, 'annotations', id]));
       continue;
     }
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
-        const data: unknown = call.annotations?.[id];
+        const data: unknown = own(call.annotations, id);
         if (data === undefined) return;
         const parsed = plugin.schema.call.safeParse(data);
         if (!parsed.success) {
@@ -257,6 +257,8 @@ function checkCalls(
   prefix: PathSegment[],
   problems: Problem[],
 ): void {
+  const ids = walkthrough.layout.panes.map((pane) => pane.id);
+  const repeated = new Set(ids.filter((id, position) => ids.indexOf(id) !== position));
   const lanes = new Set((walkthrough.lanes ?? []).map((lane) => lane.id));
   const known = new Map<string, Set<string>>();
   const present = new Map<string, Set<string>>();
@@ -317,7 +319,10 @@ function checkCalls(
       }
 
       for (const pane of panes.values()) {
-        const written = call.effects?.[pane.id] ?? [];
+        // Two panes with one id are already reported. Which of them an effect means is unknown,
+        // so checking it against either would only add a misleading second problem.
+        if (repeated.has(pane.id)) continue;
+        const written = writtenEffects(call, pane.id);
         const all = effectsOf(pane, call);
         const offset = all.length - written.length;
         all.forEach((effect: Effect, index) => {
@@ -395,10 +400,14 @@ export function resolveWalkthrough(
     ...problem,
     path: [...prefix, ...problem.path],
   });
+  const elementIds = new Set<string>();
+  for (const pane of panes.values()) {
+    for (const entity of pane.panel.entities(pane.content, walkthrough)) elementIds.add(entity.id);
+  }
   walkthrough.layout.panes.forEach((declared) => {
     const pane = panes.get(declared.id);
     if (pane?.panel.lint === undefined) return;
-    problems.push(...pane.panel.lint(pane, walkthrough).map(prefixed));
+    problems.push(...pane.panel.lint(pane, walkthrough, elementIds).map(prefixed));
   });
   for (const { plugin, config } of annotations) {
     problems.push(...(plugin.lint?.(walkthrough, config) ?? []).map(prefixed));

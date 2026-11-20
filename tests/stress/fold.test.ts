@@ -289,15 +289,12 @@ describe('payload patches', () => {
 
   // DEFECT: patches are merged into one object, so an overwritten key keeps its old position in
   // the application order (src/core/effects.ts:64, src/panels/payload/paths.ts:55).
-  it.fails('a later update of a parent path wins over an earlier update of its child', () => {
+  it('a later update of a parent path wins over an earlier update of its child', () => {
     expect(valueAfter(parentThenChild(), 2)).toEqual({ a: { n: 'z' } });
   });
 
   // Same defect with array positions: integer-like keys are also ordered first by JS objects.
-  it.fails(
-    'an array element replaced after one of its fields was updated shows the replacement',
-    () => {
-      expect(valueAfter(arrayReplaced(), 1)).toEqual([{ k: 'c' }]);
-    },
-  );
+  it('an array element replaced after one of its fields was updated shows the replacement', () => {
+    expect(valueAfter(arrayReplaced(), 1)).toEqual([{ k: 'c' }]);
+  });
 });

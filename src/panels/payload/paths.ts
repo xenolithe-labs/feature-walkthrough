@@ -4,12 +4,13 @@ export interface Ref {
   text?: string;
 }
 
+/** Only `$ref` and an optional text make a link. Anything else is an ordinary object. */
 export function isRef(value: unknown): value is Ref {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof (value as { $ref?: unknown }).$ref === 'string'
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const item = value as Record<string, unknown>;
+  if (typeof item.$ref !== 'string') return false;
+  return Object.keys(item).every(
+    (key) => key === '$ref' || (key === 'text' && typeof item.text === 'string'),
   );
 }
 
@@ -78,11 +79,13 @@ function setKeys(value: unknown, keys: string[], next: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item, index) => (String(index) === key ? inner(item) : (item as unknown)));
   }
-  const copy: Record<string, unknown> = {};
-  for (const [name, item] of Object.entries(value as Record<string, unknown>)) {
-    copy[name] = name === key ? inner(item) : item;
-  }
-  return copy;
+  // Built from entries, so a key named "__proto__" stays an ordinary key.
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([name, item]) => [
+      name,
+      name === key ? inner(item) : item,
+    ]),
+  );
 }
 
 /** The declared value with a payload's patches applied, in the order they were made. */

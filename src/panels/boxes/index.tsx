@@ -18,6 +18,7 @@ import {
   type PanelType,
   type Problem,
   type Touched,
+  own,
 } from '../../core';
 import { exitPoint, type Box } from '../_diagram/Diagram';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
@@ -86,7 +87,7 @@ interface Shared {
 }
 
 function BoxView({ box, shared }: { box: BoxDecl; shared: Shared }) {
-  const patch = shared.state.patches[box.id];
+  const patch = own(shared.state.patches, box.id);
   const visible = shared.shown.has(box.id);
   const mark = markOf(box.id, shared.current);
   const children = shared.children.get(box.id) ?? [];
@@ -283,9 +284,11 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
         });
         return;
       }
-      const seen = new Set([box.id]);
+      // A box is in a loop when following parents leads back to the box itself. A box that only
+      // sits inside a loop is not reported: fixing the loop fixes it.
+      const seen = new Set<string>();
       for (let up = byId.get(box.parent); up !== undefined; up = byId.get(up.parent ?? '')) {
-        if (seen.has(up.id)) {
+        if (up.id === box.id) {
           problems.push({
             severity: 'error',
             rule: 'boxes/cycle',
@@ -294,6 +297,7 @@ export const boxesPanel: PanelType<BoxesContent, ElementsState> = {
           });
           break;
         }
+        if (seen.has(up.id)) break;
         seen.add(up.id);
       }
     });

@@ -59,6 +59,60 @@ async function withElk(
   return positions;
 }
 
+/** More than 200 edges at more than three per node: measured to take ELK several seconds. */
+export function isDense(nodes: number, edges: number): boolean {
+  return edges > 200 && edges > nodes * 3;
+}
+
+/**
+ * A simple layout that is always fast: each node goes one layer past the furthest of the nodes
+ * that point at it (edges that would close a loop are ignored), and a layer keeps its nodes in
+ * the order they were declared.
+ */
+export function layered(
+  nodes: readonly LayoutNode[],
+  edges: readonly LayoutEdge[],
+  direction: Direction,
+): Positions {
+  const order = new Map(nodes.map((node, index) => [node.id, index]));
+  const incoming = new Map<string, string[]>(nodes.map((node) => [node.id, []]));
+  for (const edge of edges) {
+    const from = order.get(edge.source);
+    const to = order.get(edge.target);
+    // Only edges that run forward in declaration order count, which rules out loops.
+    if (from !== undefined && to !== undefined && from < to)
+      incoming.get(edge.target)!.push(edge.source);
+  }
+  const layerOf = new Map<string, number>();
+  const layers: LayoutNode[][] = [];
+  // Wide layers are split, so that a hub with a hundred neighbours does not make one endless row.
+  const widest = Math.max(4, Math.ceil(Math.sqrt(nodes.length) * 1.5));
+  for (const node of nodes) {
+    let layer = 0;
+    for (const source of incoming.get(node.id)!) layer = Math.max(layer, layerOf.get(source)! + 1);
+    while ((layers[layer]?.length ?? 0) >= widest) layer += 1;
+    layerOf.set(node.id, layer);
+    (layers[layer] ??= []).push(node);
+  }
+  const positions: Positions = {};
+  let across = 0;
+  for (const layer of layers) {
+    if (layer === undefined) continue;
+    let along = 0;
+    let thickest = 0;
+    for (const node of layer) {
+      const [length, thickness] =
+        direction === 'RIGHT' ? [node.height, node.width] : [node.width, node.height];
+      positions[node.id] =
+        direction === 'RIGHT' ? { x: across, y: along } : { x: along, y: across };
+      along += length + 28;
+      thickest = Math.max(thickest, thickness);
+    }
+    across += thickest + 64;
+  }
+  return positions;
+}
+
 /** Resolves to a position for every node. The same input gives the same promise. */
 export function layout(
   nodes: readonly LayoutNode[],
@@ -70,7 +124,11 @@ export function layout(
   const key = JSON.stringify([direction, nodes, edges]);
   let result = cache.get(key);
   if (result === undefined) {
-    result = withElk(nodes, edges, direction);
+    // ELK's time grows steeply with the number of edges per node, and it runs on the page's own
+    // thread, so a dense graph would freeze the page. Dense graphs get a plain layering instead.
+    result = isDense(nodes.length, edges.length)
+      ? Promise.resolve(layered(nodes, edges, direction))
+      : withElk(nodes, edges, direction);
     cache.set(key, result);
   }
   return result;
