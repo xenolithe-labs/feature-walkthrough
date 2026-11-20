@@ -98,7 +98,7 @@ export const textDuplicate: Rule = {
       {
         path: [...second.path, 'text'],
         call: second.key,
-        message: `${covered} calls share ${repeated.length === 1 ? 'one text' : `${repeated.length} texts`} with other calls; the largest group is ${listKeys(worst.map((item) => item.key))}: "${worst[0]!.text.slice(0, 80)}${worst[0]!.text.length > 80 ? '...' : ''}". Each call states its own change: give each the values it changes, or merge calls that do the same thing`,
+        message: `${covered} calls share ${repeated.length === 1 ? 'one text' : `${repeated.length} texts`} with other calls; the largest group is ${listKeys(worst.map((item) => item.key))}: "${worst[0]!.text.slice(0, 80)}${worst[0]!.text.length > 80 ? '...' : ''}". Each call states its own change: give each the values it handled, or merge calls that do the same thing. If they are alike loop iterations, show the first, the second and the one that differs, and say how many were skipped`,
       },
     ];
   },
