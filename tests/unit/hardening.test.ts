@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
@@ -235,5 +236,13 @@ describe('payload paths with dots in keys', () => {
     };
     const html = render(config, 'p', 0, 0);
     expect(html).toContain('data-path="meta.a\\.b" data-mark="read"');
+  });
+});
+
+describe('narrow screens', () => {
+  it('put the call card before the stacked panes', () => {
+    const css = readFileSync(new URL('../../src/shell/shell.css', import.meta.url), 'utf8');
+    const phone = css.slice(css.indexOf('@media (max-width: 719px)'));
+    expect(phone).toMatch(/\.fw-card\s*\{\s*order:\s*-1;/);
   });
 });

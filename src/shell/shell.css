@@ -572,6 +572,11 @@ body {
   .fw-hint {
     display: none;
   }
+  /* The panes are stacked, so with several of them the words of the call would be a long scroll
+     away: on a phone the card comes before them. */
+  .fw-card {
+    order: -1;
+  }
   .fw-step-title {
     max-width: 14ch;
     overflow: hidden;
