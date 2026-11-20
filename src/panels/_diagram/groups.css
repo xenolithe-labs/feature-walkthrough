@@ -1,0 +1,169 @@
+/* Groups: containers drawn around the nodes that name them as `parent`. */
+.fw-group {
+  --node-border: var(--fw-border);
+  --node-bg: color-mix(in srgb, var(--fw-text) 4%, transparent);
+  --node-width: 1.5px;
+  --node-style: solid;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: var(--node-width) var(--node-style) var(--node-border);
+  border-radius: 12px;
+  background: var(--node-bg);
+  color: var(--fw-text);
+}
+
+.fw-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 12px 0;
+  font: 600 11.5px var(--fw-mono);
+  color: var(--fw-muted);
+  line-height: 1.2;
+}
+
+.fw-group-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fw-group-sub {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+/* A trust boundary or network zone: a heavier dashed border and a tag, so it never relies on colour. */
+.fw-group[data-boundary] {
+  --node-border: var(--fw-text);
+  --node-width: 2px;
+  --node-style: dashed;
+}
+
+.fw-group-tag {
+  margin-left: auto;
+  padding: 1px 6px;
+  border: 1px solid var(--fw-text);
+  border-radius: 999px;
+  color: var(--fw-text);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.fw-group[data-tone='muted'] {
+  --node-style: dashed;
+  opacity: 0.8;
+}
+
+.fw-group[data-tone='warn'] {
+  --node-border: var(--fw-warn);
+  --node-style: dashed;
+  --node-width: 2px;
+}
+
+.fw-group[data-tone='good'] {
+  --node-border: var(--fw-good);
+  --node-width: 2px;
+}
+
+/* The same marks as a node. A group is only marked when it is itself touched. */
+.fw-diagram .react-flow__node.is-added .fw-group {
+  --node-border: var(--fw-added);
+  --node-bg: color-mix(in srgb, var(--fw-added-bg) 55%, transparent);
+  --node-width: 2.5px;
+}
+
+.fw-diagram .react-flow__node.is-updated .fw-group {
+  --node-border: var(--fw-updated);
+  --node-bg: color-mix(in srgb, var(--fw-updated-bg) 55%, transparent);
+  --node-width: 2.5px;
+}
+
+.fw-diagram .react-flow__node.is-read .fw-group {
+  --node-border: var(--fw-read);
+  --node-bg: color-mix(in srgb, var(--fw-read-bg) 55%, transparent);
+  --node-width: 2.5px;
+}
+
+.fw-diagram .react-flow__node.is-removed .fw-group {
+  --node-border: var(--fw-removed);
+  --node-bg: color-mix(in srgb, var(--fw-removed-bg) 55%, transparent);
+  --node-width: 2.5px;
+  --node-style: dashed;
+}
+
+.fw-diagram .react-flow__node.is-selected .fw-group {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 2px;
+}
+
+/* A node that may move between groups glides when it does, unless the reader wants less motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .fw-diagram .react-flow__node.is-movable {
+    transition:
+      transform 0.45s ease,
+      opacity 0.15s;
+  }
+}
+
+/* Icons: one path in a square box, drawn as an outline unless it asks to be filled. */
+.fw-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.fw-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fw-icon[data-fill] path {
+  fill: currentColor;
+  stroke: none;
+}
+
+.fw-node > .fw-icon {
+  align-self: center;
+  width: 20px;
+  height: 20px;
+  margin-bottom: 2px;
+  color: var(--fw-muted);
+}
+
+/* Edges: a weight is the stroke width (a mark makes it a pixel wider); a gate sits where an edge
+   crosses a boundary; a dot is traffic. */
+.fw-diagram .react-flow__edge .fw-edge-line[data-weight] {
+  stroke-width: var(--fw-w);
+}
+
+.fw-diagram .react-flow__edge.is-added .fw-edge-line[data-weight],
+.fw-diagram .react-flow__edge.is-read .fw-edge-line[data-weight],
+.fw-diagram .react-flow__edge.is-updated .fw-edge-line[data-weight] {
+  stroke-width: calc(var(--fw-w) + 1px);
+}
+
+.fw-edge-gate {
+  fill: var(--fw-surface);
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.fw-edge-dot {
+  fill: currentColor;
+  stroke: var(--fw-surface);
+  stroke-width: 1.5;
+  pointer-events: none;
+}

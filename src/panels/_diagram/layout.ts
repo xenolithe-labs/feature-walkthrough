@@ -3,12 +3,18 @@
  * that nothing moves when a later call adds one. Positions pinned in the
  * config win; ELK is only loaded when something is not pinned.
  */
+import { hasGroups, layoutWithGroups, pinnedGroups } from './groups';
+
 export interface LayoutNode {
   id: string;
   width: number;
   height: number;
   x?: number | undefined;
   y?: number | undefined;
+  /** The group the node starts in. Pinned `x` and `y` are then relative to it. */
+  parent?: string | undefined;
+  /** Every group the node may ever sit in; a position is reserved in each. */
+  parents?: readonly string[] | undefined;
 }
 
 export interface LayoutEdge {
@@ -18,11 +24,16 @@ export interface LayoutEdge {
 }
 
 export type Direction = 'RIGHT' | 'DOWN';
-export type Positions = Record<string, { x: number; y: number }>;
+/** Groups also have a `width` and `height`; a key `<id>:<parent>` is a reserved position (see groups.ts). */
+export type Positions = Record<
+  string,
+  { x: number; y: number; width?: number | undefined; height?: number | undefined }
+>;
 
 const cache = new Map<string, Promise<Positions>>();
 
 export function pinned(nodes: readonly LayoutNode[]): Positions | undefined {
+  if (hasGroups(nodes)) return pinnedGroups(nodes);
   const positions: Positions = {};
   for (const node of nodes) {
     if (node.x === undefined || node.y === undefined) return undefined;
@@ -123,6 +134,13 @@ export function layout(
   if (fixed !== undefined) return Promise.resolve(fixed);
   const key = JSON.stringify([direction, nodes, edges]);
   let result = cache.get(key);
+  if (result === undefined && hasGroups(nodes)) {
+    result = layoutWithGroups(nodes, edges, direction, {
+      dense: isDense(nodes.length, edges.length),
+      flat: layered,
+    });
+    cache.set(key, result);
+  }
   if (result === undefined) {
     // ELK's time grows steeply with the number of edges per node, and it runs on the page's own
     // thread, so a dense graph would freeze the page. Dense graphs get a plain layering instead.

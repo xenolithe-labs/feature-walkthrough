@@ -23,6 +23,11 @@ import {
 import '@xyflow/react/dist/style.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { markOf, type Selection, type Touched } from '../../core';
+import { EdgeExtras } from './EdgeExtras';
+import { GroupNode, type GroupData } from './GroupNode';
+import { containerIds, litGroups, parentFirst, parentMap, reservedKey } from './groups';
+import { IconGlyph } from './IconGlyph';
+import type { ResolvedIcon } from './icons';
 import {
   chooseFit,
   layout,
@@ -40,6 +45,11 @@ export interface DiagramNode extends LayoutNode {
   sub?: string | undefined;
   tone?: string | undefined;
   kind?: string | undefined;
+  /** Where the node sits now, when it has moved from the `parent` it started in. */
+  at?: string | undefined;
+  /** Drawn as a trust boundary or network zone (only meaningful for a node that holds others). */
+  boundary?: boolean | undefined;
+  icon?: ResolvedIcon | undefined;
 }
 
 export interface DiagramEdge {
@@ -48,6 +58,10 @@ export interface DiagramEdge {
   target: string;
   label?: string | undefined;
   type?: string;
+  /** Stroke width in pixels. */
+  weight?: number | undefined;
+  /** The boundary groups this edge crosses, derived from where its ends sit. */
+  crosses?: readonly string[] | undefined;
 }
 
 type BoxData = {
@@ -55,6 +69,7 @@ type BoxData = {
   sub?: string | undefined;
   tone?: string | undefined;
   kind?: string | undefined;
+  icon?: ResolvedIcon | undefined;
 };
 
 /** A labelled box. Its handles are invisible: floating edges do not use them. */
@@ -62,6 +77,7 @@ const BoxNode = memo(function BoxNode({ data }: NodeProps<Node<BoxData>>) {
   return (
     <div className="fw-node" data-tone={data.tone} data-kind={data.kind}>
       <Handle type="target" position={Position.Top} isConnectable={false} />
+      {data.icon !== undefined && <IconGlyph icon={data.icon} />}
       <span className="fw-node-label">{data.label}</span>
       {data.sub !== undefined && <span className="fw-node-sub">{data.sub}</span>}
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
@@ -154,18 +170,40 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
   const side = SIDE + lane * 11;
   const start = { x: a.x - uy * side, y: a.y + ux * side };
   const end = { x: b.x - uy * side, y: b.y + ux * side };
-  const base = { x: end.x - ux * 10, y: end.y - uy * 10 };
+  // A wide edge gets a bigger head.
+  const weight = typeof data?.weight === 'number' ? data.weight : undefined;
+  const grow = Math.max(0, (weight ?? 0) - 3) * 0.6;
+  const base = { x: end.x - ux * (10 + grow * 2), y: end.y - uy * (10 + grow * 2) };
   const head = [
     `${end.x},${end.y}`,
-    `${base.x - uy * 4.5},${base.y + ux * 4.5}`,
-    `${base.x + uy * 4.5},${base.y - ux * 4.5}`,
+    `${base.x - uy * (4.5 + grow)},${base.y + ux * (4.5 + grow)}`,
+    `${base.x + uy * (4.5 + grow)},${base.y - ux * (4.5 + grow)}`,
   ].join(' ');
+  const crosses = Array.isArray(data?.crosses) ? (data.crosses as string[]) : undefined;
 
   return (
     <>
       <line className="fw-edge-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
-      <line className="fw-edge-line" x1={start.x} y1={start.y} x2={base.x} y2={base.y} />
+      <line
+        className="fw-edge-line"
+        x1={start.x}
+        y1={start.y}
+        x2={base.x}
+        y2={base.y}
+        data-weight={weight}
+        data-crosses={crosses?.join(' ')}
+        style={
+          weight === undefined ? undefined : ({ '--fw-w': `${weight}px` } as React.CSSProperties)
+        }
+      />
       <polygon className="fw-edge-head" points={head} />
+      <EdgeExtras
+        from={start}
+        to={end}
+        crosses={crosses}
+        pulse={typeof data?.pulse === 'string' ? data.pulse : undefined}
+        reverse={data?.reverse === true}
+      />
       {typeof label === 'string' && label !== '' && (
         <text
           className="fw-edge-label"
@@ -183,7 +221,7 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
 
 const SIDE = 5;
 
-const BASE_NODE_TYPES: NodeTypes = { box: BoxNode };
+const BASE_NODE_TYPES: NodeTypes = { box: BoxNode, container: GroupNode };
 const BASE_EDGE_TYPES: EdgeTypes = { floating: FloatingEdge };
 
 /**
@@ -197,7 +235,15 @@ function usePositions(
 ): Positions | undefined {
   const key = JSON.stringify([
     direction,
-    nodes.map(({ id, width, height, x, y }) => [id, width, height, x ?? null, y ?? null]),
+    nodes.map(({ id, width, height, x, y, parent, parents }) => [
+      id,
+      width,
+      height,
+      x ?? null,
+      y ?? null,
+      parent ?? null,
+      parents ?? null,
+    ]),
     edges.map(({ id, source, target }) => [id, source, target]),
   ]);
   const [resolved, setResolved] = useState<{ key: string; positions: Positions } | undefined>();
@@ -206,16 +252,18 @@ function usePositions(
     let cancelled = false;
     const [, sizes, links] = JSON.parse(key) as [
       Direction,
-      [string, number, number, number | null, number | null][],
+      [string, number, number, number | null, number | null, string | null, string[] | null][],
       [string, string, string][],
     ];
     void layout(
-      sizes.map(([id, width, height, x, y]) => ({
+      sizes.map(([id, width, height, x, y, parent, parents]) => ({
         id,
         width,
         height,
         x: x ?? undefined,
         y: y ?? undefined,
+        parent: parent ?? undefined,
+        parents: parents ?? undefined,
       })),
       links.map(([id, source, target]) => ({ id, source, target })),
       direction,
@@ -299,11 +347,22 @@ export interface DiagramProps {
   label: string;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
+  /** The call at the cursor. A read edge shows its traffic once for each call. */
+  call?: string;
+  /** Read edges whose traffic runs from target to source (a reply). */
+  reversed?: ReadonlySet<string>;
 }
 
-function classOf(id: string, shown: boolean, current: Touched, selected: string | undefined) {
+function classOf(
+  id: string,
+  shown: boolean,
+  current: Touched,
+  selected: string | undefined,
+  lit = false,
+) {
   if (!shown) return 'is-absent';
-  return `is-${markOf(id, current)}${selected === id ? ' is-selected' : ''}`;
+  const mark = markOf(id, current);
+  return `is-${mark === 'faded' && lit ? 'idle' : mark}${selected === id ? ' is-selected' : ''}`;
 }
 
 export function Diagram({
@@ -317,6 +376,8 @@ export function Diagram({
   label,
   nodeTypes,
   edgeTypes,
+  call,
+  reversed,
 }: DiagramProps) {
   const positions = usePositions(nodes, edges, direction);
   const frame = useRef<HTMLDivElement | null>(null);
@@ -362,20 +423,67 @@ export function Diagram({
       .join('\n');
   }, [nodes, edges, current, shownIds]);
 
+  // Groups: where each node sits now (a node that moved sits in another parent than it started
+  // in), which nodes hold others, and which groups the call touches something inside.
+  const groups = useMemo(() => {
+    const now = new Map(
+      nodes.flatMap((node) => (node.at === undefined ? [] : [[node.id, node.at]])),
+    );
+    const parent = parentMap(nodes, now);
+    const containers = containerIds(nodes);
+    const marks = [...current.added, ...current.updated, ...current.read, ...current.removed];
+    const live = marks.filter((id) => shownIds.has(id));
+    const ends = edges.filter((edge) => live.includes(edge.id));
+    return {
+      parent,
+      home: parentMap(nodes),
+      containers,
+      lit: litGroups(
+        containers,
+        parent,
+        live.filter((id) => nodes.some((node) => node.id === id)),
+        ends,
+      ),
+    };
+  }, [nodes, edges, current, shownIds]);
+
   // Absent elements stay in the flow, invisible, so that positions are stable.
   const flowNodes = useMemo<Node[]>(() => {
     if (positions === undefined) return [];
-    return nodes.map((node) => ({
-      id: node.id,
-      type: node.type ?? 'box',
-      position: positions[node.id] ?? { x: 0, y: 0 },
-      width: node.width,
-      height: node.height,
-      data: { label: node.label, sub: node.sub, tone: node.tone, kind: node.kind },
-      className: classOf(node.id, shownIds.has(node.id), current, selection.id),
-      ariaLabel: node.label,
-    }));
-  }, [positions, nodes, shownIds, current, selection.id]);
+    const placed = nodes.map((node) => {
+      const parentId = groups.parent.get(node.id);
+      const moved = parentId !== undefined && parentId !== groups.home.get(node.id);
+      const spot = (moved ? positions[reservedKey(node.id, parentId)] : undefined) ??
+        positions[node.id] ?? { x: 0, y: 0 };
+      const isGroup = groups.containers.has(node.id);
+      const own = positions[node.id];
+      const size = isGroup
+        ? { width: own?.width ?? node.width, height: own?.height ?? node.height }
+        : { width: node.width, height: node.height };
+      const data: BoxData & GroupData = {
+        label: node.label,
+        sub: node.sub,
+        tone: node.tone,
+        kind: node.kind,
+        boundary: node.boundary,
+        icon: node.icon,
+      };
+      return {
+        id: node.id,
+        type: isGroup ? 'container' : (node.type ?? 'box'),
+        position: { x: spot.x, y: spot.y },
+        ...(parentId === undefined ? {} : { parentId }),
+        ...size,
+        data,
+        className:
+          classOf(node.id, shownIds.has(node.id), current, selection.id, groups.lit.has(node.id)) +
+          (node.parents === undefined ? '' : ' is-movable'),
+        ariaLabel: isGroup ? `${node.label} (group)` : node.label,
+      } satisfies Node;
+    });
+    // React Flow processes a parent before its children.
+    return parentFirst(placed, groups.parent);
+  }, [positions, nodes, groups, shownIds, current, selection.id]);
 
   const flowEdges = useMemo<Edge[]>(() => {
     // Edges that join the same two nodes in the same direction are counted, so each gets
@@ -388,7 +496,13 @@ export function Diagram({
       // An edge shows only while both of its ends do.
       const shown = shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
       return {
-        data: { lane },
+        data: {
+          lane,
+          weight: edge.weight,
+          crosses: edge.crosses,
+          pulse: shown && call !== undefined && current.read.has(edge.id) ? call : undefined,
+          reverse: reversed?.has(edge.id) === true,
+        },
         id: edge.id,
         source: edge.source,
         target: edge.target,
@@ -397,7 +511,7 @@ export function Diagram({
         className: classOf(edge.id, shown, current, selection.id),
       };
     });
-  }, [edges, shownIds, current, selection.id]);
+  }, [edges, shownIds, current, selection.id, call, reversed]);
 
   const toggle = (id: string) => selection.select(selection.id === id ? undefined : id);
 
