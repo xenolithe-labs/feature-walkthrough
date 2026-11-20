@@ -1,0 +1,176 @@
+.fw-boxes {
+  position: relative;
+  max-height: 520px;
+  padding: 12px;
+  overflow: auto;
+}
+
+.fw-box-children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.fw-boxes[data-direction='column'] .fw-box-children {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.fw-box {
+  --box-border: var(--fw-border);
+  --box-bg: var(--fw-surface-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px 8px;
+  /* The border never changes width, so a mark cannot nudge the boxes around it. */
+  border: 1.5px solid var(--box-border);
+  border-radius: 8px;
+  /* Each level is a little lighter or darker than the one around it. */
+  background: color-mix(in srgb, var(--box-bg) 55%, var(--fw-surface));
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.fw-box-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  align-items: baseline;
+}
+
+.fw-box-head:not(:last-child) {
+  margin-bottom: 6px;
+}
+
+.fw-box-label {
+  font: 600 12.5px var(--fw-mono);
+  overflow-wrap: anywhere;
+}
+
+.fw-box-sub {
+  color: var(--fw-muted);
+  font-size: 11.5px;
+  overflow-wrap: anywhere;
+}
+
+/* Absent boxes keep their place, so that nothing moves when one appears. */
+.fw-box.is-absent {
+  visibility: hidden;
+}
+
+/* The fade applies to a box's own frame, not to the boxes inside it. */
+.fw-box.is-faded {
+  --box-border: color-mix(in srgb, var(--fw-border) 55%, transparent);
+}
+
+.fw-box.is-faded > .fw-box-head {
+  opacity: 0.45;
+}
+
+.fw-box.is-added {
+  --box-border: var(--fw-added);
+  --box-bg: var(--fw-added-bg);
+  box-shadow: 0 0 0 1px var(--box-border);
+}
+
+.fw-box.is-updated {
+  --box-border: var(--fw-updated);
+  --box-bg: var(--fw-updated-bg);
+  box-shadow: 0 0 0 1px var(--box-border);
+}
+
+.fw-box.is-read {
+  --box-border: var(--fw-read);
+  --box-bg: var(--fw-read-bg);
+  box-shadow: 0 0 0 1px var(--box-border);
+}
+
+.fw-box.is-removed {
+  --box-border: var(--fw-removed);
+  --box-bg: var(--fw-removed-bg);
+  border-style: dashed;
+  box-shadow: 0 0 0 1px var(--box-border);
+}
+
+.fw-box[data-tone='warn'] {
+  border-style: dashed;
+}
+
+.fw-box[data-tone='warn']:not(.is-added, .is-updated, .is-read, .is-removed) {
+  --box-border: var(--fw-warn);
+}
+
+.fw-box[data-tone='good']:not(.is-added, .is-updated, .is-read, .is-removed) {
+  --box-border: var(--fw-good);
+}
+
+.fw-box[data-tone='muted'] > .fw-box-head {
+  opacity: 0.55;
+}
+
+.fw-box[data-tone='muted'] {
+  border-style: dotted;
+}
+
+.fw-box.is-selected {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 1px;
+}
+
+.fw-boxes-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--fw-muted);
+}
+
+.fw-boxes-edge line {
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.fw-boxes-edge polygon {
+  fill: currentColor;
+}
+
+.fw-boxes-edge text {
+  fill: currentColor;
+  font:
+    11px system-ui,
+    sans-serif;
+  paint-order: stroke;
+  stroke: var(--fw-surface);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.fw-boxes-edge.is-added {
+  color: var(--fw-added);
+}
+
+.fw-boxes-edge.is-read {
+  color: var(--fw-read);
+}
+
+.fw-boxes-edge.is-updated {
+  color: var(--fw-updated);
+}
+
+.fw-boxes-edge.is-removed {
+  color: var(--fw-removed);
+}
+
+.fw-boxes-edge.is-faded {
+  opacity: 0.4;
+}
+
+.fw-boxes-edge.is-added line,
+.fw-boxes-edge.is-read line,
+.fw-boxes-edge.is-updated line {
+  stroke-width: 2.5;
+}

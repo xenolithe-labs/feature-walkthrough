@@ -32,6 +32,7 @@ export interface DiagramNode extends LayoutNode {
   label: string;
   sub?: string | undefined;
   tone?: string | undefined;
+  kind?: string | undefined;
 }
 
 export interface DiagramEdge {
@@ -42,12 +43,17 @@ export interface DiagramEdge {
   type?: string;
 }
 
-type BoxData = { label: string; sub?: string | undefined; tone?: string | undefined };
+type BoxData = {
+  label: string;
+  sub?: string | undefined;
+  tone?: string | undefined;
+  kind?: string | undefined;
+};
 
 /** A labelled box. Its handles are invisible: floating edges do not use them. */
 const BoxNode = memo(function BoxNode({ data }: NodeProps<Node<BoxData>>) {
   return (
-    <div className="fw-node" data-tone={data.tone}>
+    <div className="fw-node" data-tone={data.tone} data-kind={data.kind}>
       <Handle type="target" position={Position.Top} isConnectable={false} />
       <span className="fw-node-label">{data.label}</span>
       {data.sub !== undefined && <span className="fw-node-sub">{data.sub}</span>}
@@ -56,7 +62,7 @@ const BoxNode = memo(function BoxNode({ data }: NodeProps<Node<BoxData>>) {
   );
 });
 
-interface Box {
+export interface Box {
   x: number;
   y: number;
   width: number;
@@ -64,7 +70,7 @@ interface Box {
 }
 
 /** Where the line from this box's centre towards a point leaves the box. */
-function exitPoint(box: Box, towards: { x: number; y: number }): { x: number; y: number } {
+export function exitPoint(box: Box, towards: { x: number; y: number }): { x: number; y: number } {
   const cx = box.x + box.width / 2;
   const cy = box.y + box.height / 2;
   const dx = towards.x - cx;
@@ -91,12 +97,16 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeP
   const to = boxOf(useInternalNode(target));
   if (from === undefined || to === undefined) return null;
 
-  const start = exitPoint(from, { x: to.x + to.width / 2, y: to.y + to.height / 2 });
-  const end = exitPoint(to, { x: from.x + from.width / 2, y: from.y + from.height / 2 });
-  const length = Math.hypot(end.x - start.x, end.y - start.y);
+  const a = exitPoint(from, { x: to.x + to.width / 2, y: to.y + to.height / 2 });
+  const b = exitPoint(to, { x: from.x + from.width / 2, y: from.y + from.height / 2 });
+  const length = Math.hypot(b.x - a.x, b.y - a.y);
   if (length < 1) return null;
-  const ux = (end.x - start.x) / length;
-  const uy = (end.y - start.y) / length;
+  const ux = (b.x - a.x) / length;
+  const uy = (b.y - a.y) / length;
+  // Every edge runs a little to one side of the centre line, so that two
+  // edges in opposite directions between the same boxes do not overlap.
+  const start = { x: a.x - uy * SIDE, y: a.y + ux * SIDE };
+  const end = { x: b.x - uy * SIDE, y: b.y + ux * SIDE };
   const base = { x: end.x - ux * 10, y: end.y - uy * 10 };
   const head = [
     `${end.x},${end.y}`,
@@ -123,6 +133,8 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label }: EdgeP
     </>
   );
 });
+
+const SIDE = 5;
 
 const BASE_NODE_TYPES: NodeTypes = { box: BoxNode };
 const BASE_EDGE_TYPES: EdgeTypes = { floating: FloatingEdge };
@@ -267,7 +279,7 @@ export function Diagram({
       position: positions[node.id] ?? { x: 0, y: 0 },
       width: node.width,
       height: node.height,
-      data: { label: node.label, sub: node.sub, tone: node.tone },
+      data: { label: node.label, sub: node.sub, tone: node.tone, kind: node.kind },
       className: classOf(node.id, shownIds.has(node.id), current, selection.id),
       ariaLabel: node.label,
     }));

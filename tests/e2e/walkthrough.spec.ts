@@ -145,20 +145,70 @@ test('elements appear only once a call adds them', async ({ page }) => {
   );
 });
 
-for (const scheme of ['light', 'dark'] as const) {
-  test(`a phone-width page has no sideways scroll (${scheme})`, async ({ page }) => {
-    const errors = watchErrors(page);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.emulateMedia({ colorScheme: scheme });
-    await open(page, '#w=oauth-pkce&s=4&c=4');
-    await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBe(0);
-    expect(errors).toEqual([]);
-  });
+for (const walkthrough of walkthroughs) {
+  for (const scheme of ['light', 'dark'] as const) {
+    test(`${walkthrough.id}: a phone-width page has no sideways scroll (${scheme})`, async ({
+      page,
+    }) => {
+      const errors = watchErrors(page);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.emulateMedia({ colorScheme: scheme });
+      // The last step: everything the walkthrough adds is on the page.
+      await open(page, `#w=${walkthrough.id}&s=${walkthrough.steps.length}&c=1`);
+      await expect(page.locator('html')).toHaveAttribute('data-theme', scheme);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+      expect(errors).toEqual([]);
+    });
+  }
 }
+
+test('table rows and nested boxes keep their place as elements appear', async ({ page }) => {
+  const places = (selector: string) =>
+    page.locator(selector).evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const box = node.getBoundingClientRect();
+        const pane = node.closest('.fw-pane')!.getBoundingClientRect();
+        return [
+          node.getAttribute('data-entity'),
+          Math.round(box.left - pane.left),
+          Math.round(box.top - pane.top),
+        ];
+      }),
+    );
+  // The alarm is absent here and present later, in both the boxes and the table.
+  await open(page, '#w=terraform-apply&s=2&c=1');
+  await expect(page.locator('.fw-box[data-entity="alarm"]')).toHaveClass(/is-absent/);
+  const boxes = await places('.fw-box');
+  const rows = await places('.fw-table tbody tr');
+  await page.goto('/#w=terraform-apply&s=3&c=5');
+  await expect(page.locator('.fw-box[data-entity="alarm"]')).not.toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-table tr[data-entity="alarm"]')).toHaveClass(/is-added/);
+  expect(await places('.fw-box')).toEqual(boxes);
+  expect(await places('.fw-table tbody tr')).toEqual(rows);
+});
+
+test('the focus pane follows the call, and the code panel marks its lines', async ({ page }) => {
+  await open(page, '#w=react-render&s=1&c=1');
+  await expect(page.locator('.fw-pane[data-pane="source"]')).toBeVisible();
+  await expect(page.locator('.fw-pane[data-pane="dom"]')).toHaveCount(0);
+  await expect(page.locator('.fw-code-line.is-read')).toHaveCount(1);
+  await expect(page.locator('.fw-code-line.is-read')).toContainText('onClick');
+
+  await page.goto('/#w=react-render&s=4&c=1');
+  await expect(page.locator('.fw-pane[data-pane="dom"]')).toBeVisible();
+  await expect(page.locator('.fw-pane[data-pane="source"]')).toHaveCount(0);
+  const cell = page.locator('.fw-table tr[data-entity="dom-badge"] td[data-column="text"]');
+  await expect(cell).toHaveText('4');
+  await expect(cell).toHaveClass(/is-cell-updated/);
+  // One id, three panes: the same resource in the graph, the boxes and the table.
+  await page.goto('/#w=terraform-apply&s=3&c=3');
+  await page.locator('.fw-box[data-entity="instance"]').click();
+  await expect(page.locator('.react-flow__node[data-id="instance"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('.fw-table tr[data-entity="instance"]')).toHaveClass(/is-selected/);
+});
 
 test('the theme button overrides the system theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
