@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { HOSTILE_TEXT, collection, longWalkthrough, wrap } from '../stress/gen';
-import { openConfig, pageOverflow, position, shell, watchErrors } from './stress-helpers';
+import { openConfig, openRaw, pageOverflow, position, shell, watchErrors } from './stress-helpers';
 
 const call = (id: string, extra: Record<string, unknown> = {}) => ({ id, label: id, ...extra });
 const steps = (calls: Record<string, unknown>[]) => [
@@ -633,6 +633,64 @@ test.describe('hostile text', () => {
 });
 
 // ---------------------------------------------------------------------------
+test.describe('a config that passes lint must not blank the page', () => {
+  const twoPanes = (firstPane: string) =>
+    wrap(
+      'blank',
+      [
+        {
+          id: firstPane,
+          panel: 'graph',
+          content: { initial: true, nodes: [node('a')] } as never,
+        },
+        { id: 'other', panel: 'graph', content: { nodes: [node('b')] } as never },
+      ],
+      steps([call('k', { effects: { other: [{ add: 'b' }] } })]),
+    );
+  const refText = (text: unknown) =>
+    wrap(
+      'blank',
+      [
+        {
+          id: 'p',
+          panel: 'payload',
+          content: { payloads: [{ id: 'd', title: 'D', value: { link: { $ref: 'd', text } } }] },
+        },
+      ],
+      steps([call('k')]),
+    );
+
+  test('precondition: the same shapes with ordinary names and string text show the shell', async ({
+    page,
+  }) => {
+    const errors = watchErrors(page);
+    await openConfig(page, 'blank', twoPanes('first'));
+    await expect(page.locator('.react-flow__node[data-id="a"]')).toBeAttached();
+    await openConfig(page, 'blank', refText('see itself'));
+    await expect(page.locator('[data-ref="d"]')).toHaveText('see itself');
+    expect(errors).toEqual([]);
+  });
+
+  // DEFECT: loadConfig throws for a pane named like an Object.prototype member, and nothing in the
+  // viewer catches it, so React unmounts the whole tree (see lint.test.tsx for the cause).
+  test.fail('a pane named "constructor" shows the walkthrough', async ({ page }) => {
+    const errors = watchErrors(page);
+    await openRaw(page, 'blank', twoPanes('constructor'));
+    await expect(page.locator('.react-flow__node[data-id="a"]')).toBeAttached({ timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+
+  // DEFECT: a $ref whose text is an object makes React throw while rendering the payload pane; with
+  // no error boundary the page goes blank at that call (src/panels/payload/index.tsx Leaf).
+  test.fail('a $ref with text {} shows the walkthrough', async ({ page }) => {
+    const errors = watchErrors(page);
+    await openRaw(page, 'blank', refText({}));
+    await expect(page.locator('[data-ref="d"]')).toBeAttached({ timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // A long token with no break opportunity (a URL, a hash, an identifier) is ordinary content.
 test.describe('long unbroken text', () => {
   const URLISH = `https://example.test/a/b?q=${'w'.repeat(280)}`;
@@ -652,9 +710,12 @@ test.describe('long unbroken text', () => {
   const withPane = (pane: object) => ({ layout: { panes: [pane] } });
   const withCall = (extra: Record<string, unknown>) => ({ steps: steps([call('k', extra)]) });
 
-  // DEFECT: these fields are drawn without a wrapping rule, so one 300-character URL makes the whole
-  // page as wide as the URL and gives it a sideways scroll (src/shell/shell.css: the head, step strip,
-  // card, pane titles and the code title have no `overflow-wrap`, and flex/grid children lack `min-width: 0`).
+  // DEFECT: one 300-character URL in any of these fields spills out of its box and gives the page a
+  // sideways scroll (measured at 1,800 to 3,900 px). `overflow-wrap` is set only on .fw-selected,
+  // .fw-code, .fw-fields dd and .fw-problems li (src/shell/shell.css:340, :404, :428, :546); the
+  // header h1, .fw-lead, .fw-step-title, .fw-card-title, .fw-card-text, .fw-card-where, .fw-pane-title,
+  // the code source title and the sequence lane buttons have none. Not every offender was traced to
+  // its own rule; the fix may also need `min-width: 0` on some flex or grid children.
   const overflowing: Field[] = [
     ['walkthrough title', (t) => ({ title: t })],
     ['lead', (t) => ({ lead: t })],

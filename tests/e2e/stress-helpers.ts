@@ -32,10 +32,20 @@ export async function openConfig(
   return { ms: Date.now() - started };
 }
 
+/** Serves `config` as /<name>.json and navigates to it without waiting for anything to show. */
+export async function openRaw(page: Page, name: string, config: unknown): Promise<void> {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.route(`**/${name}.json`, (route) => route.fulfill({ json: config as object }));
+  await page.goto(`/?src=${name}.json`);
+}
+
 /** Records a measured number in the test report and on the console. */
-export function report(testInfo: TestInfo, label: string, ms: number): void {
-  testInfo.annotations.push({ type: 'perf', description: `${label}: ${Math.round(ms)} ms` });
-  console.info(`[stress] ${label}: ${Math.round(ms)} ms`);
+export function report(testInfo: TestInfo, label: string, value: number, unit = 'ms'): void {
+  testInfo.annotations.push({
+    type: 'perf',
+    description: `${label}: ${Math.round(value)} ${unit}`,
+  });
+  console.info(`[stress] ${label}: ${Math.round(value)} ${unit}`);
 }
 
 export async function pageOverflow(page: Page): Promise<number> {

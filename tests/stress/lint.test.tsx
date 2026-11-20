@@ -46,7 +46,7 @@ describe('prototype-named ids: a config that passes the contract must not break 
   });
 
   // DEFECT: call.effects?.[pane.id] finds Object.prototype members, so effectsOf returns the Object
-  // function and lint throws "all.forEach is not a function" (src/core/effects.ts:26, lint.ts checkCalls)
+  // function and lint throws "all.forEach is not a function" (src/core/effects.ts:17, lint.ts checkCalls)
   for (const name of ['constructor', 'toString', 'valueOf', 'hasOwnProperty']) {
     it.fails(`a pane named "${name}" does not make loadConfig throw`, () => {
       expect(() => load(tableWith(name))).not.toThrow();
@@ -71,7 +71,7 @@ describe('status annotation ids', () => {
     ]);
   });
 
-  // DEFECT: config.statuses[data.status] reads Object.prototype (src/annotations/status/index.ts:47, :59)
+  // DEFECT: config.statuses[data.status] reads Object.prototype (src/annotations/status/index.ts:35, :67)
   it.fails('a status named "constructor" is reported as undefined, like any other', () => {
     expect(where(withStatus('constructor'))).toHaveLength(1);
   });
@@ -100,14 +100,21 @@ describe('table cells and rows that share a name with Object.prototype', () => {
     expect(html).toContain('>bolt<');
   });
 
-  // DEFECT: row.cells[column.id] reads Object.prototype when a row omits that cell (src/panels/table/index.tsx:134)
+  it('precondition: both configs used by the expected failures below pass lint', () => {
+    const column = table(['constructor', 'd'], [{ id: 'r', cells: { d: 'x' } }]);
+    const row = table(['name'], [{ id: 'constructor', cells: { name: 'real value' } }]);
+    expect(load(column).ok).toBe(true);
+    expect(load(row).ok).toBe(true);
+  });
+
+  // DEFECT: row.cells[column.id] reads Object.prototype when a row omits that cell (src/panels/table/index.tsx:146)
   it.fails('a column named "constructor" with a row that omits it renders an empty cell', () => {
     const w = load(table(['constructor', 'd'], [{ id: 'r', cells: { d: 'x' } }])).walkthroughs[0]!;
     expect(renderAll(w).complaints).toEqual([]);
   });
 
   // DEFECT: state.patches[row.id] returns the Object function for a row called "constructor"; its
-  // `name` property ("Object") shows up as the cell text (src/panels/table/index.tsx:115, :136)
+  // `name` property ("Object") shows up as the cell text (src/panels/table/index.tsx:106, :146)
   it.fails(
     'a row named "constructor" does not show the text "Object" in a column named "name"',
     () => {
@@ -174,7 +181,7 @@ describe('code line ranges', () => {
   });
 
   // DEFECT: Math.max(0, ...expand(lines)) overflows the stack for ranges of ~125k lines or more,
-  // so loadConfig throws instead of reporting line-out-of-range (src/panels/code/index.tsx:~175)
+  // so loadConfig throws instead of reporting line-out-of-range (src/panels/code/index.tsx:161)
   it.fails('a huge range is reported, not thrown (spread of 200,000 numbers)', () => {
     expect(where(hugeRange())).toEqual([
       'code/line-out-of-range @ steps[0].calls[0].effects.c[0].lines',
@@ -357,6 +364,20 @@ describe('payload', () => {
       ).toEqual([]);
     });
 
+    it('precondition: the configs used by the expected failures below pass lint', () => {
+      const objectText = payload({ link: { $ref: 'd', text: {} } });
+      const nestedNumber = payload({ a: { b: { c: { $ref: 'd', text: 5 } } } });
+      const viaUpdate = payload({ a: { b: { c: { $ref: 'd', text: 'ok' } } } }, [
+        call('k0'),
+        call('k1', {
+          effects: { p: [{ update: 'd', fields: { a: { b: { c: { $ref: 'd', text: 5 } } } } }] },
+        }),
+      ]);
+      for (const config of [objectText, nestedNumber, viaUpdate]) {
+        expect(load(config).ok, JSON.stringify(load(config).problems)).toBe(true);
+      }
+    });
+
     // DEFECT: Leaf renders ref.text as a React child, which throws for an object (payload/index.tsx Leaf)
     it.fails('text: {} does not blank the page', () => {
       expect(() => rendered(payload({ link: { $ref: 'd', text: {} } }))).not.toThrow();
@@ -498,7 +519,7 @@ describe('lint quality: one cause should give one clear problem with the right p
     expect(where({ walkthroughs: [one(), one()] })).toEqual(['duplicate-id @ walkthroughs[1].id']);
   });
 
-  it('a collection with one broken member loads none: the good one is not shown (documented behavior)', () => {
+  it('a collection with one broken member is not ok, so the viewer lists problems and shows none of them, though the good one still resolves', () => {
     const good = wrap(
       'good',
       [{ id: 'g', panel: 'graph', content: { nodes: [A] } }],

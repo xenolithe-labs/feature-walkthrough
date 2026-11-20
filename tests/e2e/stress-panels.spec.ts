@@ -18,8 +18,8 @@ test.describe.configure({ mode: 'default' });
 test.setTimeout(240_000);
 
 // ELK runs on the page's main thread, and its time grows with edges far faster than with nodes
-// (measured in this project's layout settings: 160 nodes with 318 edges about 1 s, with 954 edges
-// minutes). The two sparse sizes below are the supported range; the dense case further down is a pinned defect.
+// (measured in this project's layout settings: 160 nodes with 318 edges about 1 s, with 954 edges about
+// 40 s). The two sparse sizes below are the supported range; the dense case further down is a pinned defect.
 for (const [nodes, fanout, budget] of [
   [160, 2, 20_000],
   [300, 2, 30_000],
@@ -61,17 +61,14 @@ for (const [nodes, fanout, budget] of [
 }
 
 // DEFECT: layout has no time limit and no worker, and ELK's time grows steeply with edge count. In this
-// project's settings 100 nodes with 594 edges (a dense but plausible service map) take about 8 s of
-// main-thread time in Chromium (about 33 s in Node); 160 nodes with 954 edges did not finish in six
-// minutes. Meanwhile the page shows "Laying out…" and does not respond to anything
+// project's settings 100 nodes with 594 edges (a dense but plausible service map) took 7.7 to 8.6 s of
+// main-thread time in Chromium and about 33 s in Node; 160 nodes with 954 edges took about 40 s in an
+// uncontended Chromium run, and did not finish within several minutes when a second page was also running
+// ELK. While it runs the page shows "Laying out…" and does not respond to anything
 // (src/panels/_diagram/layout.ts withElk: elk.bundled.js, layered algorithm, no timeout, no worker).
-// The case below is the smallest one measured that is clearly too slow, so the test stays cheap.
-test('precondition: 100 nodes and 594 edges are valid and the shell comes up before layout starts', async ({
-  page,
-}) => {
-  await openConfig(page, 'dense', bigGraph(100, 6), '#w=big-graph&s=1&c=1');
-  await expect(shell(page)).toBeVisible();
-});
+// The 3 s budget is about 2.5 times below what was measured: a pass on much faster hardware does not
+// mean the defect is fixed; a worker or a timeout would make the page responsive in any case.
+// That 100/594 loads without a lint problem is checked in tests/stress/scale.test.tsx.
 test.fail('a graph of 100 nodes and 594 edges is laid out within 3 s', async ({ page }) => {
   test.setTimeout(90_000);
   const started = Date.now();
@@ -190,7 +187,7 @@ test('boxes nested 15 and 60 deep render and keep the deepest one reachable', as
     await expect(deepest).toBeAttached();
     await expect(deepest).toHaveClass(/is-read/);
     const width = await deepest.evaluate((el) => el.getBoundingClientRect().width);
-    report(testInfo, `boxes ${depth} deep: innermost box width in px`, width);
+    report(testInfo, `boxes ${depth} deep: innermost box width`, width, 'px');
   }
   expect(errors).toEqual([]);
 });

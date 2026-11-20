@@ -289,15 +289,11 @@ describe('command line: lint', () => {
 
   // DEFECT: the same loadConfig throw as in lint.test.tsx surfaces here as an uncaught exception:
   // `check()` wraps only the file read, not loadConfig (cli/index.ts check)
-  it('precondition: the file with an ordinary pane name lints clean', () => {
-    const config = ok();
-    expect(lint('pane.json', JSON.stringify(config)).status).toBe(0);
-  });
-  it.fails('a valid config with a pane named "constructor" lints clean instead of crashing', () => {
-    const config = wrap(
+  const twoPanes = (firstPane: string) =>
+    wrap(
       'cli-proto',
       [
-        { id: 'constructor', panel: 'graph', content: { nodes: [{ id: 'a', label: 'A' }] } },
+        { id: firstPane, panel: 'graph', content: { nodes: [{ id: 'a', label: 'A' }] } },
         { id: 'other', panel: 'graph', content: { nodes: [{ id: 'b', label: 'B' }] } },
       ],
       [
@@ -308,7 +304,13 @@ describe('command line: lint', () => {
         },
       ],
     );
-    const r = lint('constructor.json', JSON.stringify(config));
+
+  it('precondition: the same two-pane file with an ordinary first pane name lints clean', () => {
+    const r = lint('pane.json', JSON.stringify(twoPanes('first')));
+    expect(r.status, r.stderr.slice(0, 300)).toBe(0);
+  });
+  it.fails('a valid config with a pane named "constructor" lints clean instead of crashing', () => {
+    const r = lint('constructor.json', JSON.stringify(twoPanes('constructor')));
     expect(r.status, r.stderr.slice(0, 300)).toBe(0);
   });
 });

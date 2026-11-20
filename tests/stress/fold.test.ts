@@ -288,7 +288,7 @@ describe('payload patches', () => {
   });
 
   // DEFECT: patches are merged into one object, so an overwritten key keeps its old position in
-  // the application order (src/core/effects.ts:68, src/panels/payload/paths.ts:57).
+  // the application order (src/core/effects.ts:64, src/panels/payload/paths.ts:55).
   it.fails('a later update of a parent path wins over an earlier update of its child', () => {
     expect(valueAfter(parentThenChild(), 2)).toEqual({ a: { n: 'z' } });
   });

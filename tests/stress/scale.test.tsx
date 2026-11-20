@@ -75,6 +75,12 @@ describe('scale: the engine', () => {
     walkAll('graph 160 nodes', w, 3000);
   });
 
+  it('a dense graph of 100 nodes and 594 edges, and one of 160 nodes and 954 edges, pass lint', () => {
+    // The e2e spec pins how slowly the layout engine handles these (stress-panels.spec.ts).
+    load('graph 100 nodes dense', bigGraph(100, 6), 3000);
+    load('graph 160 nodes dense', bigGraph(160, 6), 3000);
+  });
+
   it('a table of 500 rows and 30 columns', () => {
     const w = load('table 500x30', bigTable(500, 30), 3000);
     walkAll('table 500x30', w, 3000);
