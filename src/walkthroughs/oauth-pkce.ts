@@ -19,7 +19,49 @@ export const oauthPkce = defineWalkthrough({
 
   layout: {
     panes: [
-      { id: 'exchange', panel: 'sequence', title: 'Exchange' },
+      {
+        id: 'exchange',
+        panel: 'sequence',
+        title: 'Exchange',
+        content: {
+          // Requests are calls, answers are replies (dashed).
+          styles: {
+            'login-page': 'reply',
+            'redirect-back': 'reply',
+            'token-request': 'call',
+            'token-response': 'reply',
+            'token-error': 'reply',
+            'api-response': 'reply',
+            'refresh-response': 'reply',
+          },
+          fragments: [
+            {
+              id: 'pkce-check',
+              kind: 'alt',
+              label: 'code_verifier matches the stored challenge',
+              from: 'token-response',
+              to: 'token-error',
+              branches: [{ at: 'token-error', label: 'it does not match' }],
+            },
+            {
+              id: 'refreshing',
+              kind: 'opt',
+              label: 'the access token has expired',
+              from: 'refresh-request',
+              to: 'refresh-response',
+            },
+          ],
+          notes: [
+            {
+              id: 'verifier-note',
+              at: 'make-verifier',
+              over: 'app',
+              text: 'stays in the app until /token',
+            },
+            { id: 'state-note', at: 'make-state', over: 'app', text: 'kept in the user’s session' },
+          ],
+        },
+      },
       {
         id: 'artefacts',
         panel: 'graph',
@@ -291,6 +333,18 @@ export const oauthPkce = defineWalkthrough({
           to: 'app',
           text: 'The PKCE values were for this one exchange. The app throws them away.',
           effects: { artefacts: [{ remove: 'verifier' }, { remove: 'challenge' }] },
+        },
+        {
+          id: 'token-error',
+          label: 'Error: invalid_grant',
+          from: 'as',
+          to: 'app',
+          text: 'The other branch of the check above. If the hash of the verifier does not equal the stored challenge, the server must refuse the request with the error invalid_grant. Someone who only stole the code ends up here.',
+          where: 'RFC 7636 §4.6, RFC 6749 §5.2',
+          response: {
+            lang: 'http',
+            text: 'HTTP/1.1 400 Bad Request\nContent-Type: application/json;charset=UTF-8\nCache-Control: no-store\nPragma: no-cache\n\n{\n  "error": "invalid_grant"\n}',
+          },
         },
       ],
     },

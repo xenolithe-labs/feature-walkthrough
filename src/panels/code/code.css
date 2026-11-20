@@ -159,3 +159,106 @@
 .fw-code-line.has-expr.is-added {
   background: color-mix(in srgb, var(--fw-added-bg) 40%, transparent);
 }
+
+/* The title row: the source name, and for a diff the switch between changes and result. */
+.fw-code-head {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--fw-border);
+  background: var(--fw-surface-2);
+}
+
+.fw-code-head .fw-code-title {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.fw-code-views {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.fw-code-view {
+  padding: 2px 8px;
+  border: 1px solid var(--fw-border);
+  border-radius: 6px;
+  background: transparent;
+  font: 600 11px var(--fw-mono);
+}
+
+.fw-code-view[aria-pressed='true'] {
+  border-color: var(--fw-select);
+  background: var(--fw-select-bg);
+}
+
+/* A diff: old number, new number, then the sign. The sign is text, so colour is not the only cue. */
+.fw-code-lines.is-diff .fw-code-number {
+  width: 2.6em;
+  padding-right: 0.6em;
+}
+
+.fw-code-sign {
+  display: inline-block;
+  width: 1.6em;
+  text-align: center;
+  user-select: none;
+  font-weight: 700;
+}
+
+.fw-code-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The diff uses green and red. Orange (added) and purple (changed) stay for what a call marks. */
+.fw-code-line.is-diff-add {
+  border-left-color: var(--fw-good);
+  background: color-mix(in srgb, var(--fw-good) 16%, transparent);
+}
+
+.fw-code-line.is-diff-del {
+  border-left-color: var(--fw-bad);
+  background: color-mix(in srgb, var(--fw-bad) 14%, transparent);
+}
+
+/* A mark from a call wins over the tint of the diff, and keeps the outline so it still shows. */
+.fw-code-line.is-diff-add[data-mark],
+.fw-code-line.is-diff-del[data-mark] {
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+.fw-code-line.is-diff-add.is-read,
+.fw-code-line.is-diff-del.is-read {
+  border-left-color: var(--fw-read);
+  background: var(--fw-read-bg);
+}
+
+.fw-code-line.is-diff-add.is-updated,
+.fw-code-line.is-diff-del.is-updated {
+  border-left-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+}
+
+.fw-code-line.is-diff-del.is-removed {
+  text-decoration: none;
+}
+
+/* A transcript: lines that are not revealed yet keep their place and take no attention. */
+.fw-code-line.is-hidden {
+  visibility: hidden;
+}
+
+.fw-code-lines.is-transcript .fw-code-line {
+  padding-left: 12px;
+}
+
+.fw-code-line.is-command {
+  font-weight: 700;
+}

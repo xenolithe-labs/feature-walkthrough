@@ -84,6 +84,73 @@ output "subnet_id" {
 }`;
 
 /**
+ * What `terraform apply` prints for this change, shortened: the real plan lists more attributes of
+ * the alarm. Format after HashiCorp's tutorials. Ids, counts and timings are made-up examples.
+ */
+const TERMINAL = `$ terraform apply
+module.network.aws_vpc.main: Refreshing state... [id=vpc-0a1]
+module.network.aws_subnet.app: Refreshing state... [id=subnet-0b2]
+aws_security_group.web: Refreshing state... [id=sg-0c3]
+aws_instance.web: Refreshing state... [id=i-0d4]
+aws_eip.web: Refreshing state... [id=eipalloc-0e5]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_cloudwatch_metric_alarm.cpu will be created
+  + resource "aws_cloudwatch_metric_alarm" "cpu" {
+      + alarm_name          = "web-cpu-high"
+      + arn                 = (known after apply)
+      + comparison_operator = "GreaterThanThreshold"
+      + dimensions          = {
+          + "InstanceId" = "i-0d4"
+        }
+      + evaluation_periods  = 2
+      + id                  = (known after apply)
+      + metric_name         = "CPUUtilization"
+      + namespace           = "AWS/EC2"
+      + period              = 300
+      + statistic           = "Average"
+      + threshold           = 80
+    }
+
+  # aws_instance.web will be updated in-place
+  ~ resource "aws_instance" "web" {
+        id                     = "i-0d4"
+      ~ instance_type          = "t3.micro" -> "t3.small"
+        # (30 unchanged attributes hidden)
+    }
+
+Plan: 1 to add, 1 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+aws_instance.web: Modifying... [id=i-0d4]
+aws_instance.web: Modifications complete after 8s [id=i-0d4]
+aws_cloudwatch_metric_alarm.cpu: Creating...
+aws_cloudwatch_metric_alarm.cpu: Creation complete after 1s [id=web-cpu-high]
+
+Apply complete! Resources: 1 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+public_ip = "203.0.113.10"`;
+
+/** The number of the first line of the terminal text that contains "marker". */
+const row = (marker: string): number => {
+  const found = TERMINAL.split('\n').findIndex((line) => line.includes(marker));
+  if (found < 0) throw new Error(`terminal text has no line with "${marker}"`);
+  return found + 1;
+};
+
+/**
  * Terraform plan and apply after a small change to the configuration.
  * Resource ids and the AMI are made-up example values.
  */
@@ -155,8 +222,24 @@ export const terraformApply = defineWalkthrough({
         role: 'focus',
         content: {
           sources: [
-            { id: 'main', title: 'main.tf', lang: 'hcl', text: MAIN_BEFORE },
+            { id: 'main', title: 'main.tf', lang: 'hcl', text: MAIN_AFTER, base: MAIN_BEFORE },
             { id: 'network-tf', title: 'modules/network/main.tf', lang: 'hcl', text: NETWORK },
+          ],
+        },
+      },
+      {
+        id: 'terminal',
+        panel: 'code',
+        title: 'Terminal',
+        role: 'focus',
+        content: {
+          sources: [
+            {
+              id: 'session',
+              title: 'terraform apply (shortened)',
+              text: TERMINAL,
+              transcript: true,
+            },
           ],
         },
       },
@@ -283,7 +366,7 @@ export const terraformApply = defineWalkthrough({
           text: 'The default of the variable goes from t3.micro to t3.small. The instance does not name the type directly; it reads the variable.',
           show: 'config',
           effects: {
-            config: [{ update: 'main', fields: { text: MAIN_AFTER }, lines: [2] }],
+            config: [{ update: 'main', lines: [2], old: [2] }],
             modules: [{ update: 'var', fields: { sub: 't3.small' } }],
             graph: [{ update: 'var' }],
           },
@@ -319,13 +402,19 @@ export const terraformApply = defineWalkthrough({
               { read: 'eip' },
             ],
             stages: [{ read: 'load' }],
+            terminal: [{ update: 'session', fields: { upto: 1 } }],
           },
         },
         {
           id: 'refresh',
           label: 'Refresh: ask the provider what is really there',
           text: 'For each resource in the state, the provider reads the real object, in case someone changed it outside Terraform. Here everything still matches the state.',
+          show: 'terminal',
           effects: {
+            terminal: [
+              { update: 'session', fields: { upto: row('aws_eip.web: Refreshing') } },
+              { read: 'session', lines: [[2, row('aws_eip.web: Refreshing')]] },
+            ],
             graph: [
               { read: 'vpc' },
               { read: 'subnet' },
@@ -437,15 +526,13 @@ export const terraformApply = defineWalkthrough({
           id: 'show-plan',
           label: 'Show the plan',
           text: 'Nothing has been changed so far. The plan is a list of intended actions, and Terraform waits for a yes.',
-          show: 'stages',
-          blocks: [
-            {
-              title: 'terraform plan',
-              text: '  # aws_instance.web will be updated in-place\n  ~ resource "aws_instance" "web" {\n      ~ instance_type = "t3.micro" -> "t3.small"\n    }\n\n  # aws_cloudwatch_metric_alarm.cpu will be created\n  + resource "aws_cloudwatch_metric_alarm" "cpu" {\n      + alarm_name = "web-cpu-high"\n      + threshold  = 80\n    }\n\nPlan: 1 to add, 1 to change, 0 to destroy.',
-            },
-          ],
+          show: 'terminal',
           effects: {
             graph: [{ read: 'instance' }, { read: 'alarm' }],
+            terminal: [
+              { update: 'session', fields: { upto: row("Only 'yes'") } },
+              { read: 'session', lines: [row('Plan:')] },
+            ],
             stages: [{ read: 'diff' }, { read: 'diff.approve' }, { read: 'approve' }],
           },
         },
@@ -470,6 +557,10 @@ export const terraformApply = defineWalkthrough({
                 fields: { attr: 'type t3.small', action: 'done', tone: 'none' },
               },
             ],
+            terminal: [
+              { update: 'session', fields: { upto: row('Modifications complete') } },
+              { read: 'session', lines: [[row('Modifying'), row('Modifications complete')]] },
+            ],
             stages: [{ read: 'approve.apply' }, { read: 'apply' }],
           },
           annotations: { status: { status: 'update' } },
@@ -484,6 +575,10 @@ export const terraformApply = defineWalkthrough({
             state: [
               { update: 'alarm', fields: { id: 'web-cpu-high', action: 'done', tone: 'none' } },
             ],
+            terminal: [
+              { update: 'session', fields: { upto: row('Creation complete') } },
+              { read: 'session', lines: [[row('Creating...'), row('Creation complete')]] },
+            ],
             stages: [{ read: 'apply' }],
           },
           annotations: { status: { status: 'create' } },
@@ -492,14 +587,13 @@ export const terraformApply = defineWalkthrough({
           id: 'write-state',
           label: 'Write the state',
           text: 'The state now records six resources, with the new instance type and the alarm. The next plan will compare against this, and with no further edits it will report no changes.',
-          blocks: [
-            {
-              title: 'terraform apply',
-              text: 'Apply complete! Resources: 1 added, 1 changed, 0 destroyed.\n\nOutputs:\n\npublic_ip = "203.0.113.10"',
-            },
-          ],
+          show: 'terminal',
           effects: {
             graph: [{ read: 'out' }],
+            terminal: [
+              { update: 'session', fields: { upto: TERMINAL.split('\n').length } },
+              { read: 'session', lines: [row('Apply complete')] },
+            ],
             state: [{ read: 'instance', cells: ['attr'] }, { read: 'alarm' }],
             stages: [{ read: 'apply.write' }, { read: 'write' }],
           },

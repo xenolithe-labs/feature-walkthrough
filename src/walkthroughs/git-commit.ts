@@ -150,6 +150,23 @@ export const gitCommit = defineWalkthrough({
         },
       },
       {
+        id: 'file',
+        panel: 'code',
+        title: 'The file',
+        role: 'focus',
+        content: {
+          sources: [
+            {
+              id: 'greet',
+              title: 'src/greet.js',
+              lang: 'js',
+              text: files.greetAfter.trimEnd(),
+              base: files.greetBefore.trimEnd(),
+            },
+          ],
+        },
+      },
+      {
         id: 'model',
         panel: 'schema',
         role: 'focus',
@@ -266,8 +283,10 @@ export const gitCommit = defineWalkthrough({
         {
           id: 'change',
           label: 'Change src/greet.js on disk',
+          show: 'file',
           text: 'An exclamation mark is added to the greeting. Only the file on disk changes. Git has stored nothing yet: the index entry still names the old blob, which is how `git status` knows the file is modified.',
           effects: {
+            file: [{ update: 'greet', lines: [1], old: [1], expr: '!' }],
             areas: [
               { update: 'wt-greet', fields: { sub: 'modified, not stored', tone: 'warn' } },
               { read: 'ix-greet' },

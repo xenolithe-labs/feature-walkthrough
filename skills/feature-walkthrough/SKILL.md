@@ -135,7 +135,20 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
-  call. `content.lanes` optionally limits and orders the lanes shown.
+  call. `content.lanes` optionally limits and orders the lanes shown. Optional content, all by call id:
+  - `styles`: `{ "token-response": "reply" }`. `call` (default, solid, filled head), `reply`
+    (dashed, open head), `async` (solid, open head), `lost` (ends in a cross before the lane).
+    A call from a lane to itself is drawn as a loop on the lane; it cannot be `lost`.
+  - `fragments`: `{ "id": "retry", "kind": "loop", "label": "until it works", "from": "try-1",
+"to": "ok-3" }`. `kind` is `loop`, `alt`, `opt` or `par`; `from` and `to` are the first and last
+    message. `alt` and `par` take `"branches": [{ "at": "call-id", "label": "else" }]`, the call each
+    further alternative starts at (the `label` of the fragment names the first). A frame appears with
+    its first message, a branch divider with its first message. Frames may nest; they may not cross.
+    Lint: `sequence/unknown-call`, `fragment-reversed`, `fragment-overlap`, `branch-order`,
+    `branches-not-allowed`, `alt-needs-branch` (warning).
+  - `notes`: `{ "id": "n1", "at": "make-state", "over": "app", "text": "..." }`; `over` is a lane or
+    `["from-lane", "to-lane"]`. The note appears with its message, under it. Fragment and note ids are
+    elements like any other (selectable, unique across the walkthrough).
 - **`graph`, `flow`**: nodes `{ id, label, sub?, kind?, tone? }` and edges `{ from, to, label?, id? }`.
   `kind` is `step`, `decision` or `terminal`. An edge without an `id` gets the id `from.to`
   (for example `cached.query`); give an explicit `id` when two edges join the same pair. Read the
@@ -156,6 +169,18 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
   it is really there. `{ "update": "src", "fields": { "at": 7, "badge": "run 3" } }` keeps a
   current-line arrow in the margin, and a small label at the end of that line, until a later call
   moves them; `"at": null` clears the arrow.
+  - **Diff**: give a source `"base": "<old text>"` next to `text`. The panel works out the changed
+    lines and shows them with a `+`/`-` gutter and both line numbers; the reader can switch between
+    "Changes" and "Result". `lines` always mean lines of `text`. To mark a removed line (or any line
+    of the old text) use `"old": [2]`, which counts lines of `base`. `expr` is looked for on both.
+    Syntax colours cover `text` and `base` (the command line adds `baseTokens`). Lint:
+    `code/old-without-base`, `code/no-changes` (warning).
+  - **Transcript**: `"transcript": true` (commands start with `"$ "`) or
+    `"transcript": { "prompt": "> " }` makes the text output that appears over time, shown plain.
+    `{ "update": "log", "fields": { "upto": 12 } }` reveals the first 12 lines; later lines keep their
+    place and stay hidden, and the pane scrolls to the newest line. `upto` only grows, and `lines`
+    may only mark lines already revealed. Lint: `code/upto-backwards`, `code/upto-out-of-range`,
+    `code/upto-not-transcript`, `code/line-not-revealed`, `code/diff-transcript`.
 
 - **`payload`**: `payloads` `{ id, title, sub?, value, raw? }`, where `value` is any JSON. Fields
   are addressed by dot path, with array positions as numbers: `entries.1.hash`. Mark fields with

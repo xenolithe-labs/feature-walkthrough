@@ -920,3 +920,144 @@ test('focus view: the marked items of every staged pane are in view, small or la
   if ((await off.count()) > 0) await off.first().click();
   await expectMarkedItemsInView(page);
 });
+
+test('code: a diff shows signs and both line numbers, and switches to the result', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=terraform-apply&s=1&c=1');
+  const removed = page.locator('.fw-code-line[data-kind="del"]');
+  const added = page.locator('.fw-code-line[data-kind="add"]');
+  await expect(removed).toHaveCount(1);
+  await expect(removed).toContainText('t3.micro');
+  await expect(removed.locator('.fw-code-sign')).toContainText('−');
+  await expect(added.first().locator('.fw-code-sign')).toContainText('+');
+  // The removed line has an old number only, an added one a new number only.
+  await expect(removed.locator('.fw-code-number.is-old')).toHaveText('2');
+  await expect(removed.locator('.fw-code-number.is-new')).toHaveText('');
+  // The call marks the removed line through "old" and its replacement through "lines".
+  await expect(removed).toHaveAttribute('data-mark', 'updated');
+  await expect(added.first()).toHaveAttribute('data-mark', 'updated');
+  // Removed lines have syntax colours too.
+  await expect(removed.locator('code span[style*="color"]').first()).toBeVisible();
+
+  await page.getByRole('button', { name: 'Result', exact: true }).click();
+  await expect(page.locator('.fw-code-line[data-kind]')).toHaveCount(0);
+  await expect(page.locator('.fw-code-lines[data-view="result"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Result', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.getByRole('button', { name: 'Changes', exact: true }).click();
+  await expect(removed).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('code: a transcript is revealed up to a line and scrolls to the newest one', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=terraform-apply&s=3&c=6');
+  const terminal = page.locator('.fw-code-panel[data-source="session"]');
+  const scroller = terminal.locator('.fw-code-scroll');
+  const shown = terminal.locator('.fw-code-line:not(.is-hidden)');
+  await expect(shown.last()).toContainText("Only 'yes'");
+  const hidden = terminal.locator('.fw-code-line.is-hidden');
+  expect(await hidden.count()).toBeGreaterThan(5);
+  // Hidden lines are not offered to a screen reader, and the newest line is inside the pane.
+  await expect(hidden.first()).toHaveAttribute('aria-hidden', 'true');
+  const newest = await shown.last().boundingBox();
+  const box = await scroller.boundingBox();
+  expect(newest!.y + newest!.height).toBeLessThanOrEqual(box!.y + box!.height + 1);
+  expect(newest!.y).toBeGreaterThanOrEqual(box!.y - 1);
+  await expect(terminal.locator('.fw-code-line.is-command')).toHaveCount(1);
+  // At the refresh call only the command and the refresh lines are revealed.
+  await open(page, '#w=terraform-apply&s=2&c=2');
+  await expect(
+    page.locator('.fw-code-panel[data-source="session"] .fw-code-line:not(.is-hidden)'),
+  ).toHaveCount(6);
+  expect(errors).toEqual([]);
+});
+
+test('sequence: fragments, branches, styles and notes are drawn and reachable', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=oauth-pkce&s=4&c=6');
+  const frame = page.locator('.fw-seq-frame[data-kind="alt"]');
+  await expect(frame).toHaveCount(1);
+  await expect(frame).toContainText('code_verifier matches');
+  await expect(frame.locator('.fw-seq-divider')).toContainText('it does not match');
+  // A reply is dashed; a call is not.
+  const dash = (id: string) =>
+    page
+      .locator(`.fw-seq-message[data-entity="${id}"] .fw-seq-line`)
+      .evaluate((node) => getComputedStyle(node).strokeDasharray);
+  expect(await dash('token-response')).not.toBe('none');
+  expect(await dash('token-error')).not.toBe('none');
+  expect(await dash('verify')).toBe('none');
+  // Messages stay where they were when later ones appear.
+  const y = async (id: string) =>
+    (await page.locator(`.fw-seq-message[data-entity="${id}"] .fw-seq-hit`).boundingBox())!.y;
+  const before = await y('token-response');
+  await page.keyboard.press('ArrowLeft');
+  expect(await y('token-response')).toBe(before);
+  await page.keyboard.press('ArrowRight');
+
+  // The tab of a frame is a button: keyboard reachable, and selects the frame.
+  const tab = frame.locator('.fw-seq-tab');
+  await tab.focus();
+  await page.keyboard.press('Enter');
+  await expect(tab).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.fw-seq-message.is-related')).toHaveCount(3);
+  await page.keyboard.press('Enter');
+  await expect(tab).toHaveAttribute('aria-pressed', 'false');
+
+  // A note appears with its message and is a button too.
+  await open(page, '#w=oauth-pkce&s=1&c=3');
+  const note = page.locator('.fw-seq-note');
+  await expect(note.first()).toBeVisible();
+  await note.first().focus();
+  await page.keyboard.press('Enter');
+  await expect(note.first()).toHaveAttribute('aria-pressed', 'true');
+  expect(errors).toEqual([]);
+});
+
+test('sequence: a lost message ends in a cross, an async one has an open head, par and loop frames', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await open(page, '#w=retry-backoff&s=1&c=1');
+  await expect(page.locator('.fw-seq-message[data-style="lost"] .fw-seq-cross')).toBeVisible();
+  await expect(page.locator('.fw-seq-frame[data-kind="loop"]')).toBeVisible();
+  await expect(page.locator('.fw-seq-frame[data-kind="par"]')).toHaveCount(0);
+  await open(page, '#w=retry-backoff&s=2&c=4');
+  await expect(page.locator('.fw-seq-frame[data-kind="par"]')).toBeVisible();
+  await expect(
+    page.locator('.fw-seq-message[data-style="async"] .fw-seq-head.is-open'),
+  ).toBeVisible();
+  await expect(page.locator('.fw-seq-message.is-self').first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('code and sequence additions fit a phone in both views, with no sideways page scroll', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const hash of [
+    '#w=terraform-apply&s=1&c=1',
+    '#w=terraform-apply&s=3&c=6',
+    '#w=oauth-pkce&s=4&c=6',
+    '#w=retry-backoff&s=2&c=4',
+    '#w=git-commit&s=1&c=2',
+  ]) {
+    for (const view of ['grid', 'focus']) {
+      await page.goto(`/${hash}&v=${view}`);
+      await expect(page.locator('.fw-pane, .fw-stage-pane').first()).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      );
+      expect(overflow, `${hash} ${view}`).toBeLessThanOrEqual(0);
+    }
+  }
+});
