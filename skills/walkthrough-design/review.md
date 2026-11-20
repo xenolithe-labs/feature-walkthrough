@@ -124,3 +124,31 @@ Verdict from the trial: mixed, in the same direction as the first two. Better on
 Across three trials, by each trial's own account, the parts that paid most were: writing the test question's answer before designing; sizing the example to that answer; choosing values that tell things apart; checking facts against a primary source; and the cold read. The checklist paid least for the time it took.
 
 A pattern in all three: the redone walkthrough was better on substance and longer per card. The rules that add words (state old and new values, stand alone, state every change) are each reasonable; together, and reinforced by a cold reader who cannot see the views, they push text up. Revision 3 addresses that with the ceiling wording, the "simple call under 20" target, and the warning in the test section. Whether that is enough is for the next trial to show.
+
+### Trial 4: quicksort
+
+Verdict from the trial: better overall, with two real losses. The first trial not to come back "mixed".
+
+|                           | Before                                        | After                                                               |
+| ------------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
+| Calls / steps             | 90 / 16                                       | 22 / 7                                                              |
+| Words of card text, total | 1,296                                         | 470                                                                 |
+| Mean per card             | 14.4 (19 cards empty)                         | 21.4                                                                |
+| Views                     | code, array, a call-stack pane below the fold | code and array, with waiting calls drawn as brackets over the cells |
+
+Losses: a call on no cells draws no bracket of its own, and the duplicate-value case is gone (both declared as omitted).
+
+Did "better on substance, longer per card" repeat? In weaker form: the total fell 64% while the mean per card rose 49%. The trial measured the mean at each stage: 18.9 words in the storyboard, 20.3 after the first cold read, 21.4 after the second. So the cold read is where the words come in. The rules that held text down were "a simple call needs under 20", "ask first whether a view already shows it" (it stopped about eight additions), and giving the old value only when it meant something. The rules that still pushed it up were standing alone, defining terms at first use, and state that no view shows.
+
+| Finding                                                                                                            | Decision | Change                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Size the example" was what took 90 calls to 22, and is the answer to "show every unlike iteration" being too long | Kept     | No change; the rule is now the first thing the loops rule depends on                                                                                                                                  |
+| The cold-read warning says nothing about state that no view shows                                                  | Accepted | Sort each unstated change: a view shows it (mark it, no words); a view could (add it to a view); neither (add words and cut as many elsewhere). Measure the mean per card before and after each round |
+| "A simple call needs under 20" is vague                                                                            | Accepted | A call that changes one thing and defines nothing needs under 12 words; a call that defines a term or gives the central reason may reach the ceiling; expect three or four of those                   |
+| Step text is read on every call of its step and was not counted                                                    | Accepted | Keep it under 15 words                                                                                                                                                                                |
+| Nothing on recursion                                                                                               | Accepted | New paragraph: depth of about three, when a return is its own call, waiting calls shown on the state they own, per-invocation variables                                                               |
+| "3 to 7 steps of 1 to 5 calls" forced natural phases apart                                                         | Accepted | The phases the reader would name win; a step may run longer                                                                                                                                           |
+| The closing rule did not fit a last event with no content                                                          | Accepted | A short recap call may stand in                                                                                                                                                                       |
+| Checklist items that cannot fail once the procedure is followed                                                    | Deferred | Four trials have all been on subjects without messages; trial 5 onwards will show which items a message subject needs                                                                                 |
+
+The rewrite's changes that were exercised here all worked: a call is one idea and not one line (the most useful rule after sizing), the recap in a step's last call, the old value only when it meant something. Nothing that was cut in the rewrite was missed.
