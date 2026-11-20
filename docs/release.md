@@ -1,7 +1,14 @@
 # Releasing
 
-A release is a version tag. Pushing it runs `.github/workflows/release.yml`, which checks, builds
-and publishes the package to npm with a provenance statement.
+A release has two halves. A version tag makes GitHub build the package and **stage** it on npm.
+Then a maintainer **approves** the staged version with their security key, and it goes live.
+
+No npm token exists anywhere. npm trusts this repository's release workflow directly (trusted
+publishing, over OpenID Connect), and the workflow is only allowed to stage, never to publish. A
+leaked secret cannot ship a release, because there is no secret, and a compromised workflow cannot
+either, because a person with a second factor has to approve.
+
+## Cutting a release
 
 ```sh
 pnpm version 0.2.0 --no-git-tag-version   # or edit "version" in package.json
@@ -9,57 +16,59 @@ git commit -am "Release 0.2.0" && git push  # through a pull request, as usual
 git tag v0.2.0 && git push origin v0.2.0    # once it is on main
 ```
 
-The workflow refuses to publish when the tag and the version in `package.json` differ. To rehearse
-without publishing, run the workflow by hand from the Actions tab and leave "dry run" ticked.
+1. The tag runs `.github/workflows/release.yml`. It refuses to go on when the tag and the version
+   in `package.json` differ, runs the checks, builds, and runs `npm stage publish`.
+2. On npmjs.com, open the package's **Staged Packages** tab, look at what was staged, and click
+   **Approve**. npm asks for your security key. From a terminal the same thing is
+   `npm stage list feature-walkthrough`, then `npm stage approve <stage-id>`.
 
-## Credentials
+To rehearse without staging, run the workflow by hand from the Actions tab and leave "dry run"
+ticked.
 
-The workflow needs one secret, `NPM_TOKEN`, in the GitHub environment named `npm`. Nothing secret
-is kept in this repository.
+## One-time setup
 
-| Secret      | What it is                                                                      |
-| ----------- | ------------------------------------------------------------------------------- |
-| `NPM_TOKEN` | An npm granular access token that can publish the `feature-walkthrough` package |
+Do these once, in order, signed in to npm as an owner of the package with two-factor
+authentication switched on.
 
-### The npm token
+1. **Create the package.** npm can only trust a workflow for a package that exists. From a clean
+   checkout of the release commit:
 
-On npmjs.com, under Access Tokens, create a **granular access token**:
+   ```sh
+   pnpm install --frozen-lockfile
+   npm login                 # opens the browser; confirm with your security key
+   npm publish               # builds through "prepack", then asks for the key again
+   ```
 
-- Packages and scopes: read and write. Before the first release the package does not exist yet, so
-  the token has to cover all packages; afterwards replace it with one limited to
-  `feature-walkthrough`.
-- Bypass two-factor authentication: on. A workflow cannot answer a 2FA prompt.
-- Expiration: as short as you are willing to rotate.
+2. **Trust the workflow.** On npmjs.com, in the package's **Settings**, add a trusted publisher
+   for GitHub Actions:
 
-### From 1Password to GitHub
+   | Field                | Value                                 |
+   | -------------------- | ------------------------------------- |
+   | Organization or user | `xenolithe-labs`                      |
+   | Repository           | `feature-walkthrough`                 |
+   | Workflow filename    | `release.yml`                         |
+   | Environment name     | `npm`                                 |
+   | Allowed actions      | staging only: leave `npm publish` off |
 
-For maintainers who keep the token in 1Password, `scripts/secrets/with-op.sh` moves it to GitHub
-without it touching the disk, the terminal or the clipboard.
+3. **Shut the token door.** In the package's **Settings**, under **Publishing access**, choose
+   "Require two-factor authentication and disallow tokens", and delete any access token on your
+   account that has "bypass 2FA".
 
-1. Save the token in a 1Password item.
-2. Copy `scripts/secrets/mapping.example.tsv` to `scripts/secrets/mapping.tsv` and put in the
-   secret reference of the field (in 1Password: right-click the field, Copy Secret Reference).
-   `mapping.tsv` is ignored by git, because it names your vault and items.
-3. Check that it resolves, then push it:
+4. **Protect the environment.** In this repository's settings, under Environments, limit `npm` to
+   tags matching `v*`. The environment is created the first time the workflow runs.
+
+## Other secrets
+
+The release needs none. If the project ever needs a stored credential (for example for a
+deployment), `scripts/secrets/with-op.sh` moves it from 1Password into a GitHub environment
+without it touching the disk, the terminal or the clipboard:
 
 ```sh
+cp scripts/secrets/mapping.example.tsv scripts/secrets/mapping.tsv   # ignored by git
 scripts/secrets/with-op.sh check                   # names only, never values
 scripts/secrets/with-op.sh github-sync --dry-run   # what would be set
-scripts/secrets/with-op.sh github-sync             # creates the "npm" environment if needed
+scripts/secrets/with-op.sh github-sync
 ```
 
-To rotate the token, replace the value in 1Password and run `github-sync` again.
-
-The script needs the 1Password CLI (`op`) with the desktop-app integration switched on, `jq`, and
-`gh` signed in with admin rights on the repository.
-
-### Protecting the environment
-
-In the repository settings, under Environments, `npm` can be limited to tags that match `v*` and
-can require a reviewer's approval before each publish.
-
-### Without a token
-
-Once the package exists on npm, it can be published with no stored token at all: add this
-repository and `release.yml` as a trusted publisher in the package's settings on npmjs.com, then
-remove `NODE_AUTH_TOKEN` from the workflow and delete the secret.
+`mapping.tsv` holds 1Password secret references. It is ignored by git because it names your vault
+and items.

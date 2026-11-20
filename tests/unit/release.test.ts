@@ -10,7 +10,6 @@ const rows = example
 
 describe('the secrets mapping', () => {
   it('has well-formed rows in the example', () => {
-    expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       expect(row).toHaveLength(4);
       expect(row[0]).toMatch(/^[A-Z][A-Z0-9_]*$/);
@@ -42,5 +41,19 @@ describe('the secrets mapping', () => {
     }
     const tracked = execFileSync('git', ['ls-files', 'scripts/secrets'], { encoding: 'utf8' });
     expect(tracked.split('\n')).not.toContain('scripts/secrets/mapping.tsv');
+  });
+});
+
+describe('the release workflow', () => {
+  const workflow = readFileSync('.github/workflows/release.yml', 'utf8');
+
+  it('stores no npm token: npm trusts the workflow instead', () => {
+    expect(workflow).not.toMatch(/NODE_AUTH_TOKEN|NPM_TOKEN|secrets\./);
+    expect(workflow).toMatch(/id-token: write/);
+  });
+
+  it('stages for approval and never publishes directly', () => {
+    expect(workflow).toMatch(/npm stage publish/);
+    expect(workflow).not.toMatch(/npm publish/);
   });
 });

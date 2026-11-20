@@ -1,14 +1,15 @@
 name: Release
 
-# Publishes the package to npm when a version tag is pushed.
-# The npm token lives in the "npm" GitHub environment; see docs/release.md.
+# Stages a new version on npm when a version tag is pushed. No npm token is stored anywhere:
+# npm trusts this workflow through OpenID Connect, and a maintainer approves the staged version
+# with their second factor before it goes live. See docs/release.md.
 on:
   push:
     tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
       dry_run:
-        description: Build and pack, but do not publish
+        description: Build and pack, but do not stage
         type: boolean
         default: true
 
@@ -25,7 +26,7 @@ jobs:
     environment: npm
     permissions:
       contents: read
-      # Lets npm sign a provenance statement that ties the package to this run.
+      # Lets this run prove to npm which repository and workflow it is. This replaces a token.
       id-token: write
     steps:
       - uses: actions/checkout@v4
@@ -50,9 +51,14 @@ jobs:
       - run: pnpm build:all
       - name: Show what the package will contain
         run: npm pack --dry-run --ignore-scripts
-      - name: Publish
+      - name: Use an npm that supports staged publishing
+        run: npm install -g npm@^11.15.0
+      - name: Stage the version for approval
         if: github.event_name == 'push' || inputs.dry_run == false
         # The build ran above, so the package's own scripts are skipped here.
-        run: npm publish --provenance --access public --ignore-scripts
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # npm attaches a provenance statement by itself when it trusts the workflow.
+        run: npm stage publish --ignore-scripts
+      - name: Say what happens next
+        if: github.event_name == 'push' || inputs.dry_run == false
+        run: |
+          echo "Staged. A maintainer now approves it on npmjs.com (Staged Packages) or with 'npm stage approve <stage-id>'." >> "$GITHUB_STEP_SUMMARY"
