@@ -1,5 +1,6 @@
 import { statusAnnotation } from './annotations/status';
 import { Registry } from './core';
+import { arrayPanel } from './panels/array';
 import { boxesPanel } from './panels/boxes';
 import { codePanel } from './panels/code';
 import { flowPanel } from './panels/flow';
@@ -23,5 +24,6 @@ export function createRegistry(): Registry {
     .registerPanel(codePanel)
     .registerPanel(payloadPanel)
     .registerPanel(schemaPanel)
+    .registerPanel(arrayPanel)
     .registerAnnotation(statusAnnotation);
 }

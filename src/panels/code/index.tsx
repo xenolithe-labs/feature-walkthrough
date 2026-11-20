@@ -2,10 +2,13 @@
  * code: source text with the lines a call is about.
  *
  * `content.sources` lists the texts. An effect on a source shows it and can
- * mark lines: `{ read: "main", lines: [3, [7, 9]] }`. `update` with
- * `fields.text` replaces the text from that call on.
+ * mark lines: `{ read: "main", lines: [3, [7, 9]] }`; add `expr` (a piece of text on those
+ * lines, or a list of them) to mark just that part. `update` with `fields.text` replaces the
+ * text from that call on. `update` with `fields.at` (a line number, or null) keeps a current-line
+ * pointer in the margin until a later call moves it, and `fields.badge` is a short label
+ * shown at the end of that line, such as "run 3" or "depth 2".
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { z } from 'zod';
 import {
   EffectSchema,
@@ -41,8 +44,20 @@ const LinesSchema = z.array(
 );
 
 const CodeEffect = EffectSchema.and(
-  z.looseObject({ lines: LinesSchema.optional() }),
+  z.looseObject({
+    lines: LinesSchema.optional(),
+    expr: z.union([z.string().min(1), z.array(z.string().min(1))]).optional(),
+  }),
 ) as unknown as z.ZodType<Effect>;
+
+/** The pieces of text an effect marks inside its lines. */
+function exprs(effect: Effect): string[] {
+  const value = effect.expr;
+  if (typeof value === 'string') return [value];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
 
 function expand(lines: unknown): number[] {
   const parsed = LinesSchema.safeParse(lines);
@@ -71,12 +86,24 @@ function CodeView({
   const lines = body.split('\n');
 
   const marks = new Map<number, string>();
+  // Pieces of a line that a call marks on their own: line number -> [start, end, mark].
+  const spans = new Map<number, [number, number, string][]>();
   for (const effect of ctx.current) {
     const { verb, id } = effectTarget(effect);
     if (id !== source.id || verb === 'focus' || verb === 'set') continue;
-    for (const line of expand(effect.lines)) marks.set(line, MARK[verb]);
+    const marked = expand(effect.lines);
+    for (const line of marked) marks.set(line, MARK[verb]);
+    for (const piece of exprs(effect)) {
+      const line = marked.find((item) => (lines[item - 1] ?? '').includes(piece));
+      if (line === undefined) continue;
+      const start = lines[line - 1]!.indexOf(piece);
+      spans.set(line, [...(spans.get(line) ?? []), [start, start + piece.length, MARK[verb]]]);
+    }
   }
-  const first = marks.size === 0 ? 0 : Math.min(...marks.keys());
+  const patch = state.patches[source.id];
+  const pointer = typeof patch?.at === 'number' ? patch.at : undefined;
+  const badge = text(patch?.badge);
+  const first = marks.size === 0 ? (pointer ?? 0) : Math.min(...marks.keys());
 
   // Bring the first marked line into view without moving the page.
   const scroller = useRef<HTMLDivElement | null>(null);
@@ -109,17 +136,35 @@ function CodeView({
         >
           {lines.map((line, index) => {
             const mark = marks.get(index + 1);
+            const here = pointer === index + 1;
+            const parts = (spans.get(index + 1) ?? []).sort((a, b) => a[0] - b[0]);
+            const pieces: ReactNode[] = [];
+            let from = 0;
+            for (const [start, end, kind] of parts) {
+              if (start < from) continue;
+              pieces.push(line.slice(from, start));
+              pieces.push(
+                <mark key={start} className={`fw-code-expr is-${kind}`}>
+                  {line.slice(start, end)}
+                </mark>,
+              );
+              from = end;
+            }
+            pieces.push(line.slice(from));
             return (
               <span
                 key={index}
-                className={`fw-code-line${mark === undefined ? '' : ` is-${mark}`}`}
+                className={`fw-code-line${mark === undefined ? '' : ` is-${mark}`}${here ? ' is-at' : ''}${parts.length > 0 ? ' has-expr' : ''}`}
                 data-line={index + 1}
                 data-mark={mark}
+                data-at={here ? true : undefined}
+                aria-current={here ? 'step' : undefined}
               >
                 <span className="fw-code-number" aria-hidden="true">
                   {index + 1}
                 </span>
-                <code>{line === '' ? ' ' : line}</code>
+                <code>{line === '' ? ' ' : pieces}</code>
+                {here && badge !== undefined && <span className="fw-code-badge">{badge}</span>}
                 {'\n'}
               </span>
             );
@@ -147,25 +192,58 @@ export const codePanel: PanelType<CodeContent, ElementsState> = {
   Component: CodeView,
   lint: (pane, walkthrough) => {
     const content = pane.content as CodeContent;
-    const length = new Map(
-      content.sources.map((source) => [source.id, source.text.split('\n').length]),
+    const sourceLines = new Map(
+      content.sources.map((source) => [source.id, source.text.split('\n')]),
     );
     const problems: Problem[] = [];
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
         (call.effects?.[pane.id] ?? []).forEach((effect, e) => {
           const { id } = effectTarget(effect);
-          if (id === undefined || !length.has(id)) return;
+          if (id === undefined || !sourceLines.has(id)) return;
+          const at = ['steps', s, 'calls', c, 'effects', pane.id, e];
           const replaced = text(effect.fields?.text);
-          if (replaced !== undefined) length.set(id, replaced.split('\n').length);
-          const last = Math.max(0, ...expand(effect.lines));
-          if (last > length.get(id)!) {
+          if (replaced !== undefined) sourceLines.set(id, replaced.split('\n'));
+          const lines = sourceLines.get(id)!;
+          const marked = expand(effect.lines);
+          const last = Math.max(0, ...marked);
+          if (last > lines.length) {
             problems.push({
               severity: 'error',
               rule: 'code/line-out-of-range',
-              path: ['steps', s, 'calls', c, 'effects', pane.id, e, 'lines'],
-              message: `line ${last} is past the end of "${id}", which has ${length.get(id)} lines here`,
+              path: [...at, 'lines'],
+              message: `line ${last} is past the end of "${id}", which has ${lines.length} lines here`,
             });
+          }
+          // An expression must really be on the lines it is marked on.
+          for (const piece of exprs(effect)) {
+            if (!marked.some((line) => (lines[line - 1] ?? '').includes(piece))) {
+              problems.push({
+                severity: 'error',
+                rule: 'code/expr-not-on-lines',
+                path: [...at, 'expr'],
+                message:
+                  marked.length === 0
+                    ? `"expr" marks part of a line, so the effect needs "lines"`
+                    : `"${piece}" is not on line ${marked.join(', ')} of "${id}"`,
+              });
+            }
+          }
+          const pointer = effect.fields?.at;
+          if (pointer !== undefined && pointer !== null) {
+            const valid =
+              typeof pointer === 'number' &&
+              Number.isInteger(pointer) &&
+              pointer >= 1 &&
+              pointer <= lines.length;
+            if (!valid) {
+              problems.push({
+                severity: 'error',
+                rule: 'code/line-out-of-range',
+                path: [...at, 'fields', 'at'],
+                message: `"at" is a line from 1 to ${lines.length} of "${id}", or null; got ${JSON.stringify(pointer)}`,
+              });
+            }
           }
         });
       });
