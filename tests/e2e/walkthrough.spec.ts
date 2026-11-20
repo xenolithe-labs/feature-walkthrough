@@ -886,6 +886,9 @@ test('focus view: the marked items of every staged pane are in view, small or la
     '#w=bfs&s=2&c=4',
     '#w=quicksort&s=5&c=3',
     '#w=react-render&s=2&c=2',
+    '#w=aws-vpc-request&s=2&c=1',
+    '#w=aws-vpc-request&s=4&c=2',
+    '#w=aws-vpc-request&s=5&c=2',
   ];
   for (const size of [
     { width: 1440, height: 900 },
@@ -1142,4 +1145,36 @@ test('a node that moves between parents leaves everything else where it is', asy
   await page.keyboard.press('ArrowRight');
   await page.waitForTimeout(300);
   expect(await absolute()).toEqual(start);
+});
+
+test('aws-vpc-request: an edge inside a group and an empty group can be selected by clicking', async ({
+  page,
+}) => {
+  await open(page, awsHash(3, 2));
+  // Show the whole diagram, so that everything we click is in view.
+  await page.locator('.fw-pane[data-panel="graph"] .react-flow__controls-fitview').click();
+  await page.waitForTimeout(400);
+  // The middle of the edge i-a1 to db, which runs inside the VPC and over two groups.
+  const middle = await page.evaluate(() => {
+    const line = document.querySelector(
+      '[data-testid="rf__edge-q-a1"] .fw-edge-line',
+    ) as SVGLineElement;
+    const matrix = line.getScreenCTM()!;
+    const [x, y] = [
+      (line.x1.baseVal.value + line.x2.baseVal.value) / 2,
+      (line.y1.baseVal.value + line.y2.baseVal.value) / 2,
+    ];
+    return { x: matrix.a * x + matrix.c * y + matrix.e, y: matrix.b * x + matrix.d * y + matrix.f };
+  });
+  await page.mouse.click(middle.x, middle.y);
+  await expect(page).toHaveURL(/sel=q-a1/);
+  // The empty inside of a group: the app subnet in us-east-1b holds nothing yet. Playwright
+  // checks that the group itself receives the click, so a child or an edge over it would fail.
+  const subnet = page.locator('.react-flow__node[data-id="priv-b"]');
+  const size = (await subnet.boundingBox())!;
+  await subnet.click({ position: { x: size.width / 2, y: size.height - 8 } });
+  await expect(page).toHaveURL(/sel=priv-b/);
+  // A node inside a group is still the thing clicked when it is clicked.
+  await page.locator('.react-flow__node[data-id="i-a1"]').click();
+  await expect(page).toHaveURL(/sel=i-a1/);
 });

@@ -5,13 +5,20 @@ import {
   ancestorsOf,
   crossingPoint,
   crossingsOf,
+  groupMinSize,
   layeredGroups,
   litGroups,
   parentMap,
   pinnedGroups,
 } from '../../src/panels/_diagram/groups';
-import { ICON_NAMES, resolveIcon } from '../../src/panels/_diagram/icons';
-import { layered, layout, type LayoutNode, type Positions } from '../../src/panels/_diagram/layout';
+import { ICON_BAND, ICON_NAMES, resolveIcon } from '../../src/panels/_diagram/icons';
+import {
+  estimateSize,
+  layered,
+  layout,
+  type LayoutNode,
+  type Positions,
+} from '../../src/panels/_diagram/layout';
 import { createRegistry } from '../../src/registry';
 import { awsVpcRequest } from '../../src/walkthroughs/aws-vpc-request';
 
@@ -264,44 +271,89 @@ describe('layout of a compound diagram at scale (measured)', () => {
       Object.entries(positions).map(([id, p]) => [id, [Math.round(p.x), Math.round(p.y)]]),
     );
 
-  it('60 to 100 nodes in 10 to 15 groups lay out fast, deterministically, with measured crossings', async () => {
+  /** Time, straight-edge pass-throughs and how many nodes move when one leaf is taken out. */
+  async function measure(nodes: LayoutNode[], edges: ReturnType<typeof edge>[], drop: string) {
+    const started = performance.now();
+    const positions = await layout(nodes, edges, 'DOWN');
+    const ms = performance.now() - started;
+    const after = await layout(
+      nodes.filter((n) => n.id !== drop),
+      edges.filter((e) => e.source !== drop && e.target !== drop),
+      'DOWN',
+    );
+    const [r0, r1] = [relative(positions), relative(after)];
+    const moved = Object.keys(r1).filter(
+      (id) => JSON.stringify(r0[id]) !== JSON.stringify(r1[id]),
+    ).length;
+    return {
+      positions,
+      ms,
+      through: throughNodes(nodes, edges, positions),
+      moved: `${moved}/${Object.keys(r1).length}`,
+    };
+  }
+
+  it('60 to 100 nodes in 13 groups lay out fast and deterministically; crossings and edit sensitivity are measured against a flat layout', async () => {
     const report: string[] = [];
-    for (const [leaves, zones, subnets] of [
-      [48, 3, 3],
-      [72, 4, 3],
-      [86, 4, 3],
-    ] as const) {
-      const t = topology(leaves, zones, subnets);
+    // 3 zones of 3 subnets and a VPC: 13 groups, around 60, 80 and 96 nodes in all.
+    for (const leaves of [46, 66, 82]) {
+      const t = topology(leaves, 3, 3);
       const groups = t.nodes.filter((n) => t.nodes.some((m) => m.parent === n.id)).length;
-      const started = performance.now();
-      const positions = await layout(t.nodes, t.edges, 'DOWN');
-      const ms = performance.now() - started;
-      const through = throughNodes(t.nodes, t.edges, positions);
-      // Fast fallback, for comparison.
+      expect(groups).toBe(13);
+      const compound = await measure(t.nodes, t.edges, 'n5');
+      const flatNodes = t.nodes
+        .filter((n) => !t.nodes.some((m) => m.parent === n.id))
+        .map((n) => ({ ...n, parent: undefined }));
+      const flat = await measure(flatNodes, t.edges, 'n5');
       const quick = performance.now();
       const fast = layeredGroups(t.nodes, t.edges, 'DOWN', layered);
       const fastMs = performance.now() - quick;
-      // Edit sensitivity: take one leaf out of the config and see how many others move,
-      // measured relative to their own parent.
-      const fewer = t.nodes.filter((n) => n.id !== 'n5');
-      const after = await layout(
-        fewer,
-        t.edges.filter((e) => e.source !== 'n5' && e.target !== 'n5'),
-        'DOWN',
-      );
-      const [r0, r1] = [relative(positions), relative(after)];
-      const moved = Object.keys(r1).filter(
-        (id) => JSON.stringify(r0[id]) !== JSON.stringify(r1[id]),
-      ).length;
       report.push(
-        `${t.nodes.length} nodes, ${groups} groups, ${t.edges.length} edges: ELK ${ms.toFixed(0)} ms, fast ${fastMs.toFixed(1)} ms, ` +
-          `${through}/${t.edges.length} straight edges pass through an unrelated node (fast: ${throughNodes(t.nodes, t.edges, fast)}), ` +
-          `removing one leaf moves ${moved}/${Object.keys(r1).length} nodes (relative to their parent)`,
+        `${t.nodes.length} nodes, ${groups} groups, ${t.edges.length} edges: compound ELK ${compound.ms.toFixed(0)} ms ` +
+          `(fast layering ${fastMs.toFixed(1)} ms); straight edges through an unrelated node: compound ${compound.through}, ` +
+          `fast ${throughNodes(t.nodes, t.edges, fast)}, flat ELK without groups ${flat.through} of ${t.edges.length}; ` +
+          `removing one leaf moves compound ${compound.moved} (relative to parent), flat ${flat.moved}`,
       );
-      expect(ms).toBeLessThan(3000);
-      expect(await layout(t.nodes, t.edges, 'DOWN')).toEqual(positions);
+      expect(compound.ms).toBeLessThan(3000);
+      expect(await layout(t.nodes, t.edges, 'DOWN')).toEqual(compound.positions);
     }
     console.info(report.join('\n'));
+  });
+
+  it('the demo, at its real sizes: how many straight edges pass through an unrelated node', async () => {
+    const result = loadConfig(awsVpcRequest, createRegistry());
+    const content = result.walkthroughs[0]!.panes.find((p) => p.id === 'net')!.content as {
+      nodes: {
+        id: string;
+        label: string;
+        sub?: string;
+        parent?: string;
+        icon?: string;
+        boundary?: boolean;
+      }[];
+      edges: { id?: string; from: string; to: string }[];
+    };
+    const holders = new Set(
+      content.nodes.flatMap((n) => (n.parent === undefined ? [] : [n.parent])),
+    );
+    const nodes: LayoutNode[] = content.nodes.map((n) => {
+      const size = holders.has(n.id)
+        ? groupMinSize(n.label, n.sub, n, n.icon)
+        : estimateSize(n.label, n.sub ?? ' ');
+      return {
+        id: n.id,
+        ...size,
+        height: size.height + (n.icon !== undefined && !holders.has(n.id) ? ICON_BAND : 0),
+        parent: n.parent,
+      };
+    });
+    const edges = content.edges.map((e) => edge(e.from, e.to));
+    const positions = await layout(nodes, edges, 'DOWN');
+    const through = throughNodes(nodes, edges, positions);
+    console.info(
+      `demo: ${nodes.length} nodes, ${edges.length} edges, ${through} pass through an unrelated node`,
+    );
+    expect(through).toBeLessThanOrEqual(5);
   });
 });
 

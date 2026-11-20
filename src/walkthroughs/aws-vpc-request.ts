@@ -291,7 +291,7 @@ export const awsVpcRequest = defineWalkthrough({
           from: 'asg',
           to: 'app',
           text: 'An Auto Scaling group tries to keep equal numbers in each zone, so it launches in the zone with the fewest instances. When a zone that lacked capacity recovers, it rebalances by launching first and terminating the earlier instance after. The new instance goes into the app subnet of us-east-1b, a place that was laid out from the start, so nothing else moves.',
-          where: `${ASG}/auto-scaling-benefits.html#AutoScalingBehavior.Rebalancing`,
+          where: `${ASG}/auto-scaling-benefits.html#AutoScalingBehavior.Rebalancing and ${ASG}/autoscaling-load-balancer.html (instances an Auto Scaling group launches are registered with the load balancer automatically)`,
           effects: {
             net: [{ add: 'i-b1' }, { add: 'g-b1' }, { add: 'q-b1' }, { add: 't-b1' }],
             health: [{ add: 'i-b1' }],
@@ -300,7 +300,7 @@ export const awsVpcRequest = defineWalkthrough({
         {
           id: 'healthy',
           label: 'It passes a health check and takes traffic',
-          text: 'A registered target must pass a health check before it counts as healthy, and the load balancer then sends it requests, from any node, because cross-zone balancing is always on for an Application Load Balancer. Each instance now gets a smaller share, drawn as thinner edges.',
+          text: 'A registered target must pass a health check before it counts as healthy, and the load balancer then sends it requests, from any node, because cross-zone load balancing is on by default for an Application Load Balancer (a target group can turn it off, and this one has not). Each instance now gets a smaller share, drawn as thinner edges.',
           where: `${ELB}/target-group-health-checks.html and ${ELB}/application-load-balancers.html#cross-zone-load-balancing`,
           effects: {
             net: [
@@ -328,7 +328,7 @@ export const awsVpcRequest = defineWalkthrough({
           from: 'asg',
           to: 'alb',
           text: 'The load balancer stops sending requests to a deregistering target and, by default, waits 300 seconds so that requests in flight can finish. A new request is routed to a healthy target. The target shows as draining until the delay ends.',
-          where: `${ELB}/edit-target-group-attributes.html#deregistration-delay`,
+          where: `${ELB}/edit-target-group-attributes.html#deregistration-delay and ${ASG}/autoscaling-load-balancer.html (instances an Auto Scaling group terminates are deregistered automatically)`,
           effects: {
             net: [{ read: 't-a2' }, { update: 'i-a2', fields: { tone: 'muted' } }],
             health: [
