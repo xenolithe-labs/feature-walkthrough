@@ -13,7 +13,7 @@ reader moves through it one call at a time. You write the JSON; you never write 
 You cannot see the result, so ask the checker what the reader will see.
 
 1. Write the config (start from [`example.json`](example.json)).
-2. Check it: `npx feature-walkthrough check flow.json --json`. The document has `summary` (counts and
+2. Check it: `npx @xenolithe-labs/feature-walkthrough check flow.json --json`. The document has `summary` (counts and
    `exitCode`), and for each walkthrough `problems`, `findings`, `stats` and, when asked for, `trace`.
    It exits 1 on config errors and 2 when it was called wrongly.
 3. Fix every `problems` entry (each has a `path`, for example `steps[2].calls[0].effects.graph[1]`),
@@ -28,21 +28,21 @@ You cannot see the result, so ask the checker what the reader will see.
    line, a diagram too wide to read). You cannot see the picture, so apply the hint the finding
    names (`fromSide`, `routing`, `spacing`, `direction`, a cell) and check again.
 5. For each call you are unsure of, read what the reader sees there:
-   `npx feature-walkthrough check flow.json --call <step id>.<call id>` (the `call` of a finding is
+   `npx @xenolithe-labs/feature-walkthrough check flow.json --call <step id>.<call id>` (the `call` of a finding is
    already in that form; `2.1` means step 2, call 1). `--trace` does every call and is long. Check
    that each pane shows what the call's text says, and that nothing the text names is missing.
-6. Show it: `npx feature-walkthrough flow.json` serves it locally, or
-   `npx feature-walkthrough build flow.json -o flow.html` writes one self-contained HTML file.
+6. Show it: `npx @xenolithe-labs/feature-walkthrough flow.json` serves it locally, or
+   `npx @xenolithe-labs/feature-walkthrough build flow.json -o flow.html` writes one self-contained HTML file.
    Both add syntax colours to code panes. To get colours into a JSON file that is loaded some
-   other way, run `npx feature-walkthrough highlight flow.json -o flow.coloured.json`.
+   other way, run `npx @xenolithe-labs/feature-walkthrough highlight flow.json -o flow.coloured.json`.
 
 Do not hand over a config that has errors or warnings you have not looked at.
-`npx feature-walkthrough lint flow.json` is the fast subset (problems only, as text, on stderr); use
+`npx @xenolithe-labs/feature-walkthrough lint flow.json` is the fast subset (problems only, as text, on stderr); use
 it for a quick edit-and-check, and `check` before you hand over.
 
 `check` options: `--only problems,design,layout,stats,trace` picks groups (config errors are always
 reported), `--max-warnings 0` exits 1 if any warning is left, and several files may be given. The
-shape of the JSON is the JSON Schema `feature-walkthrough/check-result.schema.json` (`schema/check-result.schema.json` in the package).
+shape of the JSON is the JSON Schema `@xenolithe-labs/feature-walkthrough/check-result.schema.json` (`schema/check-result.schema.json` in the package).
 
 What `--json` looks like, cut down, for a copy of `example.json` in which the call `miss.reply-1` has
 no text (the example itself checks clean):
@@ -553,15 +553,15 @@ on a call. See `reference.md`.
 ## For React apps
 
 ```tsx
-import { Walkthrough, createRegistry } from 'feature-walkthrough';
-import 'feature-walkthrough/style.css';
+import { Walkthrough, createRegistry } from '@xenolithe-labs/feature-walkthrough';
+import '@xenolithe-labs/feature-walkthrough/style.css';
 
 <Walkthrough config={config} registry={createRegistry()} />;
 ```
 
 `defineWalkthrough({...})` gives type checking for a config written in TypeScript and returns the
-same JSON. The JSON Schema of the shared shape is `npx feature-walkthrough schema`, or
-`feature-walkthrough/schema.json`.
+same JSON. The JSON Schema of the shared shape is `npx @xenolithe-labs/feature-walkthrough schema`, or
+`@xenolithe-labs/feature-walkthrough/schema.json`.
 
 ## Algorithms: record the run, do not write the trace
 
@@ -570,7 +570,7 @@ and let it write the config; a hand-written trace can be wrong, a recorded one c
 the code. `Recorder` is exported from the package and has no dependency on React.
 
 ```ts
-import { Recorder, stripHooks } from 'feature-walkthrough';
+import { Recorder, stripHooks } from '@xenolithe-labs/feature-walkthrough';
 
 const SOURCE = `function find(items, target) {
   let lo = 0;

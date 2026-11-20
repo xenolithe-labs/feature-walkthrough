@@ -854,7 +854,7 @@ test('focus view at phone width: one pane at a time, the stage on the first scre
   expect(await sideOverflow(page)).toBe(0);
 
   // The other theme, and the next call.
-  await page.getByRole('button', { name: /theme/ }).click();
+  await page.getByRole('button', { name: 'Dark theme' }).click();
   await page.keyboard.press('ArrowRight');
   expect(await sideOverflow(page)).toBe(0);
   expect(errors).toEqual([]);
@@ -2190,4 +2190,73 @@ test('sequence: the newest message is in view under the lane names, at every cal
     });
     expect(seen, hash).toBe(true);
   }
+});
+
+test('header and navigation controls show their state, and fit one row each on a phone', async ({
+  page,
+}) => {
+  // Motion can only be switched when the system allows motion, so this page is not opened with
+  // reduced motion as the others are.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/#w=git-commit&s=1&c=1');
+  await expect(shell(page)).toBeVisible();
+  const filled = (locator: ReturnType<Page['locator']>) =>
+    locator.evaluate((node) => getComputedStyle(node).backgroundColor);
+  const plain = await filled(page.getByRole('button', { name: 'Dark theme' }));
+
+  // The pressed half of each switch is filled; the other is not.
+  expect(await filled(page.getByRole('button', { name: 'Light theme' }))).not.toBe(plain);
+  expect(await filled(page.locator('.fw-view[aria-pressed="true"]'))).not.toBe(plain);
+
+  // Motion says "off", and when turned on it is filled and says "on".
+  const motion = page.getByRole('button', { name: /^Motion/ });
+  await expect(motion).toContainText('off');
+  const off = await filled(motion);
+  await motion.click();
+  await expect(motion).toContainText('on');
+  expect(await filled(motion)).not.toBe(off);
+  await motion.click();
+
+  // The theme switch sets the theme named, and pressing the current one again changes nothing.
+  await page.getByRole('button', { name: 'Dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Dark theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Light theme' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+  // An open call list has a filled button.
+  const calls = page.locator('.fw-outline > summary');
+  const closed = await filled(calls);
+  await calls.click();
+  expect(await filled(calls)).not.toBe(closed);
+  await calls.click();
+
+  // Every control is the same height.
+  const heights = await page
+    .locator(
+      '.fw-views, .fw-toggle, .fw-arrow, .fw-play-button, .fw-play select, .fw-outline > summary',
+    )
+    .evaluateAll((nodes) => [
+      ...new Set(nodes.map((node) => Math.round(node.getBoundingClientRect().height))),
+    ]);
+  expect(heights).toEqual([32]);
+
+  // On a phone the header controls share one row, and the steps are one row with whole names.
+  await page.setViewportSize({ width: 390, height: 844 });
+  const tops = await page
+    .locator('.fw-head-controls > *')
+    .evaluateAll((nodes) => [
+      ...new Set(nodes.map((node) => Math.round(node.getBoundingClientRect().top))),
+    ]);
+  expect(tops).toHaveLength(1);
+  const steps = await page
+    .locator('.fw-step')
+    .evaluateAll((nodes) => [
+      ...new Set(nodes.map((node) => Math.round(node.getBoundingClientRect().top))),
+    ]);
+  expect(steps).toHaveLength(1);
+  const current = (await page.locator('.fw-step[aria-current="step"]').boundingBox())!;
+  expect(current.x).toBeGreaterThanOrEqual(0);
+  expect(current.x + current.width).toBeLessThanOrEqual(390);
 });

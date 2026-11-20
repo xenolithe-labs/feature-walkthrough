@@ -1,5 +1,5 @@
 {
-  "name": "feature-walkthrough",
+  "name": "@xenolithe-labs/feature-walkthrough",
   "version": "0.1.0",
   "description": "A configurable UI that shows step-by-step walkthroughs of a flow, driven by configuration.",
   "license": "MIT",

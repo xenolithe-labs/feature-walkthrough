@@ -1,6 +1,6 @@
 /**
  * The package's public surface: the engine, the page component and the
- * registry of built-in panels. Import `feature-walkthrough/style.css` once
+ * registry of built-in panels. Import `@xenolithe-labs/feature-walkthrough/style.css` once
  * alongside it.
  */
 export * from './core';

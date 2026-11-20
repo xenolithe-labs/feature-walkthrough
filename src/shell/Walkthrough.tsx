@@ -248,18 +248,44 @@ function Shell({
           </div>
           <button
             type="button"
-            className="fw-theme"
+            className="fw-toggle"
             aria-pressed={motion.on}
             disabled={motion.reduced || cursor.motion === false}
             title="Short transitions that show what changed"
             onClick={toggleMotion}
           >
+            {/* The dot and the word both say whether it is on, so it does not rest on colour. */}
+            <span className="fw-toggle-dot" aria-hidden="true" />
             Motion
-            {motion.reduced ? ' (system off)' : cursor.motion === false ? ' (link off)' : ''}
+            <span className="fw-toggle-state">
+              {motion.reduced
+                ? ' (system off)'
+                : cursor.motion === false
+                  ? ' (link off)'
+                  : motion.on
+                    ? ' on'
+                    : ' off'}
+            </span>
           </button>
-          <button type="button" className="fw-theme" onClick={onToggleTheme}>
-            {theme === 'dark' ? 'Light theme' : 'Dark theme'}
-          </button>
+          <div className="fw-views" role="group" aria-label="Theme">
+            {(
+              [
+                ['light', 'Light'],
+                ['dark', 'Dark'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="fw-theme-choice"
+                aria-label={`${label} theme`}
+                aria-pressed={theme === id}
+                onClick={() => theme !== id && onToggleTheme()}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -324,6 +350,7 @@ function Shell({
             <button
               type="button"
               className="fw-play-button"
+              data-playing={play.playing ? '' : undefined}
               aria-keyshortcuts="Space"
               title={play.playing ? 'Pause (Space)' : 'Play (Space)'}
               onClick={play.toggle}
@@ -331,7 +358,9 @@ function Shell({
               {play.playing ? 'Pause' : 'Play'}
             </button>
             <select
+              className="fw-speed"
               aria-label="Play speed"
+              title="How fast Play steps"
               value={speed}
               onChange={(event) => isSpeed(event.target.value) && chooseSpeed(event.target.value)}
             >
@@ -402,8 +431,7 @@ function Shell({
           · {call.label}
         </span>
         <span className="fw-hint">
-          ← → one call · Shift ← → one step · click anything to follow it
-          {playOffered ? ' · Space plays' : ''}
+          ← → call · Shift ← → step{playOffered ? ' · Space play' : ''}
         </span>
         <div
           className="fw-progress"

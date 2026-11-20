@@ -58,18 +58,19 @@ Live demos: <https://xenolithe-labs.github.io/feature-walkthrough/>
 
 ## Use it
 
-Write a JSON config, then:
+Write a JSON config, then run the command with `npx`, as below, or install it once with
+`npm install --global @xenolithe-labs/feature-walkthrough` and type `feature-walkthrough` instead:
 
 ```sh
-npx feature-walkthrough flow.json                      # check it, then show it in the browser
-npx feature-walkthrough lint flow.json                 # check only (and the layout of diagrams); exits 1 on errors
-npx feature-walkthrough check flow.json --json         # lint, design and layout findings, stats, for agents
-npx feature-walkthrough check flow.json --call s1.c2   # what a reader sees at one call, as text
-npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
-npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
-npx feature-walkthrough schema                         # the JSON Schema of a config
-npx feature-walkthrough skills install                 # copy the agent skills into ./.claude/skills
-npx feature-walkthrough help [command]                 # the usage, or the details of one command
+npx @xenolithe-labs/feature-walkthrough flow.json                      # check it, then show it in the browser
+npx @xenolithe-labs/feature-walkthrough lint flow.json                 # check only (and the layout of diagrams); exits 1 on errors
+npx @xenolithe-labs/feature-walkthrough check flow.json --json         # lint, design and layout findings, stats, for agents
+npx @xenolithe-labs/feature-walkthrough check flow.json --call s1.c2   # what a reader sees at one call, as text
+npx @xenolithe-labs/feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
+npx @xenolithe-labs/feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
+npx @xenolithe-labs/feature-walkthrough schema                         # the JSON Schema of a config
+npx @xenolithe-labs/feature-walkthrough skills install                 # copy the agent skills into ./.claude/skills
+npx @xenolithe-labs/feature-walkthrough help [command]                 # the usage, or the details of one command
 ```
 
 Code panes get syntax colours for any language the source names in `lang`. The colours are worked
@@ -94,8 +95,8 @@ from the package), and asynchronous checks such as diagram layout plug in throug
 Inside a React app:
 
 ```tsx
-import { Walkthrough, createRegistry } from 'feature-walkthrough';
-import 'feature-walkthrough/style.css';
+import { Walkthrough, createRegistry } from '@xenolithe-labs/feature-walkthrough';
+import '@xenolithe-labs/feature-walkthrough/style.css';
 
 <Walkthrough config={config} registry={createRegistry()} />;
 ```
@@ -107,10 +108,10 @@ The hosted page can also show any JSON config it is allowed to fetch: add `?src=
 Two skills ship in the npm package. Put them where your agent looks for skills:
 
 ```sh
-npx feature-walkthrough skills                    # list them
-npx feature-walkthrough skills install            # copy both into ./.claude/skills
-npx feature-walkthrough skills install --global   # or into ~/.claude/skills, for every project
-npx feature-walkthrough skills install --to <dir> # or into another agent's skills directory
+npx @xenolithe-labs/feature-walkthrough skills                    # list them
+npx @xenolithe-labs/feature-walkthrough skills install            # copy both into ./.claude/skills
+npx @xenolithe-labs/feature-walkthrough skills install --global   # or into ~/.claude/skills, for every project
+npx @xenolithe-labs/feature-walkthrough skills install --to <dir> # or into another agent's skills directory
 ```
 
 Installing is a plain copy from the package; nothing is downloaded. A skill that is already there
@@ -126,7 +127,7 @@ into calls and how to test the result. It has no syntax in it; its research is i
 ### Explaining an algorithm
 
 Do not write the steps of a loop by hand. Run the algorithm with a `Recorder`
-(`import { Recorder } from 'feature-walkthrough'`): arrays you give it record their own reads and
+(`import { Recorder } from '@xenolithe-labs/feature-walkthrough'`): arrays you give it record their own reads and
 writes, a few calls say which line is running and where a pointer is, and `finish()` returns the
 ordinary config. Every line number is checked against the displayed source, so a wrong one fails
 instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill. Linked structures work the same way:
