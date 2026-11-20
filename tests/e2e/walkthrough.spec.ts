@@ -1,3 +1,5 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 import { demos } from '../../src/walkthroughs';
 
@@ -270,4 +272,34 @@ test('a config with problems lists each one with its path', async ({ page }) => 
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'The config could not be loaded',
   );
+});
+
+test('the command line builds one HTML file that shows the config from disk', async ({
+  page,
+}, testInfo) => {
+  const out = testInfo.outputPath('example.html');
+  execFileSync(process.execPath, [
+    'dist/cli/index.js',
+    'build',
+    'skills/feature-walkthrough/example.json',
+    '-o',
+    out,
+  ]);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(pathToFileURL(out).href);
+  await expect(page.locator('.fw-head h1')).toHaveText('Reading through a cache');
+  await expect(page.locator('.fw-seq-message')).toHaveCount(1);
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
+  await expect(page.locator('.fw-table tr.is-added')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('the command line exits 1 and names the problem for a bad config', () => {
+  const result = spawnSync(process.execPath, ['dist/cli/index.js', 'lint', 'package.json'], {
+    encoding: 'utf8',
+  });
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain('package.json: error');
 });

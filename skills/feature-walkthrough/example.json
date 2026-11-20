@@ -1,0 +1,124 @@
+{
+  "id": "cache-read",
+  "title": "Reading through a cache",
+  "lead": "A service answers from its cache when it can, and fills the cache when it cannot.",
+  "lanes": [
+    { "id": "client", "title": "Client" },
+    { "id": "service", "title": "Service" },
+    { "id": "db", "title": "Database" }
+  ],
+  "layout": {
+    "panes": [
+      { "id": "exchange", "panel": "sequence", "title": "Exchange" },
+      {
+        "id": "path",
+        "panel": "flow",
+        "title": "Decision",
+        "content": {
+          "nodes": [
+            { "id": "get", "label": "GET /user/7", "kind": "terminal" },
+            { "id": "cached", "label": "In the cache?", "kind": "decision" },
+            { "id": "query", "label": "Query the database" },
+            { "id": "fill", "label": "Fill the cache" },
+            { "id": "reply", "label": "Reply", "kind": "terminal" }
+          ],
+          "edges": [
+            { "from": "get", "to": "cached" },
+            { "from": "cached", "to": "reply", "label": "yes" },
+            { "from": "cached", "to": "query", "label": "no" },
+            { "from": "query", "to": "fill" },
+            { "from": "fill", "to": "reply" }
+          ]
+        }
+      },
+      {
+        "id": "cache",
+        "panel": "table",
+        "title": "Cache",
+        "content": {
+          "initial": false,
+          "columns": [
+            { "id": "key", "label": "Key", "mono": true },
+            { "id": "value", "label": "Value", "mono": true },
+            { "id": "hits", "label": "Hits", "mono": true }
+          ],
+          "rows": [
+            {
+              "id": "user-7",
+              "cells": { "key": "user:7", "value": "{name: \"Ada\"}", "hits": "0" }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "steps": [
+    {
+      "id": "miss",
+      "title": "First read: a miss",
+      "text": "The cache is empty, so the service has to ask the database.",
+      "calls": [
+        {
+          "id": "get-1",
+          "label": "GET /user/7",
+          "from": "client",
+          "to": "service",
+          "text": "The service looks for user:7 in its cache and finds nothing.",
+          "effects": { "path": [{ "read": "get" }, { "read": "get.cached" }, { "read": "cached" }] }
+        },
+        {
+          "id": "select",
+          "label": "SELECT user 7",
+          "from": "service",
+          "to": "db",
+          "request": { "lang": "sql", "text": "SELECT name FROM users WHERE id = 7" },
+          "response": "{ name: \"Ada\" }",
+          "effects": { "path": [{ "read": "cached.query" }, { "read": "query" }] }
+        },
+        {
+          "id": "fill",
+          "label": "Store the row in the cache",
+          "text": "The row now exists in the cache. This call has no from and to, so it is not a message.",
+          "effects": {
+            "cache": [{ "add": "user-7" }],
+            "path": [{ "read": "query.fill" }, { "read": "fill" }]
+          }
+        },
+        {
+          "id": "reply-1",
+          "label": "200 OK",
+          "from": "service",
+          "to": "client",
+          "effects": { "path": [{ "read": "fill.reply" }, { "read": "reply" }] }
+        }
+      ]
+    },
+    {
+      "id": "hit",
+      "title": "Second read: a hit",
+      "calls": [
+        {
+          "id": "get-2",
+          "label": "GET /user/7",
+          "from": "client",
+          "to": "service",
+          "text": "This time the row is there. The database is not asked.",
+          "effects": {
+            "cache": [{ "update": "user-7", "fields": { "hits": "1" } }],
+            "path": [{ "read": "get" }, { "read": "cached" }, { "read": "cached.reply" }]
+          }
+        },
+        {
+          "id": "reply-2",
+          "label": "200 OK (from cache)",
+          "from": "service",
+          "to": "client",
+          "effects": {
+            "cache": [{ "read": "user-7", "cells": ["value"] }],
+            "path": [{ "read": "reply" }]
+          }
+        }
+      ]
+    }
+  ]
+}

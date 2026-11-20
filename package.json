@@ -1,10 +1,40 @@
 {
   "name": "feature-walkthrough",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "A configurable UI that shows step-by-step walkthroughs of a flow, driven by configuration.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xenolithe-labs/feature-walkthrough.git"
+  },
+  "homepage": "https://xenolithe-labs.github.io/feature-walkthrough/",
+  "keywords": [
+    "walkthrough",
+    "diagram",
+    "sequence-diagram",
+    "explainer",
+    "react"
+  ],
   "type": "module",
+  "bin": {
+    "feature-walkthrough": "dist/cli/index.js"
+  },
+  "main": "./dist/lib/index.js",
+  "types": "./dist/lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
+    },
+    "./style.css": "./dist/lib/style.css",
+    "./schema.json": "./schema/walkthrough.schema.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "skills"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
@@ -16,13 +46,16 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "schema": "tsx scripts/export-schema.ts",
-    "walkthrough": "tsx cli/index.ts"
+    "walkthrough": "tsx cli/index.ts",
+    "build:lib": "vite build -c vite.lib.config.ts && tsc -p tsconfig.build.json",
+    "build:cli": "vite build -c vite.cli.config.ts",
+    "build:all": "pnpm build && pnpm build:lib && pnpm build:cli",
+    "prepack": "pnpm build:all",
+    "skill": "tsx scripts/export-skill.ts"
   },
   "dependencies": {
     "@xyflow/react": "^13.0.2",
     "elkjs": "^0.12.1",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -37,6 +70,8 @@
     "fast-check": "^4.10.3",
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.73.0",
@@ -47,5 +82,9 @@
   "packageManager": "pnpm@11.1.2",
   "engines": {
     "node": ">=22"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

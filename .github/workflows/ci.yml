@@ -22,9 +22,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm test
-      - run: pnpm build
+      - run: pnpm build:all
       - name: Record the size of the single file
         run: |
-          echo "dist/index.html is $(wc -c < dist/index.html) bytes" >> "$GITHUB_STEP_SUMMARY"
+          echo "dist/viewer/index.html is $(wc -c < dist/viewer/index.html) bytes" >> "$GITHUB_STEP_SUMMARY"
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm e2e

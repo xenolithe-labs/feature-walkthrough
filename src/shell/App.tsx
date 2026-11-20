@@ -8,15 +8,24 @@ type Loaded =
   | { status: 'ready'; config: unknown }
   | { status: 'failed'; message: string };
 
+/** The name of the global the command line writes a config into. */
+export const INJECTED = '__FEATURE_WALKTHROUGH__';
+
 /**
- * Shows the bundled demos, or the JSON config named by `?src=<url>`.
+ * Shows, in order of preference: the JSON config named by `?src=<url>`, the
+ * config the command line wrote into the page, or the bundled demos.
  * Config text is always rendered as text, never as markup.
  */
 export function App() {
   const registry = useMemo(() => createRegistry(), []);
   const src = useMemo(() => new URLSearchParams(window.location.search).get('src'), []);
   const [loaded, setLoaded] = useState<Loaded>(() =>
-    src === null ? { status: 'ready', config: demos } : { status: 'loading' },
+    src === null
+      ? {
+          status: 'ready',
+          config: (window as unknown as Record<string, unknown>)[INJECTED] ?? demos,
+        }
+      : { status: 'loading' },
   );
 
   useEffect(() => {
