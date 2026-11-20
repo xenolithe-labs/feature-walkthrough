@@ -140,3 +140,27 @@ export const READABLE_ZOOM = 0.6;
 export function framing(zoomAll: number, touchedCount: number): 'all' | 'touched' {
   return zoomAll < READABLE_ZOOM && touchedCount > 0 ? 'touched' : 'all';
 }
+
+export interface FitChoice {
+  /** The nodes to frame; empty means every node. */
+  ids: string[];
+  minZoom: number;
+  maxZoom: number;
+}
+
+/**
+ * How to frame a diagram: every shown node, or, when that would be below a readable zoom,
+ * the nodes the call touches (with their neighbours) at a zoom of at least `READABLE_ZOOM`.
+ */
+export function chooseFit(
+  shown: readonly string[],
+  focus: readonly string[],
+  box: { width: number; height: number },
+  view: { width: number; height: number },
+  padding = 24,
+): FitChoice {
+  const whole: FitChoice = { ids: [...shown], minZoom: 0.2, maxZoom: 1.15 };
+  if (shown.length === 0 || focus.length === 0) return whole;
+  if (framing(fitZoom(box, view, padding, whole.maxZoom), focus.length) === 'all') return whole;
+  return { ids: [...focus], minZoom: READABLE_ZOOM, maxZoom: 1 };
+}

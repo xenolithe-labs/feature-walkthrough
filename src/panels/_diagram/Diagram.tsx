@@ -24,9 +24,7 @@ import '@xyflow/react/dist/style.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { markOf, type Selection, type Touched } from '../../core';
 import {
-  fitZoom,
-  framing,
-  READABLE_ZOOM,
+  chooseFit,
   layout,
   pinned,
   type Direction,
@@ -207,7 +205,7 @@ function Fit({
   touched: string;
 }) {
   const { fitView, getNodes, getNodesBounds } = useReactFlow();
-  const ready = useNodesInitialized();
+  const ready = useNodesInitialized({ includeHiddenNodes: true });
   const first = useRef(true);
   const [size, setSize] = useState(0);
 
@@ -224,25 +222,21 @@ function Fit({
 
   useEffect(() => {
     if (!ready) return;
-    let ids = shown === '' ? [] : shown.split('\n');
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // A big diagram fitted whole is too small to read: follow the call instead.
+    const shownIds = shown === '' ? [] : shown.split('\n');
     const element = frame.current;
-    const focus = touched === '' ? [] : touched.split('\n');
-    let minZoom = 0.2;
-    if (element !== null && ids.length > 0 && focus.length > 0) {
-      const shownSet = new Set(ids);
+    let choice = chooseFit(shownIds, [], { width: 0, height: 0 }, { width: 0, height: 0 });
+    if (element !== null && shownIds.length > 0) {
+      // A big diagram fitted whole is too small to read: follow the call instead.
+      const shownSet = new Set(shownIds);
       const bounds = getNodesBounds(getNodes().filter((node) => shownSet.has(node.id)));
-      const zoom = fitZoom(bounds, element.getBoundingClientRect(), 24, 1.15);
-      if (framing(zoom, focus.length) === 'touched') {
-        ids = focus;
-        minZoom = READABLE_ZOOM;
-      }
+      const focus = touched === '' ? [] : touched.split('\n');
+      choice = chooseFit(shownIds, focus, bounds, element.getBoundingClientRect());
     }
     void fitView({
-      ...(ids.length > 0 ? { nodes: ids.map((id) => ({ id })) } : {}),
-      maxZoom: 1.15,
-      minZoom,
+      ...(choice.ids.length > 0 ? { nodes: choice.ids.map((id) => ({ id })) } : {}),
+      maxZoom: choice.maxZoom,
+      minZoom: choice.minZoom,
       padding: '24px',
       duration: first.current || still ? 0 : 250,
     });
@@ -301,7 +295,7 @@ export function Diagram({
     .filter((node) => shownIds.has(node.id))
     .map((node) => node.id)
     .join('\n');
-  // The nodes the call touches, and the ends of the edges it touches.
+  // The nodes the call touches, the ends of the edges it touches, and the shown nodes next to them.
   const touchedNodes = useMemo(() => {
     const ids = new Set<string>();
     const marks = [...current.added, ...current.updated, ...current.read, ...current.removed];
@@ -316,8 +310,14 @@ export function Diagram({
         ids.add(edge.target);
       }
     }
+    const around = new Set(ids);
+    for (const edge of edges) {
+      if (!shownIds.has(edge.source) || !shownIds.has(edge.target)) continue;
+      if (ids.has(edge.source)) around.add(edge.target);
+      if (ids.has(edge.target)) around.add(edge.source);
+    }
     return nodes
-      .filter((node) => ids.has(node.id))
+      .filter((node) => around.has(node.id))
       .map((node) => node.id)
       .join('\n');
   }, [nodes, edges, current, shownIds]);

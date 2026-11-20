@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { createFolder, loadConfig, type PanelContext } from '../../src/core';
 import {
+  chooseFit,
   estimateSize,
   fitZoom,
   framing,
@@ -148,6 +149,32 @@ describe('framing a big diagram', () => {
     expect(framing(READABLE_ZOOM - 0.01, 3)).toBe('touched');
     // Nothing touched: there is nothing to follow, so show the whole.
     expect(framing(0.2, 0)).toBe('all');
+  });
+});
+
+describe('choosing what a diagram frames', () => {
+  const view = { width: 800, height: 520 };
+  const shown = ['a', 'b', 'c', 'd'];
+
+  it('frames everything when it fits at a readable zoom', () => {
+    expect(chooseFit(shown, ['b'], { width: 600, height: 400 }, view)).toEqual({
+      ids: shown,
+      minZoom: 0.2,
+      maxZoom: 1.15,
+    });
+  });
+
+  it('frames what the call touches when the whole would be too small', () => {
+    expect(chooseFit(shown, ['b', 'c'], { width: 700, height: 2000 }, view)).toEqual({
+      ids: ['b', 'c'],
+      minZoom: READABLE_ZOOM,
+      maxZoom: 1,
+    });
+  });
+
+  it('frames everything when the call touches nothing in this diagram', () => {
+    expect(chooseFit(shown, [], { width: 700, height: 2000 }, view).ids).toEqual(shown);
+    expect(chooseFit([], [], { width: 0, height: 0 }, view).ids).toEqual([]);
   });
 });
 
