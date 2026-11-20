@@ -234,3 +234,176 @@
 .fw-diagram path.fw-edge-hit {
   fill: none;
 }
+
+/* A label sits on an opaque pill, so it never lies on a line. */
+.fw-edge-pill {
+  fill: var(--fw-surface);
+  stroke: var(--fw-border);
+  stroke-width: 1;
+}
+
+.fw-diagram .react-flow__edge.is-selected .fw-edge-pill {
+  stroke: var(--fw-select);
+}
+
+/* Accent colours: a named ring. The pane's `accents` map names each one beside the diagram. */
+.fw-diagram {
+  --fw-accent-red: #c2413a;
+  --fw-accent-amber: #b7791f;
+  --fw-accent-violet: #7c4dcc;
+  --fw-accent-blue: #2f6fd0;
+  --fw-accent-teal: #1b8a7a;
+  position: relative;
+}
+
+:root[data-theme='dark'] .fw-diagram {
+  --fw-accent-red: #f0645c;
+  --fw-accent-amber: #e6a23c;
+  --fw-accent-violet: #a98af0;
+  --fw-accent-blue: #6aa2f5;
+  --fw-accent-teal: #4cc2ae;
+}
+
+.fw-node[data-accent='red'],
+.fw-legend [data-accent='red'] {
+  --node-border: var(--fw-accent-red);
+  --swatch: var(--fw-accent-red);
+}
+.fw-node[data-accent='amber'],
+.fw-legend [data-accent='amber'] {
+  --node-border: var(--fw-accent-amber);
+  --swatch: var(--fw-accent-amber);
+}
+.fw-node[data-accent='violet'],
+.fw-legend [data-accent='violet'] {
+  --node-border: var(--fw-accent-violet);
+  --swatch: var(--fw-accent-violet);
+}
+.fw-node[data-accent='blue'],
+.fw-legend [data-accent='blue'] {
+  --node-border: var(--fw-accent-blue);
+  --swatch: var(--fw-accent-blue);
+}
+.fw-node[data-accent='teal'],
+.fw-legend [data-accent='teal'] {
+  --node-border: var(--fw-accent-teal);
+  --swatch: var(--fw-accent-teal);
+}
+
+.fw-legend {
+  position: absolute;
+  z-index: 5;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 0;
+  padding: 4px 8px;
+  max-width: calc(100% - 64px);
+  list-style: none;
+  border: 1px solid var(--fw-border);
+  border-radius: 6px;
+  background: var(--fw-surface);
+  color: var(--fw-text);
+  font:
+    11px system-ui,
+    sans-serif;
+}
+
+.fw-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fw-legend-dot {
+  width: 10px;
+  height: 10px;
+  border: 2.5px solid var(--swatch);
+  border-radius: 50%;
+}
+
+/* A small count on the corner of a node. */
+.fw-badge {
+  position: absolute;
+  top: -7px;
+  right: -9px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--node-border);
+  color: var(--fw-surface);
+  font:
+    700 10.5px/18px system-ui,
+    sans-serif;
+  text-align: center;
+}
+
+/* A disc with an icon in it and its label underneath: the node is the disc, not the box around it. */
+.fw-node.fw-circle {
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.fw-disc {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: var(--node-width) var(--node-style) var(--node-border);
+  border-radius: 50%;
+  background: var(--node-bg);
+}
+
+.fw-disc .fw-icon {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+
+.fw-disc-more {
+  font: 700 14px var(--fw-mono);
+  color: var(--fw-muted);
+}
+
+.fw-node.fw-circle[data-more] {
+  --node-style: dashed;
+}
+
+.fw-circle-label,
+.fw-circle-sub {
+  max-width: 100%;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.fw-circle-label {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font: 600 11.5px/1.25 var(--fw-mono);
+}
+
+.fw-circle-sub {
+  color: var(--fw-muted);
+  font-size: 10.5px;
+}
+
+.fw-diagram .react-flow__node.is-selected .fw-node.fw-circle {
+  outline: 0;
+}
+
+.fw-diagram .react-flow__node.is-selected .fw-circle .fw-disc {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 2px;
+}

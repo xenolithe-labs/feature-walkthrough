@@ -1,6 +1,6 @@
 /**
  * The base for every node-and-edge panel. It owns what they share: stable
- * positions, the added / updated / read / removed / faded / selected classes,
+ * positions and routes, the added / updated / read / removed / faded / selected classes,
  * fitting the view, and click-to-select. A panel supplies its nodes, its
  * edges and, when it wants, its own node and edge components.
  */
@@ -30,13 +30,28 @@ import { IconGlyph } from './IconGlyph';
 import type { ResolvedIcon } from './icons';
 import {
   chooseFit,
-  layout,
+  layoutFull,
   pinned,
   type Direction,
+  type Layout,
   type LayoutMode,
   type LayoutNode,
-  type Positions,
+  type LayoutOptions,
+  type Routing,
 } from './layout';
+import type { Side } from './ortho';
+import {
+  exitPoint as routeExitPoint,
+  headPoints,
+  labelSize,
+  pathOf,
+  pointAlong,
+  withHead,
+  type Point,
+  type Route,
+  type RouteStyle,
+} from './route';
+import { DISC, type Shape } from './shape';
 import './diagram.css';
 
 export interface DiagramNode extends LayoutNode {
@@ -51,6 +66,14 @@ export interface DiagramNode extends LayoutNode {
   /** Drawn as a trust boundary or network zone (only meaningful for a node that holds others). */
   boundary?: boolean | undefined;
   icon?: ResolvedIcon | undefined;
+  /** What the node is drawn as: a box (the default), a disc with its label beneath, or a pill. */
+  shape?: Shape | undefined;
+  /** A small count on the corner of the node. */
+  badge?: string | number | undefined;
+  /** A named ring colour; the pane's `accents` say what each one means. */
+  accent?: string | undefined;
+  /** Stands for this many collapsed children. */
+  more?: number | undefined;
   /** Extra data for a custom node component, merged into the node's data. */
   data?: Record<string, unknown>;
 }
@@ -69,6 +92,11 @@ export interface DiagramEdge {
   weight?: number | undefined;
   /** The boundary groups this edge crosses, derived from where its ends sit. */
   crosses?: readonly string[] | undefined;
+  /** How this edge is drawn, instead of the pane's way. */
+  routing?: Routing | undefined;
+  /** The sides of its nodes the edge must leave and arrive by. */
+  fromSide?: Side | undefined;
+  toSide?: Side | undefined;
   /** Extra data for a custom edge component, merged into the edge's data. */
   data?: Record<string, unknown>;
 }
@@ -79,16 +107,49 @@ type BoxData = {
   tone?: string | undefined;
   kind?: string | undefined;
   icon?: ResolvedIcon | undefined;
+  shape?: Shape | undefined;
+  badge?: string | number | undefined;
+  accent?: string | undefined;
+  more?: number | undefined;
 };
 
-/** A labelled box. Its handles are invisible: floating edges do not use them. */
+/** A labelled box, or a disc with its label beneath it. Its handles are invisible: floating edges do not use them. */
 const BoxNode = memo(function BoxNode({ data }: NodeProps<Node<BoxData>>) {
+  if (data.shape === 'circle') {
+    return (
+      <div
+        className="fw-node fw-circle"
+        data-tone={data.tone}
+        data-accent={data.accent}
+        data-more={data.more === undefined ? undefined : ''}
+      >
+        <Handle type="target" position={Position.Top} isConnectable={false} />
+        <div className="fw-disc" style={{ width: DISC, height: DISC }}>
+          {data.more !== undefined ? (
+            <span className="fw-disc-more">+{data.more}</span>
+          ) : (
+            data.icon !== undefined && <IconGlyph icon={data.icon} />
+          )}
+          {data.badge !== undefined && <span className="fw-badge">{data.badge}</span>}
+        </div>
+        <span className="fw-circle-label">{data.label}</span>
+        {data.sub !== undefined && <span className="fw-circle-sub">{data.sub}</span>}
+        <Handle type="source" position={Position.Bottom} isConnectable={false} />
+      </div>
+    );
+  }
   return (
-    <div className="fw-node" data-tone={data.tone} data-kind={data.kind}>
+    <div
+      className="fw-node"
+      data-tone={data.tone}
+      data-kind={data.kind ?? (data.shape === 'pill' ? 'terminal' : undefined)}
+      data-accent={data.accent}
+    >
       <Handle type="target" position={Position.Top} isConnectable={false} />
       {data.icon !== undefined && <IconGlyph icon={data.icon} />}
       <span className="fw-node-label">{data.label}</span>
       {data.sub !== undefined && <span className="fw-node-sub">{data.sub}</span>}
+      {data.badge !== undefined && <span className="fw-badge">{data.badge}</span>}
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
     </div>
   );
@@ -102,18 +163,7 @@ export interface Box {
 }
 
 /** Where the line from this box's centre towards a point leaves the box. */
-export function exitPoint(box: Box, towards: { x: number; y: number }): { x: number; y: number } {
-  const cx = box.x + box.width / 2;
-  const cy = box.y + box.height / 2;
-  const dx = towards.x - cx;
-  const dy = towards.y - cy;
-  if (dx === 0 && dy === 0) return { x: cx, y: cy };
-  const scale = Math.min(
-    dx === 0 ? Infinity : box.width / 2 / Math.abs(dx),
-    dy === 0 ? Infinity : box.height / 2 / Math.abs(dy),
-  );
-  return { x: cx + dx * scale, y: cy + dy * scale };
-}
+export const exitPoint = routeExitPoint;
 
 function boxOf(node: ReturnType<typeof useInternalNode>): Box | undefined {
   if (node === undefined) return undefined;
@@ -121,6 +171,32 @@ function boxOf(node: ReturnType<typeof useInternalNode>): Box | undefined {
   const height = node.measured.height ?? node.height;
   if (width === undefined || height === undefined) return undefined;
   return { ...node.internals.positionAbsolute, width, height };
+}
+
+/** A label on an opaque pill, so it never sits on a line. `at` is the centre. */
+function LabelPill({ text, at }: { text: string; at: Point }) {
+  const size = labelSize(text);
+  return (
+    <g className="fw-edge-labelbox">
+      <rect
+        className="fw-edge-pill"
+        x={at.x - size.width / 2}
+        y={at.y - size.height / 2}
+        width={size.width}
+        height={size.height}
+        rx={size.height / 2}
+      />
+      <text
+        className="fw-edge-label"
+        x={at.x}
+        y={at.y}
+        textAnchor="middle"
+        dominantBaseline="central"
+      >
+        {text}
+      </text>
+    </g>
+  );
 }
 
 /** A loop from a box back to itself, drawn off its right-hand side. */
@@ -144,21 +220,34 @@ function SelfLoop({ box, label, lane }: { box: Box; label: unknown; lane: number
         points={`${x},${bottom} ${x + 10},${bottom - 4.5} ${x + 10},${bottom + 4.5}`}
       />
       {typeof label === 'string' && label !== '' && (
-        <text
-          className="fw-edge-label"
-          x={x + out * 0.75 + 4}
-          y={(top + bottom) / 2}
-          textAnchor="start"
-          dominantBaseline="central"
-        >
-          {label}
-        </text>
+        <LabelPill
+          text={label}
+          at={{ x: x + out * 0.75 + 4 + labelSize(label).width / 2, y: (top + bottom) / 2 }}
+        />
       )}
     </>
   );
 }
 
-/** A straight edge between the borders of two boxes, wherever they are. */
+/** What a routed edge is drawn from: its points, how they are joined, where its label goes. */
+function routedFrom(data: EdgeProps['data']): Route | undefined {
+  const route = data?.route as Route | undefined;
+  if (route === undefined || route.points.length < 2) return undefined;
+  const routing = data?.routing as Routing | undefined;
+  if (routing === 'straight') return undefined;
+  const style: RouteStyle =
+    route.style === 'bezier' || routing === undefined
+      ? route.style
+      : routing === 'curved'
+        ? 'curved'
+        : 'orthogonal';
+  return { ...route, style };
+}
+
+/**
+ * An edge between two boxes: along the route the layout found when there is one, else a straight
+ * line between the borders of the boxes, wherever they are.
+ */
 const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }: EdgeProps) {
   const from = boxOf(useInternalNode(source));
   const to = boxOf(useInternalNode(target));
@@ -166,6 +255,55 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
   // Which of several edges between the same two boxes, in the same direction, this one is.
   const lane = typeof data?.lane === 'number' ? data.lane : 0;
   if (source === target) return <SelfLoop box={from} label={label} lane={lane} />;
+
+  // A wide edge gets a bigger head.
+  const weight = typeof data?.weight === 'number' ? data.weight : undefined;
+  const grow = Math.max(0, (weight ?? 0) - 3) * 0.6;
+  const crosses = Array.isArray(data?.crosses) ? (data.crosses as string[]) : undefined;
+  const lineStyle =
+    weight === undefined ? undefined : ({ '--fw-w': `${weight}px` } as React.CSSProperties);
+  const route = routedFrom(data);
+  const text = typeof label === 'string' && label !== '' ? label : undefined;
+
+  if (route !== undefined) {
+    const headed = withHead(route.points, 10 + grow * 2);
+    if (headed === undefined) return null;
+    const style = route.style;
+    return (
+      <>
+        <path className="fw-edge-hit" d={pathOf(route.points, style)} />
+        <path
+          className="fw-edge-line"
+          d={pathOf(headed.line, style)}
+          data-weight={weight}
+          data-crosses={crosses?.join(' ')}
+          data-route={style}
+          style={lineStyle}
+        />
+        <polygon className="fw-edge-head" points={headPoints(headed.head, grow)} />
+        {text !== undefined && (
+          <LabelPill
+            text={text}
+            at={
+              route.label === undefined
+                ? pointAlong(route.points, 0.5)
+                : {
+                    x: route.label.x + route.label.width / 2,
+                    y: route.label.y + route.label.height / 2,
+                  }
+            }
+          />
+        )}
+        <EdgeExtras
+          points={route.points}
+          style={style}
+          crosses={crosses}
+          pulse={typeof data?.pulse === 'string' ? data.pulse : undefined}
+          reverse={data?.reverse === true}
+        />
+      </>
+    );
+  }
 
   const a = exitPoint(from, { x: to.x + to.width / 2, y: to.y + to.height / 2 });
   const b = exitPoint(to, { x: from.x + from.width / 2, y: from.y + from.height / 2 });
@@ -179,16 +317,8 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
   const side = SIDE + lane * 11;
   const start = { x: a.x - uy * side, y: a.y + ux * side };
   const end = { x: b.x - uy * side, y: b.y + ux * side };
-  // A wide edge gets a bigger head.
-  const weight = typeof data?.weight === 'number' ? data.weight : undefined;
-  const grow = Math.max(0, (weight ?? 0) - 3) * 0.6;
   const base = { x: end.x - ux * (10 + grow * 2), y: end.y - uy * (10 + grow * 2) };
-  const head = [
-    `${end.x},${end.y}`,
-    `${base.x - uy * (4.5 + grow)},${base.y + ux * (4.5 + grow)}`,
-    `${base.x + uy * (4.5 + grow)},${base.y - ux * (4.5 + grow)}`,
-  ].join(' ');
-  const crosses = Array.isArray(data?.crosses) ? (data.crosses as string[]) : undefined;
+  const head = headPoints({ tip: end, ux, uy }, grow);
 
   return (
     <>
@@ -201,25 +331,16 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
         y2={base.y}
         data-weight={weight}
         data-crosses={crosses?.join(' ')}
-        style={
-          weight === undefined ? undefined : ({ '--fw-w': `${weight}px` } as React.CSSProperties)
-        }
+        data-route="straight"
+        style={lineStyle}
       />
       <polygon className="fw-edge-head" points={head} />
-      {typeof label === 'string' && label !== '' && (
-        <text
-          className="fw-edge-label"
-          x={(start.x + end.x) / 2}
-          y={(start.y + end.y) / 2}
-          textAnchor="middle"
-          dominantBaseline="central"
-        >
-          {label}
-        </text>
+      {text !== undefined && (
+        <LabelPill text={text} at={{ x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 }} />
       )}
       <EdgeExtras
-        from={start}
-        to={end}
+        points={[start, end]}
+        style="straight"
         crosses={crosses}
         pulse={typeof data?.pulse === 'string' ? data.pulse : undefined}
         reverse={data?.reverse === true}
@@ -233,84 +354,84 @@ const SIDE = 5;
 const BASE_NODE_TYPES: NodeTypes = { box: BoxNode, container: GroupNode };
 const BASE_EDGE_TYPES: EdgeTypes = { floating: FloatingEdge };
 
+/** What layout reads of a node: nothing a call can change. */
+const layoutNode = (node: DiagramNode): LayoutNode => ({
+  id: node.id,
+  width: node.width,
+  height: node.height,
+  x: node.x,
+  y: node.y,
+  parent: node.parent,
+  parents: node.parents,
+  slots: node.slots,
+  rank: node.rank,
+  cell: node.cell,
+  span: node.span,
+  rightOf: node.rightOf,
+  below: node.below,
+  alignWith: node.alignWith,
+  side: node.side,
+  disc: node.disc,
+});
+
 /**
- * Positions depend only on ids, sizes, pins and edges. What a node says can
- * change from call to call without starting a new layout.
+ * Positions and routes depend only on ids, sizes, hints, pins and edges. What a node says can
+ * change from call to call without starting a new layout. The input goes through JSON so that
+ * the key and what is laid out cannot differ, whatever fields a hint adds.
  */
-function usePositions(
+function useLayout(
   nodes: readonly DiagramNode[],
   edges: readonly DiagramEdge[],
   direction: Direction,
   mode: LayoutMode,
-): Positions | undefined {
-  const key = JSON.stringify([
+  options: LayoutOptions,
+): Layout | undefined {
+  const key = JSON.stringify({
     direction,
-    nodes.map(({ id, width, height, x, y, parent, parents, slots }) => [
-      id,
-      width,
-      height,
-      x ?? null,
-      y ?? null,
-      parent ?? null,
-      parents ?? null,
-      slots ?? null,
-    ]),
-    edges.map(({ id, source, target, slot, tree }) => [
+    mode,
+    options,
+    nodes: nodes.map(layoutNode),
+    edges: edges.map(({ id, source, target, slot, tree, label, fromSide, toSide }) => ({
       id,
       source,
       target,
-      slot ?? null,
-      tree ?? null,
-    ]),
-    mode,
-  ]);
-  const [resolved, setResolved] = useState<{ key: string; positions: Positions } | undefined>();
+      slot,
+      tree,
+      label,
+      fromSide,
+      toSide,
+    })),
+  });
+  const [resolved, setResolved] = useState<{ key: string; layout: Layout } | undefined>();
 
   useEffect(() => {
     let cancelled = false;
-    const [, sizes, links] = JSON.parse(key) as [
-      Direction,
-      [
-        string,
-        number,
-        number,
-        number | null,
-        number | null,
-        string | null,
-        string[] | null,
-        string[] | null,
-      ][],
-      [string, string, string, string | null, boolean | null][],
-    ];
-    void layout(
-      sizes.map(([id, width, height, x, y, parent, parents, slots]) => ({
-        id,
-        width,
-        height,
-        x: x ?? undefined,
-        y: y ?? undefined,
-        parent: parent ?? undefined,
-        parents: parents ?? undefined,
-        slots: slots ?? undefined,
-      })),
-      links.map(([id, source, target, slot, tree]) => ({
-        id,
-        source,
-        target,
-        slot: slot ?? undefined,
-        tree: tree ?? undefined,
-      })),
-      direction,
-      mode,
-    ).then((positions) => {
-      if (!cancelled) setResolved({ key, positions });
-    });
+    const input = JSON.parse(key) as {
+      direction: Direction;
+      mode: LayoutMode;
+      options: LayoutOptions;
+      nodes: LayoutNode[];
+      edges: Parameters<typeof layoutFull>[1][number][];
+    };
+    void layoutFull(input.nodes, input.edges, input.direction, input.mode, input.options).then(
+      (result) => {
+        if (!cancelled) setResolved({ key, layout: result });
+      },
+    );
     return () => {
       cancelled = true;
     };
-  }, [key, direction, mode]);
+  }, [key]);
 
-  return resolved?.key === key ? resolved.positions : pinned(nodes);
+  const fixed = useMemo(() => {
+    const positions = pinned(nodes);
+    return positions === undefined
+      ? undefined
+      : ({ positions, routes: {}, kind: 'pinned', notes: [] } satisfies Layout);
+    // `nodes` change identity on every call: the pins are what matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return resolved?.key === key ? resolved.layout : fixed;
 }
 
 /**
@@ -379,8 +500,12 @@ export interface DiagramProps {
   selection: Selection;
   theme: 'light' | 'dark';
   direction?: Direction;
-  /** How nodes are placed: layered (the default) or as a tree. */
+  /** How nodes are placed: layered (the default), as a tree, or around a hub. */
   layout?: LayoutMode;
+  /** How lines are routed and how much room the layout leaves. */
+  options?: LayoutOptions;
+  /** What each accent colour means, by name: shown beside the diagram, so a colour never stands alone. */
+  accents?: Readonly<Record<string, string>> | undefined;
   label: string;
   nodeTypes?: NodeTypes;
   edgeTypes?: EdgeTypes;
@@ -411,13 +536,17 @@ export function Diagram({
   theme,
   direction = 'RIGHT',
   layout: mode = 'layered',
+  options,
+  accents,
   label,
   nodeTypes,
   edgeTypes,
   call,
   reversed,
 }: DiagramProps) {
-  const positions = usePositions(nodes, edges, direction, mode);
+  const settings = useMemo(() => options ?? {}, [options]);
+  const drawn = useLayout(nodes, edges, direction, mode, settings);
+  const positions = drawn?.positions;
   const frame = useRef<HTMLDivElement | null>(null);
   const allNodeTypes = useMemo(() => ({ ...BASE_NODE_TYPES, ...nodeTypes }), [nodeTypes]);
   const allEdgeTypes = useMemo(() => ({ ...BASE_EDGE_TYPES, ...edgeTypes }), [edgeTypes]);
@@ -505,6 +634,10 @@ export function Diagram({
         kind: node.kind,
         boundary: node.boundary,
         icon: node.icon,
+        shape: node.shape,
+        badge: node.badge,
+        accent: node.accent,
+        more: node.more,
         ...node.data,
       };
       return {
@@ -517,25 +650,38 @@ export function Diagram({
         className:
           classOf(node.id, shownIds.has(node.id), current, selection.id, groups.lit.has(node.id)) +
           (node.parents === undefined ? '' : ' is-movable'),
-        ariaLabel: isGroup ? `${node.label} (group)` : node.label,
+        ariaLabel: isGroup
+          ? `${node.label} (group)`
+          : node.accent !== undefined && accents?.[node.accent] !== undefined
+            ? `${node.label} (${accents[node.accent]})`
+            : node.label,
       } satisfies Node;
     });
     // React Flow processes a parent before its children.
     return parentFirst(placed, groups.parent);
-  }, [positions, nodes, groups, shownIds, current, selection.id]);
+  }, [positions, nodes, groups, shownIds, current, selection.id, accents]);
 
   const flowEdges = useMemo<Edge[]>(() => {
     // Edges that join the same two nodes in the same direction are counted, so each gets
     // its own line instead of being drawn on top of the others.
     const lanes = new Map<string, number>();
+    const routes = drawn?.routes ?? {};
+    const straight = options?.routing === 'straight';
     return edges.map((edge) => {
       const pair = JSON.stringify([edge.source, edge.target]);
       const lane = lanes.get(pair) ?? 0;
       lanes.set(pair, lane + 1);
       // An edge shows only while both of its ends do.
       const shown = shownIds.has(edge.id) && shownIds.has(edge.source) && shownIds.has(edge.target);
+      // A route was found for the places the ends started in: after a move it no longer fits.
+      const moved = [edge.source, edge.target].some(
+        (id) => groups.parent.get(id) !== groups.home.get(id),
+      );
+      const wanted = edge.routing ?? (straight ? 'straight' : undefined);
       return {
         data: {
+          route: moved || wanted === 'straight' ? undefined : routes[edge.id],
+          routing: wanted,
           lane,
           weight: edge.weight,
           crosses: edge.crosses,
@@ -551,7 +697,7 @@ export function Diagram({
         className: classOf(edge.id, shown, current, selection.id),
       };
     });
-  }, [edges, shownIds, current, selection.id, call, reversed]);
+  }, [edges, shownIds, current, selection.id, call, reversed, drawn, options, groups]);
 
   const toggle = (id: string) => selection.select(selection.id === id ? undefined : id);
 
@@ -586,6 +732,16 @@ export function Diagram({
             <Fit frame={frame} shown={shownNodes} touched={touchedNodes} />
           </ReactFlow>
         </ReactFlowProvider>
+      )}
+      {accents !== undefined && Object.keys(accents).length > 0 && (
+        <ul className="fw-legend" aria-label="Colour key">
+          {Object.entries(accents).map(([name, meaning]) => (
+            <li key={name} data-accent={name}>
+              <span className="fw-legend-dot" aria-hidden="true" />
+              {meaning}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
