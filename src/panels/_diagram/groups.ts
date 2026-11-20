@@ -10,7 +10,6 @@
  * reserved positions are returned under the key `<node id>:<parent id>`; a colon cannot occur in
  * an author's id.
  */
-import type { ElkNode } from 'elkjs/lib/elk-api';
 import type { Direction, LayoutEdge, LayoutNode, Positions } from './layout';
 
 /** Room inside a group for its label above, and a margin around what it holds. */
@@ -176,7 +175,7 @@ export function crossingPoint(
   return { x: a.x + dx * t, y: a.y + dy * t };
 }
 
-interface Item {
+export interface Item {
   id: string;
   width: number;
   height: number;
@@ -184,18 +183,20 @@ interface Item {
   y?: number | undefined;
   /** A reserved position, not a node. */
   reserved: boolean;
+  /** The node, for the hints it carries. */
+  node?: LayoutNode | undefined;
 }
 
-const TOP = '';
+export const TOP = '';
 
-interface Tree {
+export interface Tree {
   kids: Map<string, Item[]>;
   parent: Map<string, string>;
   /** The edges that can be laid out: between known nodes, and not between a group and its own contents. */
   edges: LayoutEdge[];
 }
 
-function buildTree(nodes: readonly LayoutNode[], edges: readonly LayoutEdge[]): Tree {
+export function buildTree(nodes: readonly LayoutNode[], edges: readonly LayoutEdge[]): Tree {
   const parent = parentMap(nodes);
   const ids = new Set(nodes.map((node) => node.id));
   const kids = new Map<string, Item[]>();
@@ -212,6 +213,7 @@ function buildTree(nodes: readonly LayoutNode[], edges: readonly LayoutEdge[]): 
       x: node.x,
       y: node.y,
       reserved: false,
+      node,
     });
   }
   for (const node of nodes) {
@@ -285,6 +287,15 @@ export function pinnedGroups(nodes: readonly LayoutNode[]): Positions | undefine
   return positions;
 }
 
+/** The hints a flat layout may read from a node: where it asks to be on the grid. */
+const placement = (node: LayoutNode) => ({
+  cell: node.cell,
+  span: node.span,
+  rightOf: node.rightOf,
+  below: node.below,
+  alignWith: node.alignWith,
+});
+
 export type FlatLayout = (
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
@@ -326,7 +337,12 @@ export function layeredGroups(
       }
     }
     const at = flat(
-      items.map(({ id, width, height }) => ({ id, width, height })),
+      items.map(({ id, width, height, node }) => ({
+        ...(node === undefined ? {} : placement(node)),
+        id,
+        width,
+        height,
+      })),
       links,
       direction,
     );
@@ -347,90 +363,6 @@ export function layeredGroups(
   };
   place(TOP, { width: 0, height: 0 });
   return positions;
-}
-
-/**
- * ELK over every level in one run (`INCLUDE_CHILDREN`), so that edges between groups are routed
- * with the whole hierarchy in view.
- */
-export async function layoutGroups(
-  nodes: readonly LayoutNode[],
-  edges: readonly LayoutEdge[],
-  direction: Direction,
-): Promise<Positions> {
-  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
-  const tree = buildTree(nodes, edges);
-  // ELK applies a minimum size to the layout's own axes, so a downward layout takes it turned.
-  const down = direction === 'DOWN';
-  const toElk = (item: Item): ElkNode => {
-    const held = tree.kids.get(item.id);
-    if (held === undefined) return { id: item.id, width: item.width, height: item.height };
-    return {
-      id: item.id,
-      layoutOptions: {
-        'elk.padding': `[top=${GROUP_PAD.top},left=${GROUP_PAD.side},bottom=${GROUP_PAD.bottom},right=${GROUP_PAD.side}]`,
-        'elk.nodeSize.constraints': 'MINIMUM_SIZE',
-        'elk.nodeSize.minimum': down
-          ? `(${item.height},${item.width})`
-          : `(${item.width},${item.height})`,
-      },
-      children: held.map(toElk),
-    };
-  };
-  const graph = await new ELK().layout({
-    id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': direction,
-      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-      'elk.spacing.nodeNode': '28',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '48',
-      'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
-    },
-    children: (tree.kids.get(TOP) ?? []).map(toElk),
-    edges: tree.edges.map((edge) => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target],
-    })),
-  });
-  const positions: Positions = {};
-  const walk = (node: ElkNode) => {
-    for (const child of node.children ?? []) {
-      positions[child.id] = { x: child.x ?? 0, y: child.y ?? 0 };
-      if (child.children !== undefined) {
-        positions[child.id] = {
-          ...positions[child.id]!,
-          width: child.width ?? 0,
-          height: child.height ?? 0,
-        };
-        walk(child);
-      }
-    }
-  };
-  walk(graph);
-  return positions;
-}
-
-export interface GroupLayoutOptions {
-  /** More edges than ELK handles in time: use the fast layering. */
-  dense: boolean;
-  flat: FlatLayout;
-}
-
-/** A layout for nodes that have parents. Falls back to the fast layering if ELK fails. */
-export async function layoutWithGroups(
-  nodes: readonly LayoutNode[],
-  edges: readonly LayoutEdge[],
-  direction: Direction,
-  options: GroupLayoutOptions,
-): Promise<Positions> {
-  if (options.dense) return layeredGroups(nodes, edges, direction, options.flat);
-  try {
-    return await layoutGroups(nodes, edges, direction);
-  } catch {
-    return layeredGroups(nodes, edges, direction, options.flat);
-  }
 }
 
 /**

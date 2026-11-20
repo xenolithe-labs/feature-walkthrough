@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { plainDemos } from '../../src/walkthroughs';
 import { runCheck, type CheckArgs, type CheckDeps } from '../../cli/check';
 import { providers as shippedProviders } from '../../cli/providers';
 import { loadConfig } from '../../src/core';
@@ -214,8 +215,8 @@ describe('providers: the seam for layout findings', () => {
     message,
   });
 
-  it('none are registered yet, and the list is where they go', () => {
-    expect(shippedProviders).toEqual([]);
+  it('the diagram layout analysis is registered, and the list is where providers go', () => {
+    expect(shippedProviders.map((provider) => provider.id)).toEqual(['diagram-layout']);
   });
 
   it('a provider gets the resolved walkthrough; its problems become layout findings', async () => {
@@ -291,7 +292,7 @@ describe('buildResult and the schema', () => {
     const review = await reviewConfig('demos', demos, registry, { trace: true });
     const result = buildResult([review], { version: VERSION });
     expect(CheckResultSchema.parse(JSON.parse(JSON.stringify(result)))).toEqual(result);
-    expect(review.walkthroughs).toHaveLength(23);
+    expect(review.walkthroughs).toHaveLength(plainDemos.length);
     expect(review.walkthroughs.every((w) => w.status === 'checked')).toBe(true);
   });
 

@@ -68,8 +68,8 @@ export function treeParents(
   return parent;
 }
 
-function place(item: Item, gap = SIBLING_GAP): Sub {
-  const depthOne = item.children.map((child) => place(child));
+function place(item: Item, gap = SIBLING_GAP, sibling = SIBLING_GAP): Sub {
+  const depthOne = item.children.map((child) => place(child, sibling, sibling));
   const own = { left: -item.breadth / 2, right: item.breadth / 2 };
   const thick = [item.thickness];
   const at = new Map<string, number>();
@@ -114,12 +114,23 @@ function place(item: Item, gap = SIBLING_GAP): Sub {
   };
 }
 
+export interface TreeGaps {
+  /** Room between one level and the next. */
+  levelGap?: number;
+  /** Room between siblings. */
+  siblingGap?: number;
+  /** Room between separate trees. */
+  forestGap?: number;
+}
+
 /** Positions (top left corners) of every node, the same whatever is present at a call. */
 export function treeLayout(
   nodes: readonly LayoutNode[],
   edges: readonly LayoutEdge[],
   direction: Direction,
+  gaps: TreeGaps = {},
 ): Positions {
+  const levelGap = gaps.levelGap ?? LEVEL_GAP;
   const down = direction === 'DOWN';
   const order = new Map(nodes.map((node, index) => [node.id, index]));
   const byId = new Map(nodes.map((node) => [node.id, node]));
@@ -172,7 +183,11 @@ export function treeLayout(
   };
 
   const roots = nodes.filter((node) => !parents.has(node.id)).map(build);
-  const forest = place({ id: undefined, breadth: 0, thickness: 0, children: roots }, FOREST_GAP);
+  const forest = place(
+    { id: undefined, breadth: 0, thickness: 0, children: roots },
+    gaps.forestGap ?? FOREST_GAP,
+    gaps.siblingGap ?? SIBLING_GAP,
+  );
 
   // Levels line up across the forest: every node of a depth shares one band. The virtual root
   // above the forest is depth 0, so real depths start at 1.
@@ -181,7 +196,7 @@ export function treeLayout(
   let along = 0;
   for (let d = 1; d < thick.length; d += 1) {
     start[d] = along;
-    along += (thick[d] ?? 0) + LEVEL_GAP;
+    along += (thick[d] ?? 0) + levelGap;
   }
   const depthOf = new Map<string, number>();
   const walk = (item: Item, depth: number) => {

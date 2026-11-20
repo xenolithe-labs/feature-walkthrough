@@ -235,6 +235,86 @@ Effects on this panel take the shared verbs only.
           "icon": {
             "type": "string",
             "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["first", "last"]
+          },
+          "cell": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "span": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "rightOf": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "below": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "alignWith": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "side": {
+            "type": "string",
+            "enum": ["left", "right"]
+          },
+          "shape": {
+            "type": "string",
+            "enum": ["box", "circle", "pill"]
+          },
+          "badge": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "enum": ["red", "amber", "violet", "blue", "teal"]
+          },
+          "more": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9999
           }
         },
         "required": ["id", "label"],
@@ -272,6 +352,18 @@ Effects on this panel take the shared verbs only.
             "type": "number",
             "minimum": 0.5,
             "maximum": 12
+          },
+          "routing": {
+            "type": "string",
+            "enum": ["straight", "orthogonal", "curved"]
+          },
+          "fromSide": {
+            "type": "string",
+            "enum": ["top", "right", "bottom", "left"]
+          },
+          "toSide": {
+            "type": "string",
+            "enum": ["top", "right", "bottom", "left"]
           }
         },
         "required": ["from", "to"],
@@ -286,7 +378,30 @@ Effects on this panel take the shared verbs only.
     "layout": {
       "default": "layered",
       "type": "string",
-      "enum": ["layered", "tree"]
+      "enum": ["layered", "tree", "hub"]
+    },
+    "routing": {
+      "type": "string",
+      "enum": ["straight", "orthogonal", "curved"]
+    },
+    "spacing": {
+      "type": "string",
+      "enum": ["compact", "normal", "roomy"]
+    },
+    "order": {
+      "type": "string",
+      "enum": ["auto", "declared"]
+    },
+    "accents": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": ["red", "amber", "violet", "blue", "teal"]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "initial": {
       "default": false,
@@ -478,6 +593,86 @@ An effect on this panel takes the shared verbs plus these keys:
           "icon": {
             "type": "string",
             "minLength": 1
+          },
+          "rank": {
+            "type": "string",
+            "enum": ["first", "last"]
+          },
+          "cell": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 99
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "span": {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              },
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20
+              }
+            ],
+            "items": false,
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "rightOf": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "below": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "alignWith": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$"
+          },
+          "side": {
+            "type": "string",
+            "enum": ["left", "right"]
+          },
+          "shape": {
+            "type": "string",
+            "enum": ["box", "circle", "pill"]
+          },
+          "badge": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 8
+              },
+              {
+                "type": "number"
+              }
+            ]
+          },
+          "accent": {
+            "type": "string",
+            "enum": ["red", "amber", "violet", "blue", "teal"]
+          },
+          "more": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9999
           }
         },
         "required": ["id", "label"],
@@ -515,6 +710,18 @@ An effect on this panel takes the shared verbs plus these keys:
             "type": "number",
             "minimum": 0.5,
             "maximum": 12
+          },
+          "routing": {
+            "type": "string",
+            "enum": ["straight", "orthogonal", "curved"]
+          },
+          "fromSide": {
+            "type": "string",
+            "enum": ["top", "right", "bottom", "left"]
+          },
+          "toSide": {
+            "type": "string",
+            "enum": ["top", "right", "bottom", "left"]
           }
         },
         "required": ["from", "to"],
@@ -529,7 +736,30 @@ An effect on this panel takes the shared verbs plus these keys:
     "layout": {
       "default": "layered",
       "type": "string",
-      "enum": ["layered", "tree"]
+      "enum": ["layered", "tree", "hub"]
+    },
+    "routing": {
+      "type": "string",
+      "enum": ["straight", "orthogonal", "curved"]
+    },
+    "spacing": {
+      "type": "string",
+      "enum": ["compact", "normal", "roomy"]
+    },
+    "order": {
+      "type": "string",
+      "enum": ["auto", "declared"]
+    },
+    "accents": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": ["red", "amber", "violet", "blue", "teal"]
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
     },
     "initial": {
       "default": true,

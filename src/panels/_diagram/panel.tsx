@@ -20,9 +20,9 @@ import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
 import { describeDiagram } from './describe';
-import { containerIds, groupMinSize } from './groups';
-import { ICON_BAND, resolveIcon } from './icons';
-import { estimateSize, type Direction } from './layout';
+import { resolveIcon } from './icons';
+import { edgeIdOf, isDisc, layoutNodesOf, layoutOptionsOf, sizesOf } from './input';
+import type { Direction } from './layout';
 import {
   DiagramEffect,
   allowedFields,
@@ -30,9 +30,12 @@ import {
   crossingsAt,
   edgeFields,
   groupProblems,
+  hintProblems,
   iconsField,
   judgeField,
+  layoutHintFields,
   nodeFields,
+  placeFields,
   placesNow,
   weightOf,
 } from './model';
@@ -44,7 +47,6 @@ import {
   recordLint,
   recordNode,
   recordNodeFields,
-  recordSizes,
   slotEntities,
   withOwners,
 } from './records';
@@ -65,6 +67,7 @@ const NodeSchema = z.strictObject({
   /** Present before the first call. Defaults to the pane's `initial`. */
   initial: z.boolean().optional(),
   ...nodeFields,
+  ...placeFields,
 });
 
 const EdgeSchema = z.strictObject({
@@ -85,8 +88,12 @@ function contentSchema(defaults: { initial: boolean; direction: Direction }) {
     nodes: z.array(NodeSchema).min(1),
     edges: z.array(EdgeSchema).default([]),
     direction: z.enum(['RIGHT', 'DOWN']).default(defaults.direction),
-    /** `tree` places nodes as a tree: children in the order of the slots they hang from. */
-    layout: z.enum(['layered', 'tree']).default('layered'),
+    /**
+     * `tree` places nodes as a tree: children in the order of the slots they hang from. `hub` puts one
+     * node in the middle with trees fanning out to its left and right.
+     */
+    layout: z.enum(['layered', 'tree', 'hub']).default('layered'),
+    ...layoutHintFields,
     /** Whether elements are present before the first call unless they say otherwise. */
     initial: z.boolean().default(defaults.initial),
     /** Icons of this pane's own: name to path data (see the skill), usable as a node's `icon`. */
@@ -95,8 +102,7 @@ function contentSchema(defaults: { initial: boolean; direction: Direction }) {
 }
 type DiagramContent = z.infer<ReturnType<typeof contentSchema>>;
 
-const edgeId = (edge: { id?: string | undefined; from: string; to: string }) =>
-  edge.id ?? `${edge.from}.${edge.to}`;
+const edgeId = edgeIdOf;
 
 function entitiesOf(content: DiagramContent) {
   return [
@@ -114,6 +120,9 @@ function entitiesOf(content: DiagramContent) {
   ];
 }
 
+const badgeOf = (patched: unknown, declared: string | number | undefined) =>
+  typeof patched === 'string' || typeof patched === 'number' ? patched : declared;
+
 function DiagramPanelView({
   state,
   content,
@@ -124,17 +133,16 @@ function DiagramPanelView({
   ctx: PanelContext;
 }) {
   // Sizes come from the declared text, so positions do not depend on the cursor.
-  const sized = useMemo(() => {
-    const holders = containerIds(content.nodes);
-    return recordSizes(ctx.pane.id, content.nodes, ctx.walkthrough.source, (plain) => {
-      const node = plain as DiagramContent['nodes'][number];
-      const icon = resolveIcon(node.icon, content.icons);
-      if (holders.has(node.id)) return groupMinSize(node.label, node.sub, node, icon);
-      const size = estimateSize(node.label, node.sub ?? ' ');
-      return icon === undefined ? size : { ...size, height: size.height + ICON_BAND };
-    });
-  }, [content, ctx.pane.id, ctx.walkthrough.source]);
+  const sized = useMemo(
+    () => sizesOf(ctx.pane.id, content, ctx.walkthrough.source),
+    [content, ctx.pane.id, ctx.walkthrough.source],
+  );
   const sizes = useMemo(() => new Map([...sized].map(([id, entry]) => [id, entry.size])), [sized]);
+  const bases = useMemo(
+    () => new Map(layoutNodesOf(content, sizes).map((node) => [node.id, node])),
+    [content, sizes],
+  );
+  const options = useMemo(() => layoutOptionsOf(content), [content]);
   const records = useMemo(
     () =>
       new Map(
@@ -154,6 +162,9 @@ function DiagramPanelView({
         weight: weightOf(edge.weight, own(state.patches, edgeId(edge))?.weight),
         crosses: crossings.get(edgeId(edge)),
         tree: edge.tree,
+        routing: edge.routing,
+        fromSide: edge.fromSide,
+        toSide: edge.toSide,
         ...(edge.from.includes('.') || edge.to.includes('.')
           ? recordEdge(edge, records, new Set(state.present))
           : {}),
@@ -183,15 +194,14 @@ function DiagramPanelView({
                 selected: selectedId,
                 select: (id) => select(selectedId === id ? undefined : id),
               })),
-          id: node.id,
-          ...sizes.get(node.id)!,
-          x: node.x,
-          y: node.y,
-          parent: node.parent,
-          parents: node.parents,
+          ...bases.get(node.id)!,
           at: places.get(node.id),
           boundary: node.boundary,
           icon: resolveIcon(node.icon, content.icons),
+          shape: isDisc(node) ? 'circle' : node.shape,
+          badge: patch?.badge === undefined ? node.badge : badgeOf(patch.badge, node.badge),
+          accent: node.accent,
+          more: node.more,
           label: text(patch?.label) ?? node.label,
           sub: text(patch?.sub) ?? node.sub,
           tone: toneOf(patch?.tone, node.tone),
@@ -200,7 +210,7 @@ function DiagramPanelView({
       }),
     [
       content,
-      sizes,
+      bases,
       sized,
       state,
       current,
@@ -228,6 +238,8 @@ function DiagramPanelView({
       theme={ctx.theme}
       direction={content.direction}
       layout={content.layout}
+      options={options}
+      accents={content.accents as Record<string, string> | undefined}
       label={ctx.pane.title}
       call={ctx.call.id}
       reversed={reversed}
@@ -287,6 +299,7 @@ export function createDiagramPanel(options: {
             slots.has(id) ? judgeSlotField(field, value) : judgeField(id, field, value),
         ),
         ...groupProblems(options.id, pane, walkthrough, content, edgeId),
+        ...hintProblems(options.id, pane, walkthrough, content, edgeId),
         ...recordLint(
           pane,
           walkthrough,

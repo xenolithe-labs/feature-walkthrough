@@ -659,9 +659,9 @@ describe('lint quality: one cause should give one clear problem with the right p
 
 // ---------------------------------------------------------------------------
 describe('graph content the layout cannot honour', () => {
-  // DEFECT: pinned() needs both x and y on every node; a node with only x is laid out by ELK and
-  // its x is dropped without any lint message (src/panels/_diagram/layout.ts withElk)
-  it('precondition: a partial pin loads without a problem', () => {
+  // A pin on one axis is used by the layered layout (see layout.ts applyPins), so lint has nothing
+  // to say; where a pin cannot be used it says graph/pin-ignored (tests/unit/layout-hints.test.ts).
+  it('a partial pin that the layered layout uses loads without a problem', () => {
     const config = graph({ nodes: [{ ...A, x: 500 }, B], edges: [{ from: 'a', to: 'b' }] });
     expect(load(config).problems).toEqual([]);
   });
