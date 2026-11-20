@@ -5,10 +5,21 @@
  * is a config. Exits 1 when any file has an error.
  */
 import { readFileSync } from 'node:fs';
+import { register } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { formatProblem, loadConfig } from '../src/core';
-import { createRegistry } from '../src/registry';
+
+// Panels import their stylesheets. Outside a bundler those are empty modules.
+register(
+  `data:text/javascript,${encodeURIComponent(
+    `export async function load(url, context, next) {
+       if (url.split('?')[0].endsWith('.css')) return { format: 'module', source: '', shortCircuit: true };
+       return next(url, context);
+     }`,
+  )}`,
+);
+const { createRegistry } = await import('../src/registry');
 
 async function read(file: string): Promise<unknown> {
   const path = resolve(file);
