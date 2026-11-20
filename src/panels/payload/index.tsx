@@ -30,6 +30,7 @@ import {
 import { TONES, changesSection, toneOf } from '../_shared/changes';
 import { revealScroll } from '../_shared/reveal';
 import { hasPath, isLeaf, isRef, joinPath, members, patched, setPath } from './paths';
+import { describePayload } from './describe';
 import './payload.css';
 
 const PayloadSchema = z.strictObject({
@@ -373,6 +374,7 @@ export const payloadPanel: PanelType<PayloadContent, ElementsState> = {
     );
     return reduceElements({ ...state, patches }, effect);
   },
+  describe: describePayload,
   Component: PayloadView,
   cardSections: ({ content, current, pane }) =>
     changesSection(

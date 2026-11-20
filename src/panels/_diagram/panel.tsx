@@ -19,6 +19,7 @@ import {
 import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
+import { describeDiagram } from './describe';
 import { containerIds, groupMinSize } from './groups';
 import { ICON_BAND, resolveIcon } from './icons';
 import { estimateSize, type Direction } from './layout';
@@ -247,6 +248,7 @@ export function createDiagramPanel(options: {
     entities: entitiesOf,
     init: (content) => initElements(entitiesOf(content)),
     reduce: (state, effect) => reduceElements(state, effect),
+    describe: describeDiagram,
     Component: DiagramPanelView,
     cardSections: ({ state, content, current, pane }) => [
       ...changesSection(

@@ -39,6 +39,7 @@ import {
   type Snapshot,
   type Token,
 } from './model';
+import { describeRing } from './describe';
 import './ring.css';
 
 // ---- geometry: a 450 square, the ring in the middle, labels outside --------------------------
@@ -857,6 +858,7 @@ export const ringPanel: PanelType<RingContent, RingState> = {
   entities: entitiesOf,
   init: (content) => init(entitiesOf(content)),
   reduce: (state, effect, call) => reduce(state, effect, call),
+  describe: describeRing,
   Component: RingView,
   cardSections,
   lint: lintRing,

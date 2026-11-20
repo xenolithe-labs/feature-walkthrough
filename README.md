@@ -50,6 +50,8 @@ Write a JSON config, then:
 ```sh
 npx feature-walkthrough flow.json                      # check it, then show it in the browser
 npx feature-walkthrough lint flow.json                 # check only; exits 1 on errors
+npx feature-walkthrough check flow.json --json         # lint, design findings, stats, for agents
+npx feature-walkthrough check flow.json --call s1.c2   # what a reader sees at one call, as text
 npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
 npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config
@@ -62,6 +64,17 @@ stays small enough to embed anywhere. `--no-color` turns them off.
 If the config has problems, `lint` prints each one with its path, and the page lists them too.
 [`skills/feature-walkthrough/example.json`](skills/feature-walkthrough/example.json) is a small
 complete config, and the files in `src/walkthroughs/` are larger ones.
+
+`check` is for tools that write configs and cannot see the result. It reports everything `lint`
+does, then design findings (a call with no text, text over the word ceiling, a call that marks
+nothing, a value changed without being named, more than three panes at once, and so on, each with
+the part of the design guidance it comes from), stats, and with `--call <step>.<call>` a text trace
+of what each pane shows at that call and which panes the Focus view puts on stage. `--json` prints
+one document whose shape is [`schema/check-result.schema.json`](schema/check-result.schema.json);
+`--max-warnings <n>` makes warnings fail the run; exit codes are 0 clean, 1 config errors, 2 usage
+error. The same checks are exported for other tools (`reviewConfig`, `designFindings`, `traceOf`
+from the package), and asynchronous checks such as diagram layout plug in through
+`cli/providers.ts`.
 
 Inside a React app:
 
@@ -77,7 +90,7 @@ The hosted page can also show any JSON config it is allowed to fetch: add `?src=
 ### For coding agents
 
 [`skills/feature-walkthrough/`](skills/feature-walkthrough/SKILL.md) is a skill that teaches an
-agent the config, each panel's shapes and the write, lint, fix, show loop. Copy the folder into
+agent the config, each panel's shapes and the write, check, fix, show loop. Copy the folder into
 your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
 package.
 
@@ -162,6 +175,7 @@ Releases and the credentials they need are described in [`docs/release.md`](docs
 - `src/panels/`, `src/annotations/` — panel types and annotation plugins, registered in `src/registry.ts`.
 - `src/walkthroughs/` — the bundled demo configs.
 - `src/recorder/` — the trace recorder: run an algorithm, get a config. No React.
+- `src/review/` — the checker behind `check`: design rules, stats, the trace. No React.
 - `cli/` — the `feature-walkthrough` command.
 - `skills/` — the skill for coding agents; `reference.md` in it is generated.
 

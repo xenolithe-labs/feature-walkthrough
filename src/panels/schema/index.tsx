@@ -25,6 +25,7 @@ import {
 import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
+import { describeSchema } from './describe';
 import './schema.css';
 
 const ColumnSchema = z.strictObject({
@@ -321,6 +322,7 @@ export const schemaPanel: PanelType<SchemaContent, ElementsState> = {
   entities: entitiesOf,
   init: (content) => initElements(entitiesOf(content)),
   reduce: (state, effect) => reduceElements(state, effect),
+  describe: describeSchema,
   Component: SchemaView,
   cardSections: ({ content, current, pane }) =>
     changesSection(

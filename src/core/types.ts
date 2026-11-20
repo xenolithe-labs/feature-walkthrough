@@ -71,6 +71,20 @@ export interface PanelType<Content = unknown, State = unknown> {
     pane: ResolvedPane;
   }): CardSection[];
   /**
+   * A few short lines of plain text that say what a reader sees in this pane: its state after the
+   * call at the cursor, with what that call touched marked. Used by `feature-walkthrough check`
+   * to show an agent what it cannot see. Pure and cheap; no React, no DOM. Conventions: a value
+   * the call touched is written `>value<`, a named thing it touched ends in `*`. Without it the
+   * trace describes the pane from its element state alone.
+   */
+  describe?(
+    state: State,
+    content: Content,
+    current: Effect[],
+    /** The call at the cursor, for panes whose picture depends on it (a sequence's message). */
+    call?: Call,
+  ): string[];
+  /**
    * Panel-specific problems. `elementIds` holds every element id of every pane, for panels
    * whose content can point at elements elsewhere.
    */

@@ -35,6 +35,7 @@ import {
 import { text } from '../_shared/changes';
 import { diffLines, type DiffRow } from './diff';
 import { TokensSchema, pieces as cut, tokensMatch } from './tokens';
+import { describeCode } from './describe';
 import './code.css';
 
 const CodeContent = z.strictObject({
@@ -380,6 +381,7 @@ export const codePanel: PanelType<CodeContent, ElementsState> = {
     if (id === undefined || verb === 'remove' || next.focus === id) return next;
     return { ...next, focus: id };
   },
+  describe: describeCode,
   Component: CodeView,
   lint: (pane, walkthrough) => {
     const content = pane.content as CodeContent;
