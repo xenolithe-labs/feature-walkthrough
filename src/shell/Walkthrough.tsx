@@ -251,16 +251,11 @@ function Shell({
             className="fw-theme"
             aria-pressed={motion.on}
             disabled={motion.reduced || cursor.motion === false}
-            title={
-              motion.reduced
-                ? 'Your system asks for reduced motion'
-                : cursor.motion === false
-                  ? 'This link turns motion off'
-                  : 'Short transitions that show what changed'
-            }
+            title="Short transitions that show what changed"
             onClick={toggleMotion}
           >
-            Motion {motion.on ? 'on' : 'off'}
+            Motion
+            {motion.reduced ? ' (system off)' : cursor.motion === false ? ' (link off)' : ''}
           </button>
           <button type="button" className="fw-theme" onClick={onToggleTheme}>
             {theme === 'dark' ? 'Light theme' : 'Dark theme'}

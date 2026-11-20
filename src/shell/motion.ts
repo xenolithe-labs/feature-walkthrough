@@ -130,6 +130,13 @@ export function useStepMotion(
   const memory = useRef<Memory['current']>({ time: 0, tick: 0, before: undefined });
   const [mark, setMark] = useState<{ scope: string; at: number; tick: 'a' | 'b' } | undefined>();
   const moving = on && mark?.scope === scope && mark.at === at ? mark.tick : undefined;
+  // The step is over a moment after it ends. Remounting panels later (another view, a pinned
+  // pane) then does not play it again.
+  useEffect(() => {
+    if (mark === undefined) return;
+    const timer = window.setTimeout(() => setMark(undefined), DURATION_MS + 60);
+    return () => window.clearTimeout(timer);
+  }, [mark]);
 
   const begin = useCallback(
     (to: number) => {
@@ -201,16 +208,32 @@ export function usePlay({ enabled, at, atEnd, delay, lastNext, advance, restart 
     return () => window.clearTimeout(timer);
   }, [on, held, delay, lastNext, advance, stop, at]);
 
+  // The listeners below are added once, not on every render: a listener replaced while a key is
+  // being delivered (by the shell's own handler moving the call) would never hear that key.
+  const latest = useRef(toggle);
+  useLayoutEffect(() => {
+    latest.current = toggle;
+  });
   useEffect(() => {
     if (!enabled) return;
     const inPlay = (target: EventTarget | null) =>
       target instanceof Element && target.closest('.fw-play') !== null;
     const onKey = (event: KeyboardEvent) => {
-      if (event.altKey || event.ctrlKey || event.metaKey || inPlay(event.target)) return;
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
       const target = event.target;
+      // On the button, Space and Enter press it. Every other key is "any key", and the speed
+      // choice is the reader's to move through with the arrow keys.
+      if (target instanceof Element && target.closest('.fw-play select')) return;
+      if (
+        (event.key === ' ' || event.key === 'Enter') &&
+        target instanceof Element &&
+        target.closest('.fw-play-button')
+      ) {
+        return;
+      }
       if (event.key === ' ' && !(target instanceof Element && target.closest(CONTROLS))) {
         event.preventDefault();
-        toggle();
+        latest.current();
       } else if (!MODIFIERS.has(event.key)) {
         stop();
       }
@@ -229,7 +252,7 @@ export function usePlay({ enabled, at, atEnd, delay, lastNext, advance, restart 
       window.removeEventListener('pointerdown', onPointer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [enabled, toggle, stop]);
+  }, [enabled, stop]);
 
   return {
     playing: on,

@@ -40,6 +40,24 @@ async function settled(page: Page): Promise<void> {
   );
 }
 
+/** How many animations or transitions the motion layer has running. */
+async function activeMotion(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            a.id === 'fw-slide' ||
+            /^fw-(a|b|fill)$/.test((a as CSSAnimation).animationName ?? '') ||
+            ['left', 'width'].includes((a as CSSTransition).transitionProperty ?? ''),
+        ).length,
+  );
+}
+
+const moving = (page: Page) =>
+  page.evaluate(() => document.querySelector('.fw')!.getAttribute('data-moving'));
+
 /** Where everything with an identity sits, to the pixel, relative to the shell. */
 async function layout(page: Page): Promise<string[]> {
   return page.evaluate(() => {
@@ -68,7 +86,13 @@ async function leftovers(page: Page): Promise<string[]> {
   );
 }
 
-const DEMOS = ['binary-search', 'kafka-consumer-group', 'temporal-heartbeat', 'git-commit'];
+const DEMOS = [
+  'binary-search',
+  'kafka-consumer-group',
+  'temporal-heartbeat',
+  'git-commit',
+  'jwe-compact',
+];
 
 for (const id of DEMOS) {
   test(`${id}: with motion on, every call rests where it rests with motion off`, async ({
@@ -143,17 +167,15 @@ test('a step taken calmly starts a transition, and one taken in a hurry does not
   page,
 }) => {
   await open(page, '#w=binary-search&m=1&s=2&c=1');
-  const moving = () =>
-    page.evaluate(() => document.querySelector('.fw')!.getAttribute('data-moving'));
   await page.waitForTimeout(CALM);
   await page.keyboard.press('ArrowRight');
-  expect(await moving()).toMatch(/^[ab]$/);
+  expect(await moving(page)).toMatch(/^[ab]$/);
   await page.keyboard.press('ArrowRight');
-  expect(await moving()).toBeNull();
+  expect(await moving(page)).toBeNull();
   // Jumping to a call far away is not "what changed", so it just appears.
   await page.waitForTimeout(CALM);
   await page.getByRole('button', { name: /^Call 1:/ }).click();
-  expect(await moving()).toBeNull();
+  expect(await moving(page)).toBeNull();
 });
 
 test('the address, then the reader, then the author decide whether motion is on', async ({
@@ -162,8 +184,8 @@ test('the address, then the reader, then the author decide whether motion is on'
   const motion = () => page.locator('.fw').getAttribute('data-motion');
   await open(page, '#w=binary-search');
   expect(await motion()).toBe('off');
-  const toggle = page.getByRole('button', { name: /^Motion (on|off)$/ });
-  await expect(toggle).toHaveText('Motion off');
+  const toggle = page.getByRole('button', { name: /^Motion/ });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
 
   // The reader turns it on: it is remembered, and the address stays out of it.
   await toggle.click();
@@ -181,7 +203,7 @@ test('the address, then the reader, then the author decide whether motion is on'
   // A reader who turns off what a link turned on is believed, and the link stops saying so.
   await open(page, '#w=binary-search&m=1');
   expect(await motion()).toBe('on');
-  await page.getByRole('button', { name: /^Motion on$/ }).click();
+  await toggle.click();
   expect(await motion()).toBe('off');
   expect(page.url()).not.toContain('m=');
 
@@ -195,27 +217,18 @@ test('reduced motion turns every transition off, and Play still steps', async ({
   await open(page, '#w=binary-search&m=1&s=2&c=1', 'reduce');
   expect(await page.locator('.fw').getAttribute('data-motion')).toBe('off');
   await expect(page.getByRole('button', { name: /^Motion/ })).toBeDisabled();
+  // A calm step, which with motion on would start a transition.
+  await page.waitForTimeout(CALM);
   await page.keyboard.press('ArrowRight');
-  await page.keyboard.press('ArrowRight');
-  const running = await page.evaluate(
-    () =>
-      document
-        .getAnimations()
-        .filter(
-          (a) =>
-            a.id === 'fw-slide' ||
-            (a as CSSAnimation).animationName?.startsWith('fw-') ||
-            ['left', 'width'].includes((a as CSSTransition).transitionProperty ?? ''),
-        ).length,
-  );
-  expect(running).toBe(0);
-  expect(
-    await page.evaluate(() => document.querySelector('.fw')!.hasAttribute('data-moving')),
-  ).toBe(false);
+  expect(await activeMotion(page)).toBe(0);
+  expect(await moving(page)).toBeNull();
   await page.getByLabel('Play speed').selectOption('faster');
   const before = await position(page);
   await page.getByRole('button', { name: 'Play', exact: true }).click();
+  expect(await activeMotion(page)).toBe(0);
   await expect.poll(() => position(page), { timeout: 12_000 }).not.toBe(before);
+  expect(await activeMotion(page)).toBe(0);
+  expect(await moving(page)).toBeNull();
 });
 
 /** The first call, or the one a few before the end. */
@@ -284,6 +297,28 @@ test('any key stops Play, Space starts and stops it, and a hidden tab stops it',
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     document.dispatchEvent(new Event('visibilitychange'));
   });
+  await expect(play).toHaveText('Play');
+});
+
+test('a key pressed after clicking Play stops it, and choosing a speed does not', async ({
+  page,
+}) => {
+  await open(page, '#w=binary-search');
+  const play = page.getByRole('button', { name: /^(Play|Pause)$/ });
+  await play.click();
+  await expect(play).toHaveText('Pause');
+  // Focus is now on the button, as it is in a browser after a click.
+  await page.getByLabel('Play speed').selectOption('slower');
+  await expect(play).toHaveText('Pause');
+  await play.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(play).toHaveText('Play');
+  expect(await position(page)).toBe('1.2');
+  // The arrow keys that step the walkthrough stop it from anywhere on the page.
+  await page.locator('body').click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press('Space');
+  await expect(play).toHaveText('Pause');
+  await page.keyboard.press('ArrowLeft');
   await expect(play).toHaveText('Play');
 });
 

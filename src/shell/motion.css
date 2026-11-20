@@ -29,15 +29,18 @@
   }
 }
 
-/* What this call added fades in, and what it changed settles to its value. The diagram panels
+/* What this call added fades in, and what it changed settles to its value. Only the innermost
+   element of a nest does it, so a card and the field in it do not both dim. The diagram panels
    have their own. Without `--fw-anim` (motion off, or a step taken in a hurry) the shorthand is
    invalid and there is no animation. */
-.fw-pane:not([data-panel='graph'], [data-panel='flow']) .is-added {
+.fw-pane:not([data-panel='graph'], [data-panel='flow'])
+  .is-added:not(:has(.is-added, .is-updated)) {
   --fw-from: 0;
   animation: var(--fw-anim) var(--fw-t) ease-out;
 }
 
-.fw-pane:not([data-panel='graph'], [data-panel='flow']) .is-updated {
+.fw-pane:not([data-panel='graph'], [data-panel='flow'])
+  .is-updated:not(:has(.is-added, .is-updated)) {
   --fw-from: 0.35;
   animation: var(--fw-anim) var(--fw-t) ease-out;
 }
@@ -82,16 +85,16 @@
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding-bottom: 3px;
 }
 
 .fw-play-button,
 .fw-play select {
-  padding: 3px 10px;
+  padding: 2px 10px;
   border: 1px solid var(--fw-control-border);
   border-radius: 999px;
   background: var(--fw-surface);
   font-size: 0.8rem;
+  line-height: 1.2;
 }
 
 .fw-play-button {
@@ -102,7 +105,7 @@
 .fw-play-fill {
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: -4px;
   left: 0;
   height: 2px;
   background: var(--fw-select);
@@ -114,4 +117,16 @@
   from {
     transform: scaleX(0);
   }
+}
+
+/* Nothing moves for a reader who asked for that: Play still steps, without the line. */
+@media (prefers-reduced-motion: reduce) {
+  .fw-play-fill {
+    display: none;
+  }
+}
+
+/* The header gained a button: its controls wrap on a narrow screen rather than widen the page. */
+.fw-head-controls {
+  max-width: 100%;
 }
