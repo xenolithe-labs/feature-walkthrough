@@ -124,18 +124,21 @@ test('Shift with an arrow moves one step, and the step strip and dots jump', asy
 });
 
 test('a deep link opens the same call and the same selection', async ({ page }) => {
-  await open(page, '#w=oauth-pkce&s=4&c=3&sel=code');
-  expect(await position(page)).toBe('4.3');
-  await expect(page.locator('.fw-card-title')).toHaveText('Use up the code');
-  await expect(page.locator('.fw-selected')).toContainText('authorization code');
-  await expect(page.locator('.react-flow__node[data-id="code"]')).toHaveClass(/is-selected/);
-  await expect(page.locator('.react-flow__node[data-id="code"]')).toHaveClass(/is-updated/);
-  await expect(page.locator('.react-flow__node[data-id="pending"]')).toHaveClass(/is-removed/);
+  await open(page, '#w=oauth-pkce&s=2&c=5&sel=code');
+  expect(await position(page)).toBe('2.5');
+  await expect(page.locator('.fw-card-title')).toHaveText('Redirect opens the app');
+  await expect(page.locator('.fw-selected')).toContainText('code');
+  await expect(page.locator('.fw-table tr[data-entity="code"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('.fw-table tr[data-entity="code"]')).toHaveClass(/is-updated/);
+  await expect(page.locator('.fw-table tr[data-entity="challenge"]')).toHaveAttribute(
+    'data-mark',
+    'read',
+  );
 
   // A stale link falls back to the nearest valid call instead of failing.
   await page.goto('/#w=oauth-pkce&s=99&c=99');
-  await expect(shell(page)).toHaveAttribute('data-step', '5');
-  await expect(shell(page)).toHaveAttribute('data-call', '4');
+  await expect(shell(page)).toHaveAttribute('data-step', '4');
+  await expect(shell(page)).toHaveAttribute('data-call', '3');
 });
 
 test('selecting an element in one place highlights it everywhere', async ({ page }) => {
@@ -143,19 +146,19 @@ test('selecting an element in one place highlights it everywhere', async ({ page
   // Pick the authorization code from the card.
   await page
     .locator('.fw-card')
-    .getByRole('button', { name: /authorization code/ })
+    .getByRole('button', { name: /(^|\s)code$/ })
     .click();
   await expect(page).toHaveURL(/sel=code/);
-  await expect(page.locator('.react-flow__node[data-id="code"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('.fw-table tr[data-entity="code"]')).toHaveClass(/is-selected/);
   // The sequence marks every message whose call touched the code.
   const related = page.locator('.fw-seq-message.is-related');
-  await expect(related).toHaveCount(3);
-  await expect(related.first()).toHaveAttribute('data-entity', 'redirect-back');
+  await expect(related).toHaveCount(6);
+  await expect(related.first()).toHaveAttribute('data-entity', 'issue-code');
 
-  // Pick a different element in the graph: the selection moves there.
-  await page.locator('.react-flow__node[data-id="verifier"]').click();
+  // Pick a different element in the table: the selection moves there.
+  await page.locator('.fw-table tr[data-entity="verifier"]').click();
   await expect(page).toHaveURL(/sel=verifier/);
-  await expect(page.locator('.react-flow__node[data-id="code"]')).not.toHaveClass(/is-selected/);
+  await expect(page.locator('.fw-table tr[data-entity="code"]')).not.toHaveClass(/is-selected/);
   await expect(page.locator('.fw-selected')).toContainText('code_verifier');
 
   await page.locator('.fw-selected').getByRole('button', { name: 'Clear' }).click();
@@ -164,12 +167,15 @@ test('selecting an element in one place highlights it everywhere', async ({ page
 
 test('elements appear only once a call adds them', async ({ page }) => {
   await open(page, '#w=oauth-pkce&s=1&c=1');
-  await expect(page.locator('.react-flow__node[data-id="verifier"]')).toHaveClass(/is-added/);
-  await expect(page.locator('.react-flow__node[data-id="access"]')).toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-table tr[data-entity="verifier"]')).toHaveClass(/is-added/);
+  await expect(page.locator('.fw-table tr[data-entity="access"]')).toHaveClass(/is-absent/);
   await expect(page.locator('.fw-seq-message')).toHaveCount(1);
   await page.keyboard.press('ArrowRight');
-  await expect(page.locator('.react-flow__node[data-id="verifier"]')).toHaveClass(/is-read/);
-  await expect(page.locator('.react-flow__node[data-id="challenge"]')).toHaveClass(/is-added/);
+  await expect(page.locator('.fw-table tr[data-entity="verifier"]')).toHaveAttribute(
+    'data-mark',
+    'read',
+  );
+  await expect(page.locator('.fw-table tr[data-entity="challenge"]')).toHaveClass(/is-added/);
   await expect(page.locator('.fw-seq-message')).toHaveCount(2);
   await expect(page.locator('.fw-seq-message.is-added')).toHaveAttribute(
     'data-entity',
@@ -265,25 +271,25 @@ test('a JSON config loaded with ?src= shows the same thing as the bundled one', 
         ),
       ),
     nodes: await page
-      .locator('.react-flow__node')
+      .locator('.fw-table tbody tr')
       .evaluateAll((nodes) =>
         nodes.map(
-          (node) => `${node.getAttribute('data-id')}:${node.className}:${node.textContent}`,
+          (node) => `${node.getAttribute('data-entity')}:${node.className}:${node.textContent}`,
         ),
       ),
   });
 
-  await open(page, '#w=oauth-pkce&s=4&c=3');
+  await open(page, '#w=oauth-pkce&s=4&c=2');
   const bundled = await snapshot();
 
   await page.route('**/demo.json', (route) => route.fulfill({ json: demos }));
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/?src=demo.json#w=oauth-pkce&s=4&c=3');
-  await expect(page.locator('.react-flow__node').first()).toBeAttached();
+  await page.goto('/?src=demo.json#w=oauth-pkce&s=4&c=2');
+  await expect(page.locator('.fw-table tbody tr').first()).toBeAttached();
   expect(await snapshot()).toEqual(bundled);
   // Moving keeps the ?src= part of the address.
   await page.keyboard.press('ArrowRight');
-  await expect(page).toHaveURL(/\?src=demo\.json#w=oauth-pkce&s=4&c=4$/);
+  await expect(page).toHaveURL(/\?src=demo\.json#w=oauth-pkce&s=4&c=3$/);
 });
 
 test('a config with problems lists each one with its path', async ({ page }) => {
@@ -1003,11 +1009,11 @@ test('sequence: fragments, branches, styles and notes are drawn and reachable', 
   page,
 }) => {
   const errors = watchErrors(page);
-  await open(page, '#w=oauth-pkce&s=4&c=6');
+  await open(page, '#w=oauth-pkce&s=4&c=3');
   const frame = page.locator('.fw-seq-frame[data-kind="alt"]');
   await expect(frame).toHaveCount(1);
-  await expect(frame).toContainText('code_verifier matches');
-  await expect(frame.locator('.fw-seq-divider')).toContainText('it does not match');
+  await expect(frame).toContainText('the malicious app posts first');
+  await expect(frame.locator('.fw-seq-divider')).toContainText('the app posts first');
   // A reply is dashed; a call is not.
   const dash = (id: string) =>
     page
@@ -1019,9 +1025,9 @@ test('sequence: fragments, branches, styles and notes are drawn and reachable', 
   // Messages stay where they were when later ones appear.
   const y = async (id: string) =>
     (await page.locator(`.fw-seq-message[data-entity="${id}"] .fw-seq-hit`).boundingBox())!.y;
-  const before = await y('token-response');
+  const before = await y('token-error');
   await page.keyboard.press('ArrowLeft');
-  expect(await y('token-response')).toBe(before);
+  expect(await y('token-error')).toBe(before);
   await page.keyboard.press('ArrowRight');
 
   // The tab of a frame is a button: keyboard reachable, and selects the frame.
@@ -1029,12 +1035,12 @@ test('sequence: fragments, branches, styles and notes are drawn and reachable', 
   await tab.focus();
   await page.keyboard.press('Enter');
   await expect(tab).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.fw-seq-message.is-related')).toHaveCount(3);
+  await expect(page.locator('.fw-seq-message.is-related')).toHaveCount(6);
   await page.keyboard.press('Enter');
   await expect(tab).toHaveAttribute('aria-pressed', 'false');
 
   // A note appears with its message and is a button too.
-  await open(page, '#w=oauth-pkce&s=1&c=3');
+  await open(page, '#w=oauth-pkce&s=1&c=1');
   const note = page.locator('.fw-seq-note');
   await expect(note.first()).toBeVisible();
   await note.first().focus();
@@ -1067,7 +1073,7 @@ test('code and sequence additions fit a phone in both views, with no sideways pa
   for (const hash of [
     '#w=terraform-apply&s=1&c=1',
     '#w=terraform-apply&s=3&c=6',
-    '#w=oauth-pkce&s=4&c=6',
+    '#w=oauth-pkce&s=4&c=3',
     '#w=retry-backoff&s=2&c=4',
     '#w=git-commit&s=1&c=2',
   ]) {

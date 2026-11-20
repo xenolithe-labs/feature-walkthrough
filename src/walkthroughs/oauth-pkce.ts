@@ -1,20 +1,63 @@
 import { defineWalkthrough } from '../core';
 
 /**
- * OAuth 2.0 authorization code flow with PKCE (RFC 6749, RFC 7636).
- * All hosts, ids and tokens are made-up example values.
+ * OAuth 2.0 authorization code flow with PKCE (RFC 6749, RFC 7636), as one run in which a
+ * malicious app reads both URLs that pass through the browser and still gets no token.
+ *
+ * The values are the RFCs' own examples, so a reader can check them against the text:
+ * the verifier and challenge are RFC 7636 Appendix B, the code and the access token are the
+ * examples of RFC 6749 sections 4.1.2 and 5.1. `tests/unit/oauth-pkce.test.ts` recomputes the two
+ * hashes with SHA-256 and checks that every card and cell shows them. Hosts and the client id
+ * are made up.
  */
+export const pkce = {
+  verifier: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+  /** BASE64URL(SHA-256(verifier)): what the app sends and the server stores. */
+  challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+  /** BASE64URL(SHA-256(challenge)): what the server computes when the challenge is sent as the verifier. */
+  hashOfChallenge: 'DSmbHrVIcI0EU05-BQxCe1bt-hXRNjejSEvdYbq_g4Q',
+  code: 'SplxlOBeZQQYbYS6WxSbIA',
+  accessToken: '2YotnFZFEjr1zCsicMWpAA',
+  clientId: 'notes-app',
+  redirectUri: 'com.example.notes:/callback',
+} as const;
+
+/** How a long value is written in card text and in the table: its first six characters. */
+export const short = (value: string) => `${value.slice(0, 6)}…`;
+
+const verifier = short(pkce.verifier);
+const challenge = short(pkce.challenge);
+const wrongHash = short(pkce.hashOfChallenge);
+const code = short(pkce.code);
+const token = short(pkce.accessToken);
+
+const HELD = 'has it';
+const NOT_HELD = '—';
+
+const tokenRequest = (codeVerifier: string) =>
+  [
+    'POST /token HTTP/1.1',
+    'Host: auth.example',
+    'Content-Type: application/x-www-form-urlencoded',
+    '',
+    'grant_type=authorization_code',
+    `&code=${pkce.code}`,
+    `&redirect_uri=${encodeURIComponent(pkce.redirectUri)}`,
+    `&client_id=${pkce.clientId}`,
+    `&code_verifier=${codeVerifier}`,
+  ].join('\n');
+
 export const oauthPkce = defineWalkthrough({
   id: 'oauth-pkce',
   title: 'OAuth 2.0: authorization code with PKCE',
-  lead: 'How an app gets an access token for a user without ever seeing the password, and how PKCE stops a stolen authorization code from being used.',
+  lead: 'A notes app signs a user in through the browser, and a malicious app on the same phone reads every URL the browser handles. Follow four values and see why the code it steals is useless. PKCE: proof key for code exchange.',
   tags: ['oauth', 'security'],
 
   lanes: [
-    { id: 'browser', title: 'Browser (user)' },
     { id: 'app', title: 'App (client)' },
+    { id: 'browser', title: 'Browser (user)' },
     { id: 'as', title: 'Authorization server' },
-    { id: 'api', title: 'API (resource server)' },
+    { id: 'mal', title: 'Malicious app' },
   ],
 
   layout: {
@@ -22,33 +65,22 @@ export const oauthPkce = defineWalkthrough({
       {
         id: 'exchange',
         panel: 'sequence',
-        title: 'Exchange',
+        title: 'Messages',
         content: {
           // Requests are calls, answers are replies (dashed).
           styles: {
-            'login-page': 'reply',
             'redirect-back': 'reply',
-            'token-request': 'call',
-            'token-response': 'reply',
             'token-error': 'reply',
-            'api-response': 'reply',
-            'refresh-response': 'reply',
+            'token-response': 'reply',
           },
           fragments: [
             {
-              id: 'pkce-check',
+              id: 'race',
               kind: 'alt',
-              label: 'code_verifier matches the stored challenge',
-              from: 'token-response',
-              to: 'token-error',
-              branches: [{ at: 'token-error', label: 'it does not match' }],
-            },
-            {
-              id: 'refreshing',
-              kind: 'opt',
-              label: 'the access token has expired',
-              from: 'refresh-request',
-              to: 'refresh-response',
+              label: 'the malicious app posts first',
+              from: 'stolen-request',
+              to: 'token-response',
+              branches: [{ at: 'token-request', label: 'the app posts first' }],
             },
           ],
           notes: [
@@ -56,39 +88,81 @@ export const oauthPkce = defineWalkthrough({
               id: 'verifier-note',
               at: 'make-verifier',
               over: 'app',
-              text: 'stays in the app until /token',
+              text: 'stays in the app until POST /token',
             },
-            { id: 'state-note', at: 'make-state', over: 'app', text: 'kept in the user’s session' },
+            { id: 'leak-challenge', at: 'open-browser', over: 'mal', text: 'reads this URL' },
+            { id: 'leak-code', at: 'callback', over: 'mal', text: 'reads this URL' },
+            {
+              id: 'used-note',
+              at: 'token-response',
+              over: 'mal',
+              text: 'a later POST with this code is refused: a code works once',
+            },
           ],
         },
       },
       {
-        id: 'artefacts',
-        panel: 'graph',
-        title: 'What exists now',
+        id: 'holders',
+        panel: 'table',
+        title: 'Who holds what',
         content: {
-          direction: 'DOWN',
-          nodes: [
-            { id: 'verifier', label: 'code_verifier', sub: 'secret, stays in the app' },
-            { id: 'challenge', label: 'code_challenge', sub: 'hash of the verifier' },
-            { id: 'state', label: 'state', sub: 'ties the reply to this browser' },
-            { id: 'authreq', label: 'authorization request', sub: 'travels through the browser' },
-            { id: 'pending', label: 'pending authorization', sub: 'kept by the server' },
-            { id: 'consent', label: 'user consent', sub: 'sign-in and approval' },
-            { id: 'code', label: 'authorization code', sub: 'short-lived, single use' },
-            { id: 'access', label: 'access token', sub: 'sent to the API' },
-            { id: 'refresh', label: 'refresh token', sub: 'kept by the app' },
+          columns: [
+            { id: 'value', label: 'Value', mono: true },
+            { id: 'app', label: 'App' },
+            { id: 'browser', label: 'Browser' },
+            { id: 'as', label: 'Server' },
+            { id: 'mal', label: 'Malicious app' },
           ],
-          edges: [
-            { id: 'derives', from: 'verifier', to: 'challenge', label: 'SHA-256' },
-            { id: 'sends-challenge', from: 'challenge', to: 'authreq', label: 'sent in' },
-            { id: 'sends-state', from: 'state', to: 'authreq', label: 'sent in' },
-            { id: 'records', from: 'authreq', to: 'pending', label: 'recorded as' },
-            { id: 'approves', from: 'consent', to: 'pending', label: 'approves' },
-            { id: 'issues', from: 'pending', to: 'code', label: 'issues' },
-            { id: 'to-access', from: 'code', to: 'access', label: 'exchanged for' },
-            { id: 'to-refresh', from: 'code', to: 'refresh', label: 'exchanged for' },
+          rows: [
+            {
+              id: 'verifier',
+              initial: false,
+              cells: {
+                value: 'code_verifier',
+                app: HELD,
+                browser: NOT_HELD,
+                as: NOT_HELD,
+                mal: NOT_HELD,
+              },
+            },
+            {
+              id: 'challenge',
+              initial: false,
+              cells: {
+                value: 'code_challenge',
+                app: HELD,
+                browser: NOT_HELD,
+                as: NOT_HELD,
+                mal: NOT_HELD,
+              },
+            },
+            {
+              id: 'code',
+              initial: false,
+              cells: {
+                value: 'code',
+                app: NOT_HELD,
+                browser: NOT_HELD,
+                as: HELD,
+                mal: NOT_HELD,
+              },
+            },
+            {
+              id: 'access',
+              initial: false,
+              cells: {
+                value: 'access_token',
+                app: HELD,
+                browser: NOT_HELD,
+                as: HELD,
+                mal: NOT_HELD,
+              },
+            },
           ],
+          legend: {
+            [HELD]: { tone: 'good', label: 'has seen the value' },
+            [NOT_HELD]: { tone: 'muted', label: 'has never seen it' },
+          },
         },
       },
     ],
@@ -99,8 +173,6 @@ export const oauthPkce = defineWalkthrough({
       title: 'Requirement',
       statuses: {
         required: { label: 'Required', tone: 'warn' },
-        recommended: { label: 'Recommended', tone: 'info' },
-        optional: { label: 'Optional', tone: 'neutral' },
       },
     },
   },
@@ -108,23 +180,24 @@ export const oauthPkce = defineWalkthrough({
   steps: [
     {
       id: 'prepare',
-      title: 'Prepare',
-      text: 'Before it sends the user anywhere, the app creates the values it will later use to prove that it started this request.',
+      title: 'Make a one-time secret',
+      text: 'The app prepares two values before it opens the browser.',
       calls: [
         {
           id: 'make-verifier',
-          label: 'Create code_verifier',
+          label: 'Make code_verifier',
           from: 'app',
           to: 'app',
-          text: 'The app creates a high-entropy random string, 43 to 128 characters long. It never leaves the app until the token request.',
+          text: `The app makes a random 43-character secret, the code verifier \`${verifier}\`, new for every sign-in. It shows it to no one yet.`,
           where: 'RFC 7636 §4.1',
           blocks: [
+            { title: 'code_verifier', text: pkce.verifier },
             {
-              title: 'code_verifier',
-              text: 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+              title: 'Left out',
+              text: 'Sign-in and consent screens, state, scopes, refresh tokens, using the token, and whether a code still works after a refused attempt (the RFCs do not say). Described: RFC 6749 with RFC 7636, checked November 2026.',
             },
           ],
-          effects: { artefacts: [{ add: 'verifier' }] },
+          effects: { holders: [{ add: 'verifier' }] },
           annotations: {
             status: {
               status: 'required',
@@ -134,62 +207,50 @@ export const oauthPkce = defineWalkthrough({
         },
         {
           id: 'make-challenge',
-          label: 'Derive code_challenge',
+          label: 'Hash it into code_challenge',
           from: 'app',
           to: 'app',
-          text: 'The challenge is the SHA-256 hash of the verifier, base64url-encoded. The hash can be shown to anyone: it cannot be turned back into the verifier.',
-          where: 'RFC 7636 §4.2',
+          text: `The code challenge is the SHA-256 hash of the verifier, written as URL-safe text: \`${challenge}\`. A hash cannot be run backwards to recover the verifier.`,
+          where: 'RFC 7636 §4.2, Appendix B',
           blocks: [
             {
               title: 'code_challenge',
-              text: 'BASE64URL(SHA256(code_verifier))\n= E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+              text: `BASE64URL(SHA256(code_verifier))\n= ${pkce.challenge}`,
             },
           ],
           effects: {
-            artefacts: [{ read: 'verifier' }, { add: 'challenge' }, { add: 'derives' }],
-          },
-        },
-        {
-          id: 'make-state',
-          label: 'Create state',
-          from: 'app',
-          to: 'app',
-          text: 'A second random value, stored in the user’s session. When the reply comes back, the app checks that it carries the same value, so that a reply forged by another site is rejected.',
-          where: 'RFC 6749 §10.12',
-          effects: { artefacts: [{ add: 'state' }] },
-          annotations: {
-            status: {
-              status: 'recommended',
-              note: 'RFC 6749 §4.1.1 marks the state parameter as RECOMMENDED.',
-            },
+            holders: [{ read: 'verifier', cells: ['app'] }, { add: 'challenge' }],
           },
         },
       ],
     },
     {
       id: 'authorize',
-      title: 'Ask the user',
-      text: 'The app sends the user to the authorization server. Only the server sees the user’s credentials.',
+      title: 'Ask for an authorization code',
+      text: 'Everything in this step travels in URLs through the browser.',
       calls: [
         {
-          id: 'redirect-out',
-          label: 'Redirect to /authorize',
+          id: 'open-browser',
+          label: 'Open the browser at /authorize',
           from: 'app',
           to: 'browser',
-          text: 'The app answers with a redirect. The URL carries the challenge and the state, but not the verifier.',
-          where: 'RFC 6749 §4.1.1, RFC 7636 §4.3',
-          response: {
-            lang: 'http',
-            text: 'HTTP/1.1 302 Found\nLocation: https://auth.example/authorize\n  ?response_type=code\n  &client_id=s6BhdRkqt3\n  &redirect_uri=https%3A%2F%2Fapp.example%2Fcallback\n  &scope=photos.read\n  &state=xyzABC123\n  &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM\n  &code_challenge_method=S256',
-          },
+          text: `The URL carries \`code_challenge=${challenge}\` and \`code_challenge_method=S256\` (SHA-256), not the verifier. The malicious app reads the URL.`,
+          where: 'RFC 6749 §4.1.1, RFC 7636 §4.3; the leak: RFC 7636 §1 (4b)',
+          blocks: [
+            {
+              title: 'URL',
+              text: [
+                'https://auth.example/authorize',
+                '  ?response_type=code',
+                `  &client_id=${pkce.clientId}`,
+                `  &redirect_uri=${encodeURIComponent(pkce.redirectUri)}`,
+                `  &code_challenge=${pkce.challenge}`,
+                '  &code_challenge_method=S256',
+              ].join('\n'),
+            },
+          ],
           effects: {
-            artefacts: [
-              { read: 'challenge' },
-              { read: 'state' },
-              { add: 'authreq' },
-              { add: 'sends-challenge' },
-              { add: 'sends-state' },
-            ],
+            holders: [{ update: 'challenge', fields: { browser: HELD, mal: HELD } }],
           },
         },
         {
@@ -197,216 +258,158 @@ export const oauthPkce = defineWalkthrough({
           label: 'GET /authorize',
           from: 'browser',
           to: 'as',
-          text: 'The browser follows the redirect. The server checks the client id and the redirect URI against what the app registered, then remembers the challenge for later.',
-          where: 'RFC 7636 §4.4',
-          effects: {
-            artefacts: [{ read: 'authreq' }, { add: 'pending' }, { add: 'records' }],
-          },
+          text: 'The browser sends the same URL to the authorization server.',
+          where: 'RFC 6749 §4.1.1',
+          effects: { holders: [{ update: 'challenge', fields: { as: HELD } }] },
         },
         {
-          id: 'login-page',
-          label: 'Sign-in and consent page',
+          id: 'issue-code',
+          label: 'Issue a code, keep the challenge',
           from: 'as',
-          to: 'browser',
-          text: 'The server shows its own page. It names the app and lists what the app is asking for.',
-          effects: { artefacts: [{ read: 'pending' }] },
-        },
-        {
-          id: 'approve',
-          label: 'Sign in and approve',
-          from: 'browser',
           to: 'as',
-          text: 'The user proves who they are to the server and approves the request. The app takes no part in this.',
+          text: `After the user approves, the server makes authorization code \`${code}\` and stores challenge \`${challenge}\` with it, to test whoever redeems the code.`,
+          where: 'RFC 6749 §4.1.2, RFC 7636 §4.4',
           effects: {
-            artefacts: [{ add: 'consent' }, { add: 'approves' }, { update: 'pending' }],
+            holders: [{ add: 'code' }, { read: 'challenge', cells: ['as'] }],
           },
         },
-      ],
-    },
-    {
-      id: 'code',
-      title: 'Return a code',
-      text: 'The server sends the browser back to the app with a one-time code.',
-      calls: [
         {
           id: 'redirect-back',
-          label: 'Redirect back with code',
+          label: '302 to com.example.notes:/callback',
           from: 'as',
           to: 'browser',
-          text: 'The server creates an authorization code, binds it to the stored challenge, and redirects to the registered URI with the code and the unchanged state.',
-          where: 'RFC 6749 §4.1.2',
+          text: `The server redirects the browser to the app’s redirect URI, a \`com.example.notes:\` URL that the phone hands to the app, with \`code=${code}\`.`,
+          where: 'RFC 6749 §4.1.2, RFC 8252 §7.1',
           response: {
             lang: 'http',
-            text: 'HTTP/1.1 302 Found\nLocation: https://app.example/callback\n  ?code=SplxlOBeZQQYbYS6WxSbIA\n  &state=xyzABC123',
+            text: `HTTP/1.1 302 Found\nLocation: ${pkce.redirectUri}\n  ?code=${pkce.code}`,
           },
-          effects: {
-            artefacts: [{ read: 'pending' }, { add: 'code' }, { add: 'issues' }],
-          },
+          effects: { holders: [{ update: 'code', fields: { browser: HELD } }] },
         },
         {
           id: 'callback',
-          label: 'GET /callback?code&state',
+          label: 'Redirect opens the app',
           from: 'browser',
           to: 'app',
-          text: 'The browser delivers the code. Anything that can see this URL can see the code, which is why the code alone must not be enough.',
-          effects: { artefacts: [{ read: 'code' }] },
-        },
-        {
-          id: 'check-state',
-          label: 'Check state',
-          from: 'app',
-          to: 'app',
-          text: 'The app compares the returned state with the one in the session. If they differ it stops here. The state has done its job and is discarded.',
-          where: 'RFC 6749 §10.12',
-          effects: { artefacts: [{ remove: 'state' }] },
+          text: `The phone opens the app, which receives code \`${code}\`. The malicious app reads this URL too. What can the malicious app send the server to get a token?`,
+          where: 'RFC 6749 §10.5, RFC 8252 §8.1, RFC 9700 §3 (A3)',
+          effects: {
+            holders: [
+              { update: 'code', fields: { app: HELD, mal: HELD } },
+              { read: 'challenge', cells: ['mal'] },
+            ],
+          },
         },
       ],
     },
     {
-      id: 'token',
-      title: 'Exchange the code',
-      text: 'The app trades the code for tokens over a direct connection, and proves it is the one that started the flow.',
+      id: 'stolen',
+      title: 'A stolen code',
+      text: 'First possibility: the malicious app posts to /token before the app does.',
       calls: [
         {
-          id: 'token-request',
-          label: 'POST /token',
-          from: 'app',
+          id: 'stolen-request',
+          label: 'POST /token, challenge as verifier',
+          from: 'mal',
           to: 'as',
-          text: 'The app sends the code together with the verifier. This is the first time the verifier leaves the app.',
-          where: 'RFC 6749 §4.1.3, RFC 7636 §4.5',
-          request: {
-            lang: 'http',
-            text: 'POST /token HTTP/1.1\nHost: auth.example\nContent-Type: application/x-www-form-urlencoded\n\ngrant_type=authorization_code\n&code=SplxlOBeZQQYbYS6WxSbIA\n&redirect_uri=https%3A%2F%2Fapp.example%2Fcallback\n&client_id=s6BhdRkqt3\n&code_verifier=dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk',
+          text: `The malicious app has no verifier, so with \`code=${code}\` it sends the challenge in the verifier’s place: \`code_verifier=${challenge}\`.`,
+          where: 'RFC 7636 §4.5',
+          request: { lang: 'http', text: tokenRequest(pkce.challenge) },
+          effects: {
+            holders: [
+              { read: 'code', cells: ['mal'] },
+              { read: 'challenge', cells: ['mal'] },
+            ],
           },
-          effects: { artefacts: [{ read: 'code' }, { read: 'verifier' }] },
         },
         {
-          id: 'verify',
-          label: 'Verify the code_verifier',
+          id: 'stolen-verify',
+          label: 'Hash and compare: no match',
           from: 'as',
           to: 'as',
-          text: 'The server hashes the verifier it received and compares the result with the challenge it stored. Someone who only stole the code cannot pass this check.',
+          text: `The server hashes the received \`code_verifier\` and gets \`${wrongHash}\`. The challenge stored with code \`${code}\` is \`${challenge}\`. They differ.`,
           where: 'RFC 7636 §4.6',
-          effects: { artefacts: [{ read: 'pending' }, { read: 'code' }] },
-        },
-        {
-          id: 'consume',
-          label: 'Use up the code',
-          from: 'as',
-          to: 'as',
-          text: 'A code works once. The server marks it as used; a second request with the same code is refused and should revoke the tokens issued from it.',
-          where: 'RFC 6749 §4.1.2',
+          blocks: [
+            {
+              title: 'Check',
+              text: `BASE64URL(SHA256("${pkce.challenge}"))\n= ${pkce.hashOfChallenge}\n≠ ${pkce.challenge}`,
+            },
+          ],
           effects: {
-            artefacts: [
-              {
-                update: 'code',
-                fields: { sub: 'used, cannot be reused', tone: 'muted' },
-              },
-              { remove: 'pending' },
+            holders: [
+              { read: 'code', cells: ['as'] },
+              { read: 'challenge', cells: ['as'] },
             ],
           },
-        },
-        {
-          id: 'token-response',
-          label: 'Token response',
-          from: 'as',
-          to: 'app',
-          text: 'The server answers with an access token and, here, a refresh token.',
-          where: 'RFC 6749 §5.1',
-          response: {
-            lang: 'json',
-            text: '{\n  "access_token": "2YotnFZFEjr1zCsicMWpAA",\n  "token_type": "Bearer",\n  "expires_in": 3600,\n  "refresh_token": "tGzv3JOkF0XG5Qx2TlKWIA",\n  "scope": "photos.read"\n}',
-          },
-          effects: {
-            artefacts: [
-              { add: 'access' },
-              { add: 'refresh' },
-              { add: 'to-access' },
-              { add: 'to-refresh' },
-            ],
-          },
-        },
-        {
-          id: 'discard',
-          label: 'Discard verifier and challenge',
-          from: 'app',
-          to: 'app',
-          text: 'The PKCE values were for this one exchange. The app throws them away.',
-          effects: { artefacts: [{ remove: 'verifier' }, { remove: 'challenge' }] },
         },
         {
           id: 'token-error',
-          label: 'Error: invalid_grant',
+          label: '400 invalid_grant',
           from: 'as',
-          to: 'app',
-          text: 'The other branch of the check above. If the hash of the verifier does not equal the stored challenge, the server must refuse the request with the error invalid_grant. Someone who only stole the code ends up here.',
+          to: 'mal',
+          text: `No token is issued. Only the verifier hashes to \`${challenge}\`, and the malicious app never saw it.`,
           where: 'RFC 7636 §4.6, RFC 6749 §5.2',
           response: {
             lang: 'http',
             text: 'HTTP/1.1 400 Bad Request\nContent-Type: application/json;charset=UTF-8\nCache-Control: no-store\nPragma: no-cache\n\n{\n  "error": "invalid_grant"\n}',
           },
+          effects: { holders: [{ read: 'verifier', cells: ['mal'] }] },
         },
       ],
     },
     {
-      id: 'use',
-      title: 'Use and refresh',
-      text: 'The app calls the API with the access token, and gets a new one when it expires.',
+      id: 'token',
+      title: 'The app’s own request',
+      text: 'Second possibility, instead of the first: the app posts to /token first.',
       calls: [
         {
-          id: 'api-request',
-          label: 'GET /photos',
-          from: 'app',
-          to: 'api',
-          text: 'The app presents the access token as a bearer token.',
-          where: 'RFC 6750 §2.1',
-          request: {
-            lang: 'http',
-            text: 'GET /photos HTTP/1.1\nHost: api.example\nAuthorization: Bearer 2YotnFZFEjr1zCsicMWpAA',
-          },
-          effects: { artefacts: [{ read: 'access' }] },
-        },
-        {
-          id: 'api-response',
-          label: '200 OK',
-          from: 'api',
-          to: 'app',
-          text: 'The API checks that the token is valid and covers this request, then answers.',
-        },
-        {
-          id: 'refresh-request',
-          label: 'POST /token (refresh)',
+          id: 'token-request',
+          label: 'POST /token with code and verifier',
           from: 'app',
           to: 'as',
-          text: 'When the access token expires, the app asks for a new one with the refresh token. The user is not involved.',
-          where: 'RFC 6749 §6',
-          request: {
-            lang: 'http',
-            text: 'POST /token HTTP/1.1\nHost: auth.example\nContent-Type: application/x-www-form-urlencoded\n\ngrant_type=refresh_token\n&refresh_token=tGzv3JOkF0XG5Qx2TlKWIA\n&client_id=s6BhdRkqt3',
-          },
-          effects: { artefacts: [{ read: 'refresh' }] },
-          annotations: {
-            status: {
-              status: 'optional',
-              note: 'A server may choose not to issue refresh tokens (RFC 6749 §5.1).',
-            },
+          text: `The verifier \`${verifier}\` leaves the app for the first time: straight to the server over TLS, not in a URL through the browser.`,
+          where: 'RFC 7636 §4.5, RFC 6749 §4.1.3, §3.2',
+          request: { lang: 'http', text: tokenRequest(pkce.verifier) },
+          effects: {
+            holders: [
+              { update: 'verifier', fields: { as: HELD } },
+              { read: 'code', cells: ['app'] },
+            ],
           },
         },
         {
-          id: 'refresh-response',
-          label: 'New tokens',
+          id: 'verify',
+          label: 'Hash and compare: match',
+          from: 'as',
+          to: 'as',
+          text: `The server hashes \`${verifier}\` and gets \`${challenge}\`, the stored challenge.`,
+          where: 'RFC 7636 §4.6, Appendix B',
+          effects: {
+            holders: [
+              { read: 'verifier', cells: ['as'] },
+              { read: 'challenge', cells: ['as'] },
+              { read: 'code', cells: ['as'] },
+            ],
+          },
+        },
+        {
+          id: 'token-response',
+          label: '200 with access token',
           from: 'as',
           to: 'app',
-          text: 'The server issues a fresh access token and replaces the refresh token, so that a stolen refresh token stops working once the real app has used it.',
-          where: 'RFC 9700 §2.2.2',
+          text: `The server returns access token \`${token}\`. The malicious app held the same code and challenge, but the verifier was never in a URL the malicious app could read: the stolen code is useless.`,
+          where: 'RFC 6749 §5.1, §4.1.2 (a code works once), RFC 9700 §4.5.3.1',
+          response: {
+            lang: 'json',
+            text: `{\n  "access_token": "${pkce.accessToken}",\n  "token_type": "Bearer",\n  "expires_in": 3600\n}`,
+          },
           effects: {
-            artefacts: [
-              { update: 'access', fields: { sub: 'new token' } },
-              { update: 'refresh', fields: { sub: 'rotated' } },
-            ],
+            holders: [{ add: 'access' }, { read: 'verifier', cells: ['mal'] }],
           },
         },
       ],
     },
   ],
 });
+
+export default oauthPkce;
