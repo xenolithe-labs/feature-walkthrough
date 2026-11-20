@@ -360,6 +360,8 @@ export async function layoutGroups(
 ): Promise<Positions> {
   const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
   const tree = buildTree(nodes, edges);
+  // ELK applies a minimum size to the layout's own axes, so a downward layout takes it turned.
+  const down = direction === 'DOWN';
   const toElk = (item: Item): ElkNode => {
     const held = tree.kids.get(item.id);
     if (held === undefined) return { id: item.id, width: item.width, height: item.height };
@@ -368,7 +370,9 @@ export async function layoutGroups(
       layoutOptions: {
         'elk.padding': `[top=${GROUP_PAD.top},left=${GROUP_PAD.side},bottom=${GROUP_PAD.bottom},right=${GROUP_PAD.side}]`,
         'elk.nodeSize.constraints': 'MINIMUM_SIZE',
-        'elk.nodeSize.minimum': `(${item.width},${item.height})`,
+        'elk.nodeSize.minimum': down
+          ? `(${item.height},${item.width})`
+          : `(${item.width},${item.height})`,
       },
       children: held.map(toElk),
     };

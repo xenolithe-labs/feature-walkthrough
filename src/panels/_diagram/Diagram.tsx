@@ -197,13 +197,6 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
         }
       />
       <polygon className="fw-edge-head" points={head} />
-      <EdgeExtras
-        from={start}
-        to={end}
-        crosses={crosses}
-        pulse={typeof data?.pulse === 'string' ? data.pulse : undefined}
-        reverse={data?.reverse === true}
-      />
       {typeof label === 'string' && label !== '' && (
         <text
           className="fw-edge-label"
@@ -215,6 +208,13 @@ const FloatingEdge = memo(function FloatingEdge({ source, target, label, data }:
           {label}
         </text>
       )}
+      <EdgeExtras
+        from={start}
+        to={end}
+        crosses={crosses}
+        pulse={typeof data?.pulse === 'string' ? data.pulse : undefined}
+        reverse={data?.reverse === true}
+      />
     </>
   );
 });
