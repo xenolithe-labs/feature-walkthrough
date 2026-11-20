@@ -60,6 +60,15 @@ describe('the skill', () => {
     expect(result.problems.map(formatProblem)).toEqual([]);
   });
 
+  it('has one name, one description and one panel table', () => {
+    // A bad merge once left three descriptions and four copies of the table.
+    const skill = readFileSync('skills/feature-walkthrough/SKILL.md', 'utf8');
+    const front = skill.split('---')[1] ?? '';
+    expect(front.match(/^name:/gm)).toHaveLength(1);
+    expect(front.match(/^description:/gm)).toHaveLength(1);
+    expect(skill.match(/^\| Panel /gm)).toHaveLength(1);
+  });
+
   it('names every registered panel and annotation', () => {
     const skill = readFileSync('skills/feature-walkthrough/SKILL.md', 'utf8');
     const registry = createRegistry();

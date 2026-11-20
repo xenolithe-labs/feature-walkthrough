@@ -425,12 +425,19 @@ test('algorithm demos: the array shows pointers, the window and the code pointer
   expect(errors).toEqual([]);
 });
 
-test('algorithm demos: a call stack, a queue and a table follow the code', async ({ page }) => {
+test('algorithm demos: brackets for waiting calls, a queue and a table follow the code', async ({
+  page,
+}) => {
+  // The first call has no caller, so no bracket says "waiting" yet; the recursive call adds one.
   await open(page, '#w=quicksort&s=1&c=1');
-  await expect(page.locator('.fw-box[data-entity="stack-0"]')).not.toHaveClass(/is-absent/);
-  await expect(page.locator('.fw-box[data-entity="stack-1"]')).toHaveClass(/is-absent/);
-  await page.goto('/#w=quicksort&s=16&c=2');
-  await expect(page.locator('.fw-array-cell[data-tone="good"]')).toHaveCount(7);
+  await expect(page.locator('.fw-array-range[data-entity="active"]')).not.toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-array-range[data-entity="waiting-1"]')).toHaveClass(/is-absent/);
+  await page.goto('/#w=quicksort&s=4&c=1');
+  await expect(page.locator('.fw-array-range[data-entity="waiting-1"]')).not.toHaveClass(
+    /is-absent/,
+  );
+  await page.goto('/#w=quicksort&s=7&c=4');
+  await expect(page.locator('.fw-array-cell[data-tone="good"]')).toHaveCount(5);
 
   await page.goto('/#w=bfs&s=8&c=2');
   await expect(page.locator('.fw-array-cell:not(.is-absent)')).toHaveCount(6);
@@ -444,7 +451,8 @@ test('algorithm demos: a call stack, a queue and a table follow the code', async
 
 test('code is coloured in both themes, and a marked expression is one box', async ({ page }) => {
   const errors = watchErrors(page);
-  await open(page, '#w=quicksort&s=4&c=5');
+  // A comparison that fails marks only the expression on its line.
+  await open(page, '#w=quicksort&s=2&c=1');
   const keyword = page.locator('.fw-code-line[data-line="10"] code span', { hasText: 'function' });
   const light = await keyword.evaluate((node) => getComputedStyle(node).color);
   await page.getByRole('button', { name: 'Dark theme' }).click();
@@ -742,7 +750,8 @@ test('focus view: a pane can be pinned from the bar, and following the call lets
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await open(page, '#w=quicksort&s=2&c=3&v=focus');
+  // The third call of a round touches the code and the array, not the table of variables.
+  await open(page, '#w=binary-search&s=2&c=3&v=focus');
   const off = page.locator('.fw-rail-item[data-on-stage="false"]');
   if ((await off.count()) === 0) {
     // Everything fits on this stage: nothing to pin.

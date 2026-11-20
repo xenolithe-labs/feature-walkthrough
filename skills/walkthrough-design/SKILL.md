@@ -75,17 +75,19 @@ Choose two or three views. A fourth needs a reason you can state in one sentence
 
 **In code, a call is one idea, not one line.** A guard that passes belongs with the statement it guards; the same guard failing is its own call. Two tests of one value are one comparison. Lay out the shown source so the lines a call is about are next to each other.
 
-**A step is a phase the reader can name.** Typically 3 to 7 steps of 1 to 5 calls. Name it with a noun or short phrase in the reader's words ("Exchange the code", not "Phase 3"). Put a boundary where the reader's question changes, where control passes to another actor, or where a stable state is reached. Give a step a one-sentence purpose. A recap of where things stand belongs in the step's last call, not in text the reader sees when the step begins.
+**A step is a phase the reader can name.** Typically 3 to 7 steps of 1 to 5 calls; when the calls do not fit, keep the phases the reader would name and let a step run longer. Name it with a noun or short phrase in the reader's words ("Exchange the code", not "Phase 3"). Put a boundary where the reader's question changes, where control passes to another actor, or where a stable state is reached. Give a step a one-sentence purpose. A recap of where things stand belongs in the step's last call, not in text the reader sees when the step begins.
 
 **Opening.** Start with the first real call, preceded by a sentence of context, or with a named opening call. If the run starts from state that already exists (a sheet, a table, a cluster), show that state from the first call and mark only the part each opening call talks about. Build a view up only when the things are created during the run. Never trade a still layout for a late entrance.
 
-**Closing.** End on the last real event, with a final state that lets the reader read the answer off the views (what changed, what was left alone), and say once why the mechanism matters. The closing is that event's call, not an extra one.
+**Closing.** End on the last real event, with a final state that lets the reader read the answer off the views (what changed, what was left alone), and say once why the mechanism matters. The closing is that event's call, not an extra one; if the last event has no content of its own (an implicit return), a short recap call may stand in for it.
 
 **A call that changes nothing** (a check that declines, a wait) is still a call when the reader needs to see it happen; say what was looked at and what the outcome was.
 
 **Merge or split?** Merge consecutive calls that change the same thing in the same way with no decision between them. Do not merge calls that carry the idea to save clicks: reader-paced steps are what helps.
 
 **Loops.** If iterations are alike (retry, polling), show the first, the second (what carries over), and the one that differs (the last, or the one where something breaks), and state how many were skipped: "failures 3 to 5 double again: 4, 8 and 16 seconds". If each iteration changes different state (a sort, a graph search), do not skip: group iterations into steps and show all. Under four iterations, show all.
+
+**Recursion.** Size the example so the deepest path is about three calls. Show a call that returns at once as one call, at the line that makes it. Give the return of a call that did work its own call, because the reader must see the caller resume. Show waiting calls where the reader can see them at every call: as marks on the state they own (a bracket over their cells) before a separate stack view. A variable that each invocation holds separately must be in a view, or restated when control returns.
 
 **Branches and errors.** Walk the main path uninterrupted and mark the divergence in the text ("here the server can refuse"). Choose the alternative's data so it shares as much as possible with the main path. If the two paths share their opening, put the alternative in a later step that starts where they part, on the same views and values. Make a second walkthrough only when the paths share little; then say in its intro which calls repeat the first. Do not interleave two paths in one run of calls.
 
@@ -97,7 +99,7 @@ Each call has a name and a text.
 
 - **Name = what happens**, in a short verb phrase with the real command, message or value where it fits (`POST /token`, "Mark A3 dirty").
 - **Text = what changed, why, and what to notice.** State the change with names and values. Give the old value as well as the new one when the old value meant something ("balance 40 becomes 25"), since after the call it is gone from the view; skip it for a value that is simply recomputed.
-- **Length.** Use as few words as state the change; a simple call needs under 20. About 40 words in three sentences is the ceiling, not the size to aim for (a colon or semicolon that joins two statements counts as a sentence break). If most of your calls are near the ceiling, the calls are carrying two ideas or the views are not carrying the values: fix that instead of trimming. When not everything fits, keep the change and its values first, then why, and drop the rest. A prediction question (section 6) does not count toward the limit.
+- **Length.** Use as few words as state the change. A call that changes one thing and defines nothing needs under 12 words ("46 stays in cell 2."). A call that defines a term or gives the reason for the whole mechanism may reach about 40 words in three sentences; expect three or four of those in a walkthrough, not most. That is the ceiling, not the size to aim for (a colon or semicolon that joins two statements counts as a sentence break). If most of your calls are near the ceiling, the calls are carrying two ideas or the views are not carrying the values: fix that instead of trimming. When not everything fits, keep the change and its values first, then why, and drop the rest. A prediction question (section 6) does not count toward the limit. A step's own text is read on every call of the step: keep it under 15 words.
 - **Stand alone.** A reader who jumps to any call should be able to follow it. So the text names things by their own names or values ("the row for order 17"), not by position, colour, "this" or "above". Do not narrate the layout ("an arrow goes from the client to the server").
 - **One new term per call,** in the reader's words. No forward references ("as we will see").
 - **Mark identifiers as code** where the tool allows it, so `like` the function is not read as the word.
@@ -132,7 +134,7 @@ Each call has a name and a text.
 1. **Two rounds.** Test the storyboard first, because changes are cheap there; test again on the built walkthrough, because views change what the text needs to say.
 2. **Test on three to five people from the intended audience.** Ask the test question before and after. Watch them step through while thinking aloud; do not explain or hint. Note where they stall, go back, misread or say "wait". Revise, then test on new readers.
 3. **If no reader is available, run a cold read of the texts.** Give another person or a fresh agent: the intro; the step names and step texts; the call names and texts, in order; the list of terms the reader record says the reader knows; and one line on what the views show before the first call (the names in the code, the starting values). Withhold everything else. Ask it to (a) list every state change the text does not state, (b) list every sentence it had to read twice, (c) list every term it could not derive. Only then give it the test question and ask for the answer. Act on (a) and (b) first; they find the most. This tests only the text, and a model's prior knowledge hides gaps, so report it as the weaker test.
-4. **Expect the cold read to push text longer.** Each "unstated change" tempts you to add a sentence. First ask whether a view already shows it; if so, mark it there instead.
+4. **Expect the cold read to push text longer.** Sort each "unstated change" before acting: if a view shows it, mark it there and add no words; if no view shows it but one could (a variable, a waiting call), add it to a view; only if neither, add words, and then cut as many elsewhere in that card. Count the mean words per card before and after each round, and report both.
 
 ## Worked examples
 
@@ -174,7 +176,7 @@ Run it on the draft and the design record. Answer yes or no. Any "no" is a findi
 **Text**
 
 15. Does each call name say what happens, using the real command, message or value where short enough?
-16. Is every call's text within about 40 words and three sentences, and are the simple calls under 20?
+16. Is every call's text within about 40 words and three sentences, with no more than a handful near that ceiling, and is each step's own text under 15 words?
 17. Does each sentence say what changed, why, or what to notice, rather than where something is on screen?
 18. When a value that mattered changes, does the text give the old and the new one?
 
