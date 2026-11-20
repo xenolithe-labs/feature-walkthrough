@@ -16,6 +16,7 @@ import {
   type Problem,
   own,
 } from '../../core';
+import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { Diagram, type DiagramEdge, type DiagramNode } from './Diagram';
 import { estimateSize, type Direction } from './layout';
@@ -168,6 +169,11 @@ export function createDiagramPanel(options: {
           }
         }
       });
+      problems.push(
+        ...fieldProblems(pane, walkthrough, (id) =>
+          nodes.has(id) ? ['label', 'sub', 'tone'] : [],
+        ),
+      );
       return problems;
     },
   };

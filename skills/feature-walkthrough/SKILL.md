@@ -29,7 +29,7 @@ Do not hand over a config that has not passed `lint`.
 
 ```jsonc
 {
-  "id": "my-flow", // ids: letters, digits, . _ : -
+  "id": "my-flow", // ids: letters, digits, _ and - (no dots or colons)
   "title": "…",
   "lead": "One or two sentences on what the reader will learn.",
   "lanes": [{ "id": "client", "title": "Client" }], // the actors; needed for a sequence pane
@@ -82,7 +82,6 @@ An effect has exactly one verb:
 | `{ "read": id }`                  | The element is used by this call but not changed        |
 | `{ "remove": id }`                | The element goes away                                   |
 | `{ "focus": id }`                 | Centre the pane on the element                          |
-| `{ "set": value }`                | Replace a pane's free-form value (few panels use this)  |
 
 Elements touched by the current call are highlighted and the rest fade, so give every call at
 least one effect in each pane it is about. The highlight lasts for that call only; what `add`,
@@ -91,6 +90,22 @@ least one effect in each pane it is about. The highlight lasts for that call onl
 Whether elements are present before any call depends on the panel's `initial` default (below). Set
 `"initial": false` on the content, or on one element, to make it appear only when a call does
 `add`.
+
+### Ids
+
+An id you write uses letters, digits, `_` and `-`. Dots and colons are reserved, because the engine
+uses them to build the ids of things that belong to other things. You never declare these ids,
+but you name them in effects:
+
+| Element                    | Its id         | Example              |
+| -------------------------- | -------------- | -------------------- |
+| An edge without an `id`    | `from.to`      | `cached.query`       |
+| A column of a schema table | `table.column` | `order.user_id`      |
+| A relation without an `id` | `from:to`      | `order.user_id:user` |
+| A cell of an array         | `array.index`  | `items.3`            |
+
+`update` may only set fields the element has. A misspelt field, or a tone that is not a tone, is a
+lint error.
 
 A lasting marker that outlives one call is a **tone**: `{ "update": id, "fields": { "tone": "warn" } }`.
 Tones are `warn`, `good`, `muted`, and `none` to clear. Use them for states such as "dirty",

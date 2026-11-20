@@ -33,7 +33,7 @@ function shuffled<T>(items: T[], seed: number): T[] {
 
 function project(state: unknown) {
   const s = state as ElementsState;
-  return { present: [...s.present], patches: s.patches, focus: s.focus, value: s.value };
+  return { present: [...s.present], patches: s.patches, focus: s.focus };
 }
 
 describe('generated configs that use every panel and every verb', () => {
@@ -51,7 +51,7 @@ describe('generated configs that use every panel and every verb', () => {
         for (const call of step.calls) {
           for (const list of Object.values(call.effects ?? {})) {
             for (const effect of list) {
-              for (const key of ['add', 'update', 'read', 'remove', 'focus', 'set']) {
+              for (const key of ['add', 'update', 'read', 'remove', 'focus']) {
                 if (key in effect) verbs.add(key);
               }
             }
@@ -59,7 +59,7 @@ describe('generated configs that use every panel and every verb', () => {
         }
       }
     }
-    expect([...verbs].sort()).toEqual(['add', 'focus', 'read', 'remove', 'set', 'update']);
+    expect([...verbs].sort()).toEqual(['add', 'focus', 'read', 'remove', 'update']);
     expect([...panels].sort()).toEqual(
       ['boxes', 'code', 'flow', 'graph', 'payload', 'schema', 'sequence', 'table'].sort(),
     );

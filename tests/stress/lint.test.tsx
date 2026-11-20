@@ -541,15 +541,33 @@ describe('lint quality: one cause should give one clear problem with the right p
     expect(where(config)).toHaveLength(1);
   });
 
-  it('ids at the edge of the pattern load: dots, colons, dashes, underscores, leading digits, one-character', () => {
-    const ids = ['a', '0', '9z', 'a.b', 'a:b', 'a-b', 'a_b', 'A.B:c-d_e', 'x'.repeat(2000)];
+  it('ids at the edge of the pattern load: dashes, underscores, leading digits, one-character', () => {
+    const ids = ['a', '0', '9z', 'a-b', 'a_b', 'A-B_c-d_e', 'x'.repeat(2000)];
     const nodes = ids.map((id) => ({ id, label: id }));
     const edges = [
       { from: ids[3]!, to: ids[4]! },
-      { from: ids[5]!, to: ids[6]!, id: 'e1' },
+      { from: ids[4]!, to: ids[5]!, id: 'e1' },
     ];
     const config = graph({ nodes, edges }, [
       call('k', { effects: { g: ids.map((id) => ({ add: id })) } }),
+    ]);
+    expect(errors(config)).toEqual([]);
+  });
+
+  // Dots and colons build the ids of things that belong to other things ("table.column",
+  // "from.to", "from:to"), so an author's own id cannot contain them. That is what keeps a
+  // composite id from ever being read two ways.
+  it('an id with a dot or a colon is refused where it is declared', () => {
+    for (const id of ['a.b', 'a:b', 'a.b.c']) {
+      expect(where(graph({ nodes: [{ id, label: 'x' }] }))).toEqual([
+        'schema @ layout.panes[0].content.nodes[0].id',
+      ]);
+    }
+  });
+
+  it('an edge without an id is still reached as "from.to", and a relation as "from:to"', () => {
+    const config = graph({ nodes: [A, B], edges: [{ from: 'a', to: 'b' }] }, [
+      call('k', { effects: { g: [{ add: 'a' }, { add: 'b' }, { add: 'a.b' }] } }),
     ]);
     expect(errors(config)).toEqual([]);
   });
@@ -562,27 +580,27 @@ describe('lint quality: one cause should give one clear problem with the right p
     },
   );
 
-  it('a prefix id never matches its longer sibling: "a" and "a.b" and "a.b.c" are three elements', () => {
-    const nodes = ['a', 'a.b', 'a.b.c'].map((id) => ({ id, label: id }));
+  it('a prefix id never matches its longer sibling: "a" and "a-b" are two elements', () => {
+    const nodes = ['a', 'a-b', 'a-b-c'].map((id) => ({ id, label: id }));
     const config = graph({ nodes }, [
-      call('k', { effects: { g: [{ add: 'a' }, { add: 'a.b' }] } }),
+      call('k', { effects: { g: [{ add: 'a' }, { add: 'a-b' }] } }),
       call('j', { effects: { g: [{ remove: 'a' }] } }),
     ]);
     const w = load(config).walkthroughs[0]!;
-    expect((createFolder(w).at(0, 1).g!.state as ElementsState).present).toEqual(['a.b']);
+    expect((createFolder(w).at(0, 1).g!.state as ElementsState).present).toEqual(['a-b']);
   });
 
-  it('a schema table called "a.b" and a column "b" of table "a" collide, and say so once', () => {
+  it('a table cannot be named like another table\'s column: "a.b" is not an id', () => {
     const tables = [
       { id: 'a', label: 'A', columns: [{ id: 'b' }] },
       { id: 'a.b', label: 'AB' },
     ];
     expect(
       where(wrap('w', [{ id: 's', panel: 'schema', content: { tables } }], steps([call('k')]))),
-    ).toEqual(['duplicate-id @ layout.panes[0].content']);
+    ).toEqual(['schema @ layout.panes[0].content.tables[1].id']);
   });
 
-  it('a relation id that equals a column id collides and says so once', () => {
+  it('a relation cannot be named like a column: "a.b" is not an id', () => {
     const tables = [{ id: 'a', label: 'A', columns: [{ id: 'b' }] }];
     const relations = [{ id: 'a.b', from: 'a', to: 'a' }];
     expect(
@@ -593,7 +611,7 @@ describe('lint quality: one cause should give one clear problem with the right p
           steps([call('k')]),
         ),
       ),
-    ).toEqual(['duplicate-id @ layout.panes[0].content']);
+    ).toEqual(['schema @ layout.panes[0].content.relations[0].id']);
   });
 
   it('schema relations between columns of one table, in both directions between two tables, and to a column added later all load', () => {

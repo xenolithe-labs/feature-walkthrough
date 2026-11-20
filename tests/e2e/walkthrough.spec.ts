@@ -411,8 +411,8 @@ test('algorithm demos: the array shows pointers, the window and the code pointer
 
 test('algorithm demos: a call stack, a queue and a table follow the code', async ({ page }) => {
   await open(page, '#w=quicksort&s=1&c=1');
-  await expect(page.locator('.fw-box[data-entity="stack.0"]')).not.toHaveClass(/is-absent/);
-  await expect(page.locator('.fw-box[data-entity="stack.1"]')).toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-box[data-entity="stack-0"]')).not.toHaveClass(/is-absent/);
+  await expect(page.locator('.fw-box[data-entity="stack-1"]')).toHaveClass(/is-absent/);
   await page.goto('/#w=quicksort&s=16&c=2');
   await expect(page.locator('.fw-array-cell[data-tone="good"]')).toHaveCount(7);
 
@@ -421,7 +421,7 @@ test('algorithm demos: a call stack, a queue and a table follow the code', async
   await expect(page.locator('.react-flow__node.is-absent')).toHaveCount(0);
 
   await page.goto('/#w=edit-distance&s=6&c=1');
-  await expect(page.locator('.fw-table tr[data-entity="dp.r4"] td[data-column="c4"]')).toHaveText(
+  await expect(page.locator('.fw-table tr[data-entity="dp-r4"] td[data-column="c4"]')).toHaveText(
     '2',
   );
 });

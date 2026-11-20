@@ -103,7 +103,6 @@ describe('fold equals a full recompute at every cursor', () => {
     fc
       .tuple(fc.constantFrom(...ids), fc.integer())
       .map(([id, n]) => ({ update: id, fields: { n } })),
-    fc.integer().map((n) => ({ set: n })),
   );
   const steps = fc.array(
     fc.array(fc.array(effect, { maxLength: 4 }), { minLength: 1, maxLength: 4 }),
@@ -166,7 +165,7 @@ describe('marks', () => {
 
   it('fades nothing when the call touched nothing in the pane', () => {
     expect(markOf('a', touched([]))).toBe('idle');
-    expect(markOf('a', touched([{ focus: 'a' }, { set: 1 }]))).toBe('idle');
+    expect(markOf('a', touched([{ focus: 'a' }]))).toBe('idle');
   });
 });
 

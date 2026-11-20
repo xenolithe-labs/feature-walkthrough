@@ -12,11 +12,24 @@
  */
 import { z } from 'zod';
 
+/**
+ * An id that an author gives to something: a pane, a lane, a step, a call, an element. Dots and
+ * colons are kept out of it, because the engine uses them to build the ids of things that belong
+ * to other things: "<table>.<column>", "<array>.<index>", "<from>.<to>", "<from>:<to>".
+ */
 export const IdSchema = z
   .string()
-  .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/, 'ids use letters, digits, ".", "_", ":" or "-"');
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/, 'ids use letters, digits, "_" or "-"');
 
-export const EFFECT_VERBS = ['add', 'update', 'read', 'remove', 'focus', 'set'] as const;
+/** A reference to an element: an id, or ids joined by "." or ":" as described above. */
+export const RefSchema = z
+  .string()
+  .regex(
+    /^[A-Za-z0-9][A-Za-z0-9_-]*([.:][A-Za-z0-9_-]+)*$/,
+    'an element reference is an id, or ids joined by "." or ":"',
+  );
+
+export const EFFECT_VERBS = ['add', 'update', 'read', 'remove', 'focus'] as const;
 export type EffectVerb = (typeof EFFECT_VERBS)[number];
 
 /**
@@ -26,17 +39,15 @@ export type EffectVerb = (typeof EFFECT_VERBS)[number];
  *   { read: id }                the element is read
  *   { remove: id }              the element goes away
  *   { focus: id }               centre on the element
- *   { set: value }              replace the pane's free-form value outright
  * Panels may accept extra keys next to the verb.
  */
 export const EffectSchema = z
   .looseObject({
-    add: IdSchema.optional(),
-    update: IdSchema.optional(),
-    read: IdSchema.optional(),
-    remove: IdSchema.optional(),
-    focus: IdSchema.optional(),
-    set: z.unknown().optional(),
+    add: RefSchema.optional(),
+    update: RefSchema.optional(),
+    read: RefSchema.optional(),
+    remove: RefSchema.optional(),
+    focus: RefSchema.optional(),
     fields: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((effect, ctx) => {
@@ -95,7 +106,7 @@ export const CallSchema = z.strictObject({
 });
 export type Call = z.infer<typeof CallSchema>;
 
-const IdListSchema = z.array(IdSchema);
+const IdListSchema = z.array(RefSchema);
 
 export const StepSummarySchema = z.strictObject({
   add: IdListSchema.optional(),

@@ -12,7 +12,7 @@ export function changesSection(
   const seen = new Set<string>();
   for (const effect of current) {
     const { verb, id } = effectTarget(effect);
-    if (id === undefined || verb === 'focus' || verb === 'set') continue;
+    if (id === undefined || verb === 'focus') continue;
     const key = `${verb}:${id}`;
     if (seen.has(key)) continue;
     seen.add(key);

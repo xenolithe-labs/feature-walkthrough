@@ -1,12 +1,12 @@
 import { EFFECT_VERBS, type Call, type Effect, type EffectVerb } from './schema';
 import type { EntityDecl, ResolvedPane } from './types';
 
-/** The verb of an effect and, for every verb but `set`, the element it names. */
-export function effectTarget(effect: Effect): { verb: EffectVerb; id: string | undefined } {
+/** The verb of an effect and the element it names. */
+export function effectTarget(effect: Effect): { verb: EffectVerb; id: string } {
   for (const verb of EFFECT_VERBS) {
     const value = effect[verb];
     if (value === undefined) continue;
-    return { verb, id: verb === 'set' ? undefined : (value as string) };
+    return { verb, id: value };
   }
   throw new Error('effect has no verb');
 }
@@ -36,7 +36,7 @@ export function effectsOf(pane: ResolvedPane, call: Call): Effect[] {
 
 /**
  * The state most panels need: which declared elements are present, what has
- * been patched onto them, what to centre on, and an optional free-form value.
+ * been patched onto them, and what to centre on.
  */
 export interface ElementsState {
   /** Present element ids, in the order they appeared. */
@@ -44,15 +44,13 @@ export interface ElementsState {
   /** Fields merged onto elements by `update`. */
   patches: Readonly<Record<string, Readonly<Record<string, unknown>>>>;
   focus: string | undefined;
-  value: unknown;
 }
 
-export function initElements(entities: EntityDecl[], value: unknown = undefined): ElementsState {
+export function initElements(entities: EntityDecl[]): ElementsState {
   return {
     present: entities.filter((entity) => entity.initial).map((entity) => entity.id),
     patches: {},
     focus: undefined,
-    value,
   };
 }
 
@@ -109,8 +107,6 @@ export function reduceElements(state: ElementsState, effect: Effect): ElementsSt
       };
     case 'focus':
       return { ...state, focus: id };
-    case 'set':
-      return { ...state, value: effect.set };
     case 'read':
       return state;
   }

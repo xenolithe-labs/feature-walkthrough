@@ -79,7 +79,7 @@ function expand(lines: unknown, limit: number): number[] {
   return result;
 }
 
-const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'set', 'fields', 'lines', 'expr'];
+const EFFECT_KEYS = ['add', 'update', 'read', 'remove', 'focus', 'fields', 'lines', 'expr'];
 
 const MARK = { add: 'added', update: 'updated', read: 'read', remove: 'removed' } as const;
 
@@ -123,7 +123,7 @@ function SourceView({
   const spans = new Map<number, [number, number, string][]>();
   for (const effect of ctx.current) {
     const { verb, id } = effectTarget(effect);
-    if (id !== source.id || verb === 'focus' || verb === 'set') continue;
+    if (id !== source.id || verb === 'focus') continue;
     const marked = expand(effect.lines, lines.length);
     for (const line of marked) marks.set(line, MARK[verb]);
     for (const piece of exprs(effect)) {

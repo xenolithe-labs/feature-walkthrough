@@ -20,7 +20,9 @@ import {
   type PanelType,
   type Problem,
   own,
+  RefSchema,
 } from '../../core';
+import { fieldProblems } from '../_shared/fields';
 import { TONES, changesSection, text, toneOf } from '../_shared/changes';
 import { useRevealTouched } from '../_shared/reveal';
 import './schema.css';
@@ -54,8 +56,8 @@ const SchemaContent = z.strictObject({
         /** Defaults to "<from>:<to>". */
         id: IdSchema.optional(),
         /** A table id, or "<table>.<column>". */
-        from: IdSchema,
-        to: IdSchema,
+        from: RefSchema,
+        to: RefSchema,
         label: z.string().optional(),
         initial: z.boolean().optional(),
       }),
@@ -347,6 +349,12 @@ export const schemaPanel: PanelType<SchemaContent, ElementsState> = {
         }
       }
     });
+    problems.push(
+      ...fieldProblems(pane, walkthrough, (id) => {
+        if (tables.has(id)) return ['label', 'sub', 'tone'];
+        return ends.has(id) ? ['label', 'type', 'note'] : [];
+      }),
+    );
     return problems;
   },
 };

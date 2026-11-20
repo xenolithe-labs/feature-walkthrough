@@ -140,7 +140,7 @@ describe('quicksort', () => {
       expect(state.patches[`items.${index}`]?.tone).toBe('good');
     }
     const stack = finalState(walkthrough)['stack']!.state as ElementsState;
-    expect(stack.present).toEqual(['stack.0']);
+    expect(stack.present).toEqual(['stack-0']);
   });
 
   it('shows the recursion as deep as it went', () => {

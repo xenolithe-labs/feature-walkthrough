@@ -77,7 +77,7 @@ function fieldMarks(current: Effect[], payloadId: string): Map<string, string> {
   const marks = new Map<string, string>();
   for (const effect of current) {
     const { verb, id } = effectTarget(effect);
-    if (id !== payloadId || verb === 'focus' || verb === 'set') continue;
+    if (id !== payloadId || verb === 'focus') continue;
     for (const path of pathsOf(effect)) marks.set(path, MARK[verb]);
     if (verb === 'update') {
       for (const path of Object.keys(effect.fields ?? {})) {

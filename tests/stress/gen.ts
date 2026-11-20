@@ -38,7 +38,7 @@ export const LANES = [
 ];
 
 /** Ids at the edge of the allowed pattern: dots, colons, dashes, underscores, digits first. */
-export const ODD_IDS = ['n.1', 'n:2', 'n-3', 'n_4', '5n', 'N.6:x-y_z', 'a', 'a.b', 'a.b.c'];
+export const ODD_IDS = ['n-1', 'n_2', 'n-3', 'n_4', '5n', 'N-6_x-y_z', 'a', 'a-b', 'a-b-c'];
 
 /** What a panel generator hands back: content, every element id, and which start present. */
 interface Made {
@@ -105,8 +105,11 @@ function makeDiagram(
     pane: { id, panel: kind, role, content: { nodes, edges, initial: initialDefault } },
     ids,
     present,
-    extra: (rr, _id, verb, k) =>
-      verb === 'update' ? { fields: fieldsFor(rr, ['label', 'sub'], k) } : {},
+    // Only nodes and boxes take fields; an id with a dot is an edge.
+    extra: (rr, target, verb, k) =>
+      verb === 'update' && !target.includes('.')
+        ? { fields: fieldsFor(rr, ['label', 'sub'], k) }
+        : {},
   };
 }
 
@@ -138,13 +141,16 @@ function makeBoxes(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
     },
     ids,
     present: new Set(ids),
-    extra: (rr, _id, verb, k) =>
-      verb === 'update' ? { fields: fieldsFor(rr, ['label', 'sub'], k) } : {},
+    // Only nodes and boxes take fields; an id with a dot is an edge.
+    extra: (rr, target, verb, k) =>
+      verb === 'update' && !target.includes('.')
+        ? { fields: fieldsFor(rr, ['label', 'sub'], k) }
+        : {},
   };
 }
 
 function makeTable(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
-  const columns = ['name', 'qty', 'note.x', 'c:4'].map((c) => ({ id: c, label: c.toUpperCase() }));
+  const columns = ['name', 'qty', 'note-x', 'c_4'].map((c) => ({ id: c, label: c.toUpperCase() }));
   const rows = Array.from({ length: 6 }, (_, i) => ({
     id: `r${i}`,
     cells: Object.fromEntries(
@@ -171,7 +177,7 @@ const CODE_TEXT = (n: number, tag: string) =>
 
 function makeCode(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
   const sources = [
-    { id: 'main.ts', title: 'main', lang: 'ts', text: CODE_TEXT(8, 'main') },
+    { id: 'main-ts', title: 'main', lang: 'ts', text: CODE_TEXT(8, 'main') },
     { id: 'util', title: 'util', text: CODE_TEXT(5 + r.int(4), 'util') },
   ];
   return {
@@ -229,7 +235,7 @@ function makePayload(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
 }
 
 function makeSchema(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
-  const tables = ['users', 'orders', 'order.items'].map((t, i) => ({
+  const tables = ['users', 'orders', 'order-items'].map((t, i) => ({
     id: t,
     label: t.toUpperCase(),
     columns: [
@@ -263,8 +269,14 @@ function makeSchema(id: string, r: Rng, role: 'fixed' | 'focus'): Made {
     pane: { id, panel: 'schema', role, content: { tables, relations } },
     ids,
     present,
-    extra: (rr, _id, verb, k) =>
-      verb === 'update' ? { fields: fieldsFor(rr, ['label', 'type', 'note', 'sub'], k) } : {},
+    // A table takes label, sub and tone; a column ("table.column") label, type and note; a
+    // relation ("from:to") takes nothing.
+    extra: (rr, target, verb, k) => {
+      if (verb !== 'update' || target.includes(':')) return {};
+      return target.includes('.')
+        ? { fields: { [rr.pick(['label', 'type', 'note'])]: `v${k}` } }
+        : { fields: fieldsFor(rr, ['label', 'sub'], k) };
+    },
   };
 }
 
@@ -320,15 +332,10 @@ export function randomWalkthrough(seed: number, options: RandomOptions = {}): Wa
           const absent = m.ids.filter((id) => !here.has(id));
           const live = m.ids.filter((id) => here.has(id));
           const verbs = [
-            'set',
             ...(absent.length > 0 ? ['add'] : []),
             ...(live.length > 0 ? ['update', 'read', 'remove', 'focus'] : []),
           ];
           const verb = r.pick(verbs);
-          if (verb === 'set') {
-            list.push({ set: r.pick([null, 1, 'text', [1, 2], { a: { b: 1 } }]) });
-            continue;
-          }
           const id = r.pick(verb === 'add' ? absent : live);
           if (verb === 'add') here.add(id);
           if (verb === 'remove') here.delete(id);

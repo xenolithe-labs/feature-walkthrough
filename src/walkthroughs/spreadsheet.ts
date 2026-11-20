@@ -81,11 +81,11 @@ export const spreadsheet = defineWalkthrough({
           edges: [
             { from: 'edit', to: 'mark' },
             { from: 'mark', to: 'more' },
-            { id: 'more.yes', from: 'more', to: 'mark', label: 'yes' },
+            { id: 'more-yes', from: 'more', to: 'mark', label: 'yes' },
             { from: 'more', to: 'order', label: 'no' },
             { from: 'order', to: 'compute' },
             { from: 'compute', to: 'left' },
-            { id: 'left.yes', from: 'left', to: 'compute', label: 'yes' },
+            { id: 'left-yes', from: 'left', to: 'compute', label: 'yes' },
             { from: 'left', to: 'paint', label: 'no' },
           ],
         },
@@ -133,7 +133,7 @@ export const spreadsheet = defineWalkthrough({
           effects: {
             sheet: [{ read: 'A3' }, { update: 'A5', fields: { tone: 'warn' } }],
             deps: [{ read: 'A3' }, { read: 'A3.A5' }, { update: 'A5', fields: { tone: 'warn' } }],
-            stages: [{ read: 'mark' }, { read: 'more' }, { read: 'more.yes' }],
+            stages: [{ read: 'mark' }, { read: 'more' }, { read: 'more-yes' }],
           },
         },
         {
@@ -143,7 +143,7 @@ export const spreadsheet = defineWalkthrough({
           effects: {
             sheet: [{ read: 'A3' }, { update: 'A7', fields: { tone: 'warn' } }],
             deps: [{ read: 'A3' }, { read: 'A3.A7' }, { update: 'A7', fields: { tone: 'warn' } }],
-            stages: [{ read: 'mark' }, { read: 'more' }, { read: 'more.yes' }],
+            stages: [{ read: 'mark' }, { read: 'more' }, { read: 'more-yes' }],
           },
         },
         {
@@ -230,7 +230,7 @@ export const spreadsheet = defineWalkthrough({
               { read: 'A4.A5' },
               { update: 'A5', fields: { tone: 'none' } },
             ],
-            stages: [{ read: 'compute' }, { read: 'left' }, { read: 'left.yes' }],
+            stages: [{ read: 'compute' }, { read: 'left' }, { read: 'left-yes' }],
           },
         },
         {
@@ -253,7 +253,7 @@ export const spreadsheet = defineWalkthrough({
               { read: 'A6.A7' },
               { update: 'A7', fields: { tone: 'none' } },
             ],
-            stages: [{ read: 'compute' }, { read: 'left' }, { read: 'left.yes' }],
+            stages: [{ read: 'compute' }, { read: 'left' }, { read: 'left-yes' }],
           },
         },
       ],

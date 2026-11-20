@@ -9,10 +9,9 @@ export interface ModelPane {
   present: string[];
   patches: Record<string, Record<string, unknown>>;
   focus: string | undefined;
-  value: unknown;
 }
 
-const VERBS = ['add', 'update', 'read', 'remove', 'focus', 'set'] as const;
+const VERBS = ['add', 'update', 'read', 'remove', 'focus'] as const;
 
 export function modelAt(w: ResolvedWalkthrough, s: number, c: number): Record<string, ModelPane> {
   const out: Record<string, ModelPane> = {};
@@ -20,7 +19,6 @@ export function modelAt(w: ResolvedWalkthrough, s: number, c: number): Record<st
     const present: string[] = pane.entities.filter((e) => e.initial).map((e) => e.id);
     const patches = new Map<string, Map<string, unknown>>();
     let focus: string | undefined;
-    let value: unknown;
 
     const apply = (effect: Record<string, unknown>) => {
       const verb = VERBS.find((v) => effect[v] !== undefined)!;
@@ -43,11 +41,9 @@ export function modelAt(w: ResolvedWalkthrough, s: number, c: number): Record<st
         }
       } else if (verb === 'focus') {
         focus = id;
-      } else if (verb === 'set') {
-        value = effect.set;
       }
       // The code panel brings any touched source to the front.
-      if (pane.panel.id === 'code' && verb !== 'set' && verb !== 'remove') focus = id;
+      if (pane.panel.id === 'code' && verb !== 'remove') focus = id;
     };
 
     for (let si = 0; si <= s; si += 1) {
@@ -65,7 +61,6 @@ export function modelAt(w: ResolvedWalkthrough, s: number, c: number): Record<st
       present,
       patches: Object.fromEntries([...patches].map(([id, m]) => [id, Object.fromEntries(m)])),
       focus,
-      value,
     };
   }
   return out;
