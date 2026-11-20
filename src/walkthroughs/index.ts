@@ -5,6 +5,7 @@ import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
 import { quicksortDemo } from './algorithms/quicksort';
+import { consistentHashing } from './consistent-hashing';
 import { eventbridgeRouting } from './eventbridge-routing';
 import { gitCommit } from './git-commit';
 import { kafkaBrokerFailure } from './kafka-broker-failure';
@@ -37,6 +38,7 @@ export const plainDemos: WalkthroughInput[] = [
   awsScpInheritance,
   tcpHandshake,
   jweCompact,
+  consistentHashing,
 ];
 
 /** Where a source's colours are kept in colours.generated.json. */
