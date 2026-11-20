@@ -3,6 +3,7 @@
  * feature-walkthrough [serve] <file>     check a config, then show it in the browser
  * feature-walkthrough lint <file...>     check configs
  * feature-walkthrough build <file>       write one self-contained HTML file
+ * feature-walkthrough highlight <file>   write the config with syntax colours worked out
  * feature-walkthrough schema             print the JSON Schema of a config
  *
  * A file is a JSON config, or a JavaScript or TypeScript module whose default
@@ -16,6 +17,7 @@ import { basename, extname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { configJsonSchema, formatProblem, loadConfig } from '../src/core';
+import { addTokens } from './highlight';
 import { injectConfig } from './inject';
 
 // Panels import their stylesheets. Outside a bundler those are empty modules.
@@ -33,12 +35,14 @@ const USAGE = `Usage:
   feature-walkthrough <file>                 check the config, then show it in the browser
   feature-walkthrough lint <file...>         check configs; exits 1 if any has an error
   feature-walkthrough build <file> [-o out]  write one self-contained HTML file
+  feature-walkthrough highlight <file> [-o out]  write the config as JSON with syntax colours added
   feature-walkthrough schema                 print the JSON Schema of a config
 
 Options:
   -o, --out <path>   where build writes (default: <file name>.html)
   -p, --port <n>     port to serve on (default: 4400, or the next free one)
       --no-open      do not open the browser
+      --no-color     show code plain: do not work out syntax colours
   -h, --help         show this text
   -v, --version      show the version
 
@@ -94,11 +98,33 @@ async function lint(files: string[]): Promise<number> {
   return failed ? 1 : 0;
 }
 
-async function build(file: string, out: string | undefined): Promise<number> {
+/** Works out syntax colours, unless that was turned off, and says which languages it skipped. */
+async function colour<T>(config: T, wanted: boolean): Promise<T> {
+  if (!wanted) return config;
+  // A copy, so a module's exported config is not changed under it.
+  const copy = structuredClone(config);
+  const { unknown } = await addTokens(copy);
+  if (unknown.length > 0) console.error(`no syntax colours for: ${unknown.join(', ')}`);
+  return copy;
+}
+
+async function highlight(file: string, out: string | undefined): Promise<number> {
+  const { ok, config } = await check(file);
+  if (!ok) return 1;
+  const text = `${JSON.stringify(await colour(config, true), null, 2)}\n`;
+  if (out === undefined) process.stdout.write(text);
+  else {
+    writeFileSync(out, text);
+    console.error(`wrote ${out}`);
+  }
+  return 0;
+}
+
+async function build(file: string, out: string | undefined, colours: boolean): Promise<number> {
   const { ok, config } = await check(file);
   if (!ok) return 1;
   const target = out ?? `${basename(file, extname(file))}.html`;
-  writeFileSync(target, injectConfig(viewer(), config));
+  writeFileSync(target, injectConfig(viewer(), await colour(config, colours)));
   console.error(`wrote ${target}`);
   return 0;
 }
@@ -115,7 +141,7 @@ function openBrowser(url: string): void {
     .unref();
 }
 
-async function serve(file: string, port: number, open: boolean): Promise<number> {
+async function serve(file: string, port: number, open: boolean, colours: boolean): Promise<number> {
   // Problems are printed, and the page lists them too, so serving goes ahead either way.
   const first = await check(file);
   if (first.config === undefined) return 1;
@@ -127,21 +153,23 @@ async function serve(file: string, port: number, open: boolean): Promise<number>
       return;
     }
     // The file is read on every request, so a refresh shows the latest edit.
-    read(file).then(
-      (config) => {
-        response.writeHead(200, {
-          'content-type': 'text/html; charset=utf-8',
-          'cache-control': 'no-store',
-        });
-        response.end(injectConfig(page, config));
-      },
-      (error: unknown) => {
-        response.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
-        response.end(
-          `cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      },
-    );
+    read(file)
+      .then((config) => colour(config, colours))
+      .then(
+        (config) => {
+          response.writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'cache-control': 'no-store',
+          });
+          response.end(injectConfig(page, config));
+        },
+        (error: unknown) => {
+          response.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
+          response.end(
+            `cannot read ${file}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        },
+      );
   });
 
   const listening = await new Promise<number>((done, fail) => {
@@ -175,6 +203,7 @@ async function main(argv: string[]): Promise<number> {
         out: { type: 'string', short: 'o' },
         port: { type: 'string', short: 'p' },
         'no-open': { type: 'boolean' },
+        'no-color': { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         version: { type: 'boolean', short: 'v' },
       },
@@ -205,7 +234,14 @@ async function main(argv: string[]): Promise<number> {
       console.error(USAGE);
       return 2;
     }
-    return build(rest[0]!, values.out);
+    return build(rest[0]!, values.out, values['no-color'] !== true);
+  }
+  if (command === 'highlight') {
+    if (rest.length !== 1) {
+      console.error(USAGE);
+      return 2;
+    }
+    return highlight(rest[0]!, values.out);
   }
 
   // Anything else is a file to show: "serve <file>" or just "<file>".
@@ -219,7 +255,7 @@ async function main(argv: string[]): Promise<number> {
     console.error(`--port must be a number from 1 to 65535, not "${values.port}"`);
     return 2;
   }
-  return serve(files[0]!, port, values['no-open'] !== true);
+  return serve(files[0]!, port, values['no-open'] !== true, values['no-color'] !== true);
 }
 
 process.exitCode = await main(process.argv.slice(2));

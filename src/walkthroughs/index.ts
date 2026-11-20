@@ -1,4 +1,5 @@
-import type { ConfigInput } from '../core';
+import type { ConfigInput, WalkthroughInput } from '../core';
+import colours from './colours.generated.json' with { type: 'json' };
 import { binarySearchDemos } from './algorithms/binary-search';
 import { bfsDemo } from './algorithms/bfs';
 import { editDistanceDemo } from './algorithms/edit-distance';
@@ -9,19 +10,52 @@ import { reactRender } from './react-render';
 import { spreadsheet } from './spreadsheet';
 import { terraformApply } from './terraform-apply';
 
+/** The demos as written, before syntax colours are added. */
+export const plainDemos: WalkthroughInput[] = [
+  oauthPkce,
+  spreadsheet,
+  reactRender,
+  terraformApply,
+  gitCommit,
+  ...binarySearchDemos,
+  quicksortDemo,
+  bfsDemo,
+  editDistanceDemo,
+];
+
+/** Where a source's colours are kept in colours.generated.json. */
+export const colourKey = (walkthrough: string, pane: string, source: string) =>
+  `${walkthrough}/${pane}/${source}`;
+
+/**
+ * The demos with the syntax colours that `pnpm colours` worked out for them. The viewer has no
+ * highlighter, so the colours are generated ahead of time and bundled as data.
+ */
+function coloured(walkthrough: WalkthroughInput): WalkthroughInput {
+  const stored = colours as Record<string, unknown>;
+  return {
+    ...walkthrough,
+    layout: {
+      ...walkthrough.layout,
+      panes: walkthrough.layout.panes.map((pane) => {
+        const content = pane.content as { sources?: { id: string }[] } | undefined;
+        if (pane.panel !== 'code' || content?.sources === undefined) return pane;
+        return {
+          ...pane,
+          content: {
+            ...content,
+            sources: content.sources.map((source) => {
+              const tokens = stored[colourKey(walkthrough.id, pane.id, source.id)];
+              return tokens === undefined ? source : { ...source, tokens };
+            }),
+          },
+        };
+      }),
+    },
+  };
+}
+
 /** The demos bundled with the page. Each one is plain config. */
-export const demos: ConfigInput = {
-  walkthroughs: [
-    oauthPkce,
-    spreadsheet,
-    reactRender,
-    terraformApply,
-    gitCommit,
-    ...binarySearchDemos,
-    quicksortDemo,
-    bfsDemo,
-    editDistanceDemo,
-  ],
-};
+export const demos: ConfigInput = { walkthroughs: plainDemos.map(coloured) };
 
 export default demos;

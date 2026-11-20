@@ -25,6 +25,7 @@ import {
   writtenEffects,
 } from '../../core';
 import { text } from '../_shared/changes';
+import { TokensSchema, pieces as cut, tokensMatch } from './tokens';
 import './code.css';
 
 const CodeContent = z.strictObject({
@@ -35,6 +36,8 @@ const CodeContent = z.strictObject({
         title: z.string().min(1),
         lang: z.string().optional(),
         text: z.string(),
+        /** Syntax colours, worked out ahead of time. See tokens.ts. */
+        tokens: TokensSchema.optional(),
       }),
     )
     .min(1),
@@ -150,6 +153,9 @@ function SourceView({
     }
   }, [first, source.id, ctx.call.id]);
 
+  // Colours belong to the declared text. Text that a call replaced is shown plain.
+  const colours = body === source.text ? source.tokens : undefined;
+
   const selected = ctx.selection.id === source.id;
   return (
     <div className="fw-code-panel" data-source={source.id}>
@@ -169,20 +175,41 @@ function SourceView({
           {lines.map((line, index) => {
             const mark = marks.get(index + 1);
             const here = pointer === index + 1;
-            const parts = (spans.get(index + 1) ?? []).sort((a, b) => a[0] - b[0]);
-            const pieces: ReactNode[] = [];
-            let from = 0;
-            for (const [start, end, kind] of parts) {
-              if (start < from) continue;
-              pieces.push(line.slice(from, start));
-              pieces.push(
-                <mark key={start} className={`fw-code-expr is-${kind}`}>
-                  {line.slice(start, end)}
-                </mark>,
+            const parts = spans.get(index + 1) ?? [];
+            // Pieces of one marked expression sit in one <mark>, so its outline is drawn once
+            // however many colours the expression has.
+            const drawn: ReactNode[] = [];
+            let group: ReactNode[] = [];
+            let groupMark: string | undefined;
+            const close = (key: number) => {
+              if (group.length === 0) return;
+              drawn.push(
+                groupMark === undefined ? (
+                  group
+                ) : (
+                  <mark key={`m${key}`} className={`fw-code-expr is-${groupMark}`}>
+                    {group}
+                  </mark>
+                ),
               );
-              from = end;
-            }
-            pieces.push(line.slice(from));
+              group = [];
+            };
+            cut(line, colours?.lines[index], parts).forEach((piece, position) => {
+              if (piece.mark !== groupMark) {
+                close(position);
+                groupMark = piece.mark;
+              }
+              const colour =
+                piece.colour === undefined
+                  ? undefined
+                  : colours?.palette[piece.colour]?.[ctx.theme === 'dark' ? 1 : 0];
+              group.push(
+                <span key={position} style={colour === undefined ? undefined : { color: colour }}>
+                  {piece.text}
+                </span>,
+              );
+            });
+            close(line.length + 1);
             return (
               <span
                 key={index}
@@ -195,7 +222,7 @@ function SourceView({
                 <span className="fw-code-number" aria-hidden="true">
                   {index + 1}
                 </span>
-                <code>{line === '' ? ' ' : pieces}</code>
+                <code>{line === '' ? ' ' : drawn}</code>
                 {here && badge !== undefined && <span className="fw-code-badge">{badge}</span>}
                 {'\n'}
               </span>
@@ -227,6 +254,16 @@ export const codePanel: PanelType<CodeContent, ElementsState> = {
     const declared = new Map(content.sources.map((source) => [source.id, source.text.split('\n')]));
     const sourceLines = new Map(declared);
     const problems: Problem[] = [];
+    const paneIndex = walkthrough.layout.panes.findIndex((item) => item.id === pane.id);
+    content.sources.forEach((source, position) => {
+      if (source.tokens === undefined || tokensMatch(source.text, source.tokens)) return;
+      problems.push({
+        severity: 'error',
+        rule: 'code/tokens-mismatch',
+        path: ['layout', 'panes', paneIndex, 'content', 'sources', position, 'tokens'],
+        message: `the colour tokens of "${source.id}" do not spell out its text: work them out again, or remove them`,
+      });
+    });
     walkthrough.steps.forEach((step, s) => {
       step.calls.forEach((call, c) => {
         writtenEffects(call, pane.id).forEach((effect, e) => {

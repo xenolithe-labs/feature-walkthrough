@@ -32,8 +32,13 @@ Write a JSON config, then:
 npx feature-walkthrough flow.json                      # check it, then show it in the browser
 npx feature-walkthrough lint flow.json                 # check only; exits 1 on errors
 npx feature-walkthrough build flow.json -o flow.html   # one self-contained HTML file
+npx feature-walkthrough highlight flow.json -o out.json # the config with syntax colours added
 npx feature-walkthrough schema                         # the JSON Schema of a config
 ```
+
+Code panes get syntax colours for any language the source names in `lang`. The colours are worked
+out by the command line and stored in the page as data, so the viewer carries no highlighter and
+stays small enough to embed anywhere. `--no-color` turns them off.
 
 If the config has problems, `lint` prints each one with its path, and the page lists them too.
 [`skills/feature-walkthrough/example.json`](skills/feature-walkthrough/example.json) is a small
@@ -94,6 +99,7 @@ pnpm build               # the viewer: one self-contained dist/viewer/index.html
 pnpm build:all           # the viewer, the library and the command line
 pnpm walkthrough <args>  # run the command line from source
 pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel reference
+pnpm colours             # regenerate the syntax colours of the bundled demos
 ```
 
 Releases and the credentials they need are described in [`docs/release.md`](docs/release.md).
