@@ -113,9 +113,10 @@ function Shell({
   const views = useMemo(() => folder.at(s, c), [folder, s, c]);
   const card = useMemo(() => buildCard(walkthrough, s, c, views), [walkthrough, s, c, views]);
   const focusId = folder.focusPane(s, c);
+  const root = useRef<HTMLDivElement | null>(null);
   // A row of steps that scrolls sideways keeps the current one in sight.
   useEffect(() => {
-    const row = document.querySelector<HTMLElement>('.fw-steps ol');
+    const row = root.current?.querySelector<HTMLElement>('.fw-steps ol');
     const here = row?.querySelector<HTMLElement>('[aria-current="step"]');
     if (row === null || row === undefined || here === null || here === undefined) return;
     if (row.scrollWidth <= row.clientWidth) return;
@@ -139,6 +140,7 @@ function Shell({
   return (
     <div
       className="fw"
+      ref={root}
       data-walkthrough={walkthrough.id}
       data-step={s + 1}
       data-call={c + 1}

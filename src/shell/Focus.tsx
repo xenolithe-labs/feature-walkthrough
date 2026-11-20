@@ -97,7 +97,8 @@ export function Focus({
     [capacity],
   );
 
-  const staged = plan.visible.filter((pane) => onStage.has(pane.id));
+  // Panels mount once, at the size they will keep: nothing is rendered until the stage is measured.
+  const staged = size.width > 0 ? plan.visible.filter((pane) => onStage.has(pane.id)) : [];
   const touchedOffStage = plan.visible.filter(
     (pane) => !onStage.has(pane.id) && (plan.activity[pane.id]?.total ?? 0) > 0,
   );

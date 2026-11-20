@@ -706,3 +706,70 @@ for (const id of [
     expect(errors).toEqual([]);
   });
 }
+
+/** Every staged pane that has a marked element shows the first one inside its frame. */
+async function expectMarkedItemsInView(page: Page): Promise<void> {
+  await page.waitForTimeout(250);
+  const hidden = await page.evaluate(() => {
+    const marked =
+      '[data-mark="added"],[data-mark="updated"],[data-mark="read"],[data-mark="removed"]';
+    const problems: string[] = [];
+    for (const pane of document.querySelectorAll<HTMLElement>('.fw-stage-pane')) {
+      const target = pane.querySelector<HTMLElement>(marked);
+      if (target === null) continue;
+      const frame = pane.querySelector<HTMLElement>('.fw-pane-body')!.getBoundingClientRect();
+      const box = target.getBoundingClientRect();
+      const overlapY = Math.min(box.bottom, frame.bottom) - Math.max(box.top, frame.top);
+      const overlapX = Math.min(box.right, frame.right) - Math.max(box.left, frame.left);
+      if (overlapY < Math.min(box.height, 8) || overlapX < Math.min(box.width, 8)) {
+        problems.push(`${pane.dataset.pane}: ${target.className}`);
+      }
+    }
+    return problems;
+  });
+  expect(hidden).toEqual([]);
+}
+
+test('focus view: the marked items of every staged pane are in view, small or large, however the pane got its size', async ({
+  page,
+}) => {
+  const links = [
+    '#w=git-commit&s=3&c=4',
+    '#w=terraform-apply&s=3&c=2',
+    '#w=bfs&s=2&c=4',
+    '#w=quicksort&s=5&c=3',
+    '#w=react-render&s=2&c=2',
+  ];
+  for (const size of [
+    { width: 1440, height: 900 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    for (const link of links) {
+      await page.goto(`/${link}&v=focus`);
+      await page.reload();
+      await expect(page.locator('.fw-stage-pane').first()).toBeVisible();
+      await expectMarkedItemsInView(page);
+    }
+  }
+
+  // A window that is resized while the reader looks: the stage steps on to the next call.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#w=git-commit&s=3&c=4&v=focus');
+  await page.reload();
+  await expect(page.locator('.fw-stage-pane')).toHaveCount(3);
+  for (const width of [1024, 390, 1440]) {
+    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowLeft');
+    await expectMarkedItemsInView(page);
+  }
+
+  // A pane the reader pins is shown at the size of its place, with its marks in view.
+  await page.goto('/#w=bfs&s=2&c=4&v=focus');
+  await page.reload();
+  const off = page.locator('.fw-rail-item[data-on-stage="false"]');
+  if ((await off.count()) > 0) await off.first().click();
+  await expectMarkedItemsInView(page);
+});

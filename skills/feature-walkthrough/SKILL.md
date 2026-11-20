@@ -188,8 +188,8 @@ changes it.
 
 The page has two views of the same walkthrough, and the reader picks one with the Grid / Focus
 control in the header. **Grid** shows every pane at once (all fixed panes and the current focus
-pane). **Focus** keeps the page one screen tall: it puts the panes the current call has effects on
-(at most three, one on a phone) on a stage, and lists every pane in a bar that says what the call
+pane). **Focus** puts the panes the current call has effects on
+(at most three, one on a phone) on a stage that fills a desktop-sized window, and lists every pane in a bar that says what the call
 does to it ("2 added · 1 read"). It needs nothing in the config; it works from the effects.
 Set `"layout": { "view": "focus", … }` to open on Focus; omit it for Grid. A reader's own choice
 and a link's `v=focus` or `v=grid` in the address override it. Because Focus follows the effects,

@@ -66,8 +66,9 @@ ordinary config. Every line number is checked against the displayed source, so a
 instead of misleading a reader. See `src/walkthroughs/algorithms/` and the skill.
 
 Two views: **Grid** shows every pane at once; **Focus** shows the panes the current call touches
-large, on a stage that never needs the page to scroll, with a bar that lists every pane and what
-the call does to it. The reader switches with the control in the header (the choice is kept per
+large, on a stage that fills a desktop-sized window (the page itself does not scroll there; on a
+phone it is about a screen and a half), with a bar that lists every pane and what the call does
+to it. The reader switches with the control in the header (the choice is kept per
 browser), a link can ask for one with `v=focus` or `v=grid`, and a config can set the default with
 `layout.view`.
 
