@@ -1,6 +1,7 @@
 ---
 name: feature-walkthrough
 description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, tree). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema, array, event bus, timeline, bytes). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -135,6 +136,20 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 | `bus`      | Events in topics, queues and buses           | channels, events, producers, consumers, cursors, rules, targets | all but events   |
 | `timeline` | Rows along a time axis: heartbeats, timeouts | rows, instants, spans, limits, `now`                            | all              |
 | `tree`     | An outline: files, DOM, accounts, an AST     | nodes                                                           | yes              |
+| Panel      | Use it for                                    | Elements                                                        | Present at start  |
+| ---------- | --------------------------------------------- | --------------------------------------------------------------- | ----------------- |
+| `sequence` | Messages between lanes over time              | lanes, calls                                                    | lanes             |
+| `graph`    | Things and relationships that build up        | nodes, edges                                                    | no                |
+| `flow`     | A flow chart that calls walk through          | nodes, edges                                                    | yes               |
+| `boxes`    | Nesting: modules, components, frames          | boxes, edges                                                    | yes               |
+| `table`    | Rows of data that calls read and change       | rows                                                            | yes               |
+| `code`     | Source text, with the lines in question       | sources                                                         | yes               |
+| `payload`  | Message and object bodies, field by field     | payloads                                                        | yes               |
+| `schema`   | Tables or types, columns and relations        | tables, columns, relations                                      | yes               |
+| `array`    | A row of cells with pointers and ranges       | cells, pointers, ranges                                         | cells             |
+| `bus`      | Events in topics, queues and buses            | channels, events, producers, consumers, cursors, rules, targets | all but events    |
+| `timeline` | Rows along a time axis: heartbeats, timeouts  | rows, instants, spans, limits, `now`                            | all               |
+| `bytes`    | Bit and byte layouts: headers, frames, tokens | frames, fields (`frame.field`), `frame.cursor`                  | fields with frame |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown. Optional content, all by call id:
@@ -267,6 +282,24 @@ kind?: run|wait|lease, state? }` and `limits` `{ id, row, after, from, reset?, u
   `by` or by the end of the span `from` names. Lint rejects an instant on an unknown row, a span
   that ends before it starts, times off the axis, and a call that touches something that has not
   happened yet at that call.
+- **`bytes`**: `frames` `{ id, title, unit, fields: [{ id, label?, short?, size?, variable?, value?,
+decoded?, link?, counts?, tone? }], width?, ascii?, separator?, length?, inside?, cursor? }`. `unit` is
+  `bits` (rows of `width`, 32 by default, with a bit ruler; each field `size` is in bits), `bytes` (rows
+  of 8 or 16 as a hex dump, `ascii: true` adds a gutter; `size` in bytes) or `segments` (text pieces
+  joined by `separator`, for a JWT or JWE; the size is the text). A field's element id is
+  `frame.field` (`tcp.syn`); a frame with a `cursor` `{ at, label }` has `frame.cursor`. `value` is a
+  number or `0x01bb` / `0b101` in a bits frame, hex pairs (`16 03 03`) in a bytes frame, the text in a
+  segments frame; `decoded` is what it means (`443`). Offsets, rows, a field that straddles a row
+  (drawn in two pieces that mark and select as one), the length and a variable field's gap are derived,
+  never written. A `variable` field has a `size` (its length here; rows past the second are a gap) or
+  none (it runs on and must be last). `length` on a frame and `counts` on a field
+  (`{ of: "body" }` or `{ of: { from, to }, per: 32 }`, for a Data Offset or a length field) are
+  checked by lint, at every call. `link` is `{ "$ref": "id", "text": "…" }`, the same as in `payload`.
+  `inside: "frame.field"` draws a frame indented under the field that carries it. `read` marks a field,
+  `update` takes `fields.value`, `decoded`, `tone` (a frame takes `title`, `sub`, `tone`; the cursor
+  `at` as an offset or `null`, `label`). Add and remove act on whole frames; fields have no presence
+  of their own. At a narrow pane the rows are halved (32 to 16 bits) so labels stay readable; a field
+  of 1 or 2 bits reads sideways, using `short` if given.
 
 ### Panes that share a slot
 
