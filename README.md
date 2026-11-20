@@ -84,6 +84,8 @@ pnpm walkthrough <args>  # run the command line from source
 pnpm schema && pnpm skill   # regenerate the JSON Schema and the skill's panel reference
 ```
 
+Releases and the credentials they need are described in [`docs/release.md`](docs/release.md).
+
 ## Layout
 
 - `src/core/` — the engine. It knows nothing about any panel or annotation (a lint rule enforces this).
