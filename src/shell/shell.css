@@ -267,6 +267,11 @@ body {
   .fw-panes[data-count='4'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* With three panes in two columns, the third takes the whole row. */
+  .fw-panes[data-count='3'] > :last-child {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: 1180px) {

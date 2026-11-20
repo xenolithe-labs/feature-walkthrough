@@ -303,3 +303,31 @@ test('the command line exits 1 and names the problem for a bad config', () => {
   expect(result.status).toBe(1);
   expect(result.stderr).toContain('package.json: error');
 });
+
+test('git demo: a link in a payload selects the same commit in the graph, and raw text can be shown', async ({
+  page,
+}) => {
+  await open(page, '#w=git-commit&s=3&c=4');
+  const commit = page.locator('.fw-payload[data-entity="4fa6696"]');
+  await expect(commit).toHaveAttribute('data-mark', 'added');
+  await expect(commit.locator('[data-path="tree"]')).toHaveAttribute('data-mark', 'added');
+
+  await commit.locator('[data-ref="fdc907b"]').click();
+  await expect(page).toHaveURL(/sel=fdc907b/);
+  await expect(page.locator('.fw-payload[data-entity="fdc907b"]')).toHaveClass(/is-selected/);
+  await expect(page.locator('.react-flow__node[data-id="fdc907b"]')).toHaveClass(/is-selected/);
+
+  await commit.getByRole('button', { name: 'cat-file -p' }).click();
+  await expect(commit.locator('.fw-payload-raw')).toContainText(
+    'parent fdc907bdce78276fddffadd756241a26270afeea',
+  );
+
+  // The model pane marks the columns this call is about and draws its relations.
+  await expect(page.locator('.fw-schema-column[data-entity="commit.parent"]')).toHaveAttribute(
+    'data-mark',
+    'read',
+  );
+  await expect(page.locator('.fw-schema-relation[data-entity="commit.parent:commit"]')).toHaveClass(
+    /is-read/,
+  );
+});

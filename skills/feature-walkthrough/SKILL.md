@@ -1,6 +1,6 @@
 ---
 name: feature-walkthrough
-description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
+description: Write, check and show feature-walkthrough configs, which are JSON files that explain a flow one call at a time across coordinated panels (sequence, graph, flow chart, nested boxes, table, code, payload, schema). Use when asked to make a walkthrough, an explainer or a step-by-step diagram of a protocol, request flow, algorithm or system, or to edit or fix a feature-walkthrough config.
 ---
 
 # feature-walkthrough
@@ -103,14 +103,16 @@ graph). Selecting it in one pane then selects it in the other.
 
 Exact shapes are in [`reference.md`](reference.md), generated from the lint schemas.
 
-| Panel      | Use it for                              | Elements     | Present at start |
-| ---------- | --------------------------------------- | ------------ | ---------------- |
-| `sequence` | Messages between lanes over time        | lanes, calls | lanes            |
-| `graph`    | Things and relationships that build up  | nodes, edges | no               |
-| `flow`     | A flow chart that calls walk through    | nodes, edges | yes              |
-| `boxes`    | Nesting: modules, components, frames    | boxes, edges | yes              |
-| `table`    | Rows of data that calls read and change | rows         | yes              |
-| `code`     | Source text, with the lines in question | sources      | yes              |
+| Panel      | Use it for                                | Elements                   | Present at start |
+| ---------- | ----------------------------------------- | -------------------------- | ---------------- |
+| `sequence` | Messages between lanes over time          | lanes, calls               | lanes            |
+| `graph`    | Things and relationships that build up    | nodes, edges               | no               |
+| `flow`     | A flow chart that calls walk through      | nodes, edges               | yes              |
+| `boxes`    | Nesting: modules, components, frames      | boxes, edges               | yes              |
+| `table`    | Rows of data that calls read and change   | rows                       | yes              |
+| `code`     | Source text, with the lines in question   | sources                    | yes              |
+| `payload`  | Message and object bodies, field by field | payloads                   | yes              |
+| `schema`   | Tables or types, columns and relations    | tables, columns, relations | yes              |
 
 - **`sequence`**: write no effects. Every call with `from` and `to` becomes an arrow on its own
   call. `content.lanes` optionally limits and orders the lanes shown.
@@ -128,6 +130,19 @@ Exact shapes are in [`reference.md`](reference.md), generated from the lint sche
 - **`code`**: `sources` `{ id, title, lang?, text }`. Mark lines with
   `{ "read": "sourceId", "lines": [3, [7, 9]] }`; line numbers start at 1 and `[7, 9]` is a range.
   Any effect on a source brings it to the front. Count the lines; lint rejects a line past the end.
+
+- **`payload`**: `payloads` `{ id, title, sub?, value, raw? }`, where `value` is any JSON. Fields
+  are addressed by dot path, with array positions as numbers: `entries.1.hash`. Mark fields with
+  `{ "read": "payloadId", "paths": ["tree", "entries.0"] }`; change them with
+  `{ "update": "payloadId", "fields": { "entries.1.hash": "new value" } }`. Paths must already
+  exist, and keys must not contain dots. A leaf written as `{ "$ref": "elementId", "text": "shown" }`
+  is a link that selects that element in every pane. `raw` (`{ label, text }`) adds a plain-text
+  view; do not combine it with `fields` updates, because the text will not change.
+- **`schema`**: `tables` `{ id, label, sub?, columns: [{ id, label?, type?, key?, note? }] }` and
+  `relations` `{ from, to, label?, id? }`. A column's element id is `table.column`, and relation
+  ends are a table id or a `table.column`. A relation without an `id` gets `from:to` (for example
+  `order.user_id:user`). A relation may point back at its own table. `key` is a short badge such
+  as `PK` or `FK`. Use `schema` for the shape of data and `table` for the rows.
 
 ### Panes that share a slot
 
@@ -148,7 +163,9 @@ on a call. See `reference.md`.
 - `label` is what happens (`POST /token`, `Mark A3 dirty`); `text` is why, and what to notice.
 - Pick panels for what changes. Use `sequence` when the story is who talks to whom, `table` when
   it is values changing, `flow` when it is a decision, `graph` when it is things being created and
-  linked. Two or three panes is usually right; five is crowded.
+  linked, `payload` when it is what a message or stored object contains, `schema` when it is how
+  types or tables relate. Two or three visible panes is usually right; put the rest in a shared
+  slot with `"role": "focus"`.
 - Declare everything in content first, then write the calls. Lint tells you about ids that do not
   exist, elements added twice and effects on elements that are not present.
 - Use made-up but realistic values, and keep them consistent from call to call.

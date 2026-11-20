@@ -1,0 +1,229 @@
+.fw-schema {
+  position: relative;
+  max-height: 520px;
+  padding: 14px 44px 14px 14px;
+  overflow: auto;
+}
+
+/* The gaps leave room for the relation lines that run between the tables. */
+.fw-schema-tables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px 52px;
+  align-items: flex-start;
+}
+
+.fw-schema-table {
+  --schema-border: var(--fw-border);
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  /* The border never changes width, so a mark cannot nudge the tables around it. */
+  border: 1.5px solid var(--schema-border);
+  border-radius: 8px;
+  background: var(--fw-surface-2);
+  overflow: hidden;
+  transition: opacity 0.15s;
+}
+
+/* Absent tables keep their place, so that nothing moves when one appears. */
+.fw-schema-table.is-absent {
+  visibility: hidden;
+}
+
+.fw-schema-table.is-faded > .fw-schema-head {
+  opacity: 0.5;
+}
+
+.fw-schema-table.is-added {
+  --schema-border: var(--fw-added);
+  box-shadow: 0 0 0 1px var(--schema-border);
+}
+
+.fw-schema-table.is-updated {
+  --schema-border: var(--fw-updated);
+  box-shadow: 0 0 0 1px var(--schema-border);
+}
+
+.fw-schema-table.is-read {
+  --schema-border: var(--fw-read);
+  box-shadow: 0 0 0 1px var(--schema-border);
+}
+
+.fw-schema-table.is-removed {
+  --schema-border: var(--fw-removed);
+  border-style: dashed;
+}
+
+.fw-schema-table[data-tone='warn']:not(.is-added, .is-updated, .is-read, .is-removed) {
+  --schema-border: var(--fw-warn);
+  border-style: dashed;
+}
+
+.fw-schema-table[data-tone='good']:not(.is-added, .is-updated, .is-read, .is-removed) {
+  --schema-border: var(--fw-good);
+}
+
+.fw-schema-table[data-tone='muted'] {
+  border-style: dotted;
+}
+
+.fw-schema-table.is-selected {
+  outline: 3px solid var(--fw-select);
+  outline-offset: 1px;
+}
+
+.fw-schema-head,
+.fw-schema-column {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fw-schema-head {
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--fw-border);
+  background: color-mix(in srgb, var(--fw-border) 35%, transparent);
+}
+
+.fw-schema-label {
+  font: 600 12.5px var(--fw-mono);
+}
+
+.fw-schema-sub {
+  color: var(--fw-muted);
+  font-size: 11.5px;
+}
+
+.fw-schema-column {
+  padding: 2px 10px 2px 7px;
+  /* The mark is a bar on the left that is always there, so marking moves nothing. */
+  border-left: 3px solid transparent;
+  font: 12px/20px var(--fw-mono);
+  white-space: nowrap;
+}
+
+.fw-schema-column:last-child {
+  padding-bottom: 4px;
+}
+
+.fw-schema-key {
+  flex: none;
+  width: 2.2em;
+  color: var(--fw-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.fw-schema-type {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--fw-muted);
+}
+
+.fw-schema-note {
+  color: var(--fw-muted);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.fw-schema-column.is-faded {
+  opacity: 0.5;
+}
+
+.fw-schema-column.is-added {
+  border-left-color: var(--fw-added);
+  background: var(--fw-added-bg);
+}
+
+.fw-schema-column.is-updated {
+  border-left-color: var(--fw-updated);
+  background: var(--fw-updated-bg);
+  font-weight: 600;
+}
+
+.fw-schema-column.is-read {
+  border-left-color: var(--fw-read);
+  background: var(--fw-read-bg);
+}
+
+.fw-schema-column.is-removed {
+  border-left-color: var(--fw-removed);
+  background: var(--fw-removed-bg);
+  text-decoration: line-through;
+}
+
+.fw-schema-column.is-selected {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--fw-select);
+}
+
+.fw-schema-relations {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--fw-muted);
+}
+
+.fw-schema-relation path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+
+.fw-schema-relation polygon {
+  fill: currentColor;
+}
+
+.fw-schema-relation text {
+  fill: currentColor;
+  font:
+    11px system-ui,
+    sans-serif;
+  paint-order: stroke;
+  stroke: var(--fw-surface);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.fw-schema-relation.is-faded {
+  opacity: 0.4;
+}
+
+.fw-schema-relation.is-added {
+  color: var(--fw-added);
+}
+
+.fw-schema-relation.is-read {
+  color: var(--fw-read);
+}
+
+.fw-schema-relation.is-updated {
+  color: var(--fw-updated);
+}
+
+.fw-schema-relation.is-removed {
+  color: var(--fw-removed);
+}
+
+.fw-schema-relation.is-selected {
+  color: var(--fw-select);
+}
+
+.fw-schema-relation.is-added path,
+.fw-schema-relation.is-read path,
+.fw-schema-relation.is-updated path,
+.fw-schema-relation.is-selected path {
+  stroke-width: 2.5;
+}

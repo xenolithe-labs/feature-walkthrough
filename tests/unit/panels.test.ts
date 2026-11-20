@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createFolder, formatPath, loadConfig, type ElementsState } from '../../src/core';
 import { estimateSize, layout, pinned } from '../../src/panels/_diagram/layout';
+import { hasPath, patched, setPath } from '../../src/panels/payload/paths';
 import { createRegistry } from '../../src/registry';
 
 function base() {
@@ -348,5 +349,30 @@ describe('table, boxes and code panels', () => {
         walkthrough([{ ...pane, content: { ...pane.content, edges: [{ from: 'a', to: 'zz' }] } }]),
       ),
     ).toEqual(['flow/unknown-node']);
+  });
+});
+
+describe('payload paths', () => {
+  const value = { tree: 'a', entries: [{ hash: 'x', name: 'f' }, { hash: 'y' }] };
+
+  it('finds members of objects and arrays, and nothing past a leaf', () => {
+    expect(hasPath(value, 'tree')).toBe(true);
+    expect(hasPath(value, 'entries.1.hash')).toBe(true);
+    expect(hasPath(value, 'entries.2')).toBe(false);
+    expect(hasPath(value, 'tree.more')).toBe(false);
+    expect(hasPath({ link: { $ref: 'x' } }, 'link.$ref')).toBe(false);
+  });
+
+  it('replaces one member and leaves the original alone', () => {
+    const next = setPath(value, 'entries.1.hash', 'z');
+    expect(next).toEqual({ tree: 'a', entries: [{ hash: 'x', name: 'f' }, { hash: 'z' }] });
+    expect(value.entries[1]!.hash).toBe('y');
+  });
+
+  it('applies patches in the order they were made and skips the tone', () => {
+    expect(patched(value, { tree: 'b', tone: 'warn', 'entries.0.name': 'g' })).toEqual({
+      tree: 'b',
+      entries: [{ hash: 'x', name: 'g' }, { hash: 'y' }],
+    });
   });
 });

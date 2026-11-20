@@ -4,6 +4,8 @@ import { boxesPanel } from './panels/boxes';
 import { codePanel } from './panels/code';
 import { flowPanel } from './panels/flow';
 import { graphPanel } from './panels/graph';
+import { payloadPanel } from './panels/payload';
+import { schemaPanel } from './panels/schema';
 import { sequencePanel } from './panels/sequence';
 import { tablePanel } from './panels/table';
 
@@ -19,5 +21,7 @@ export function createRegistry(): Registry {
     .registerPanel(boxesPanel)
     .registerPanel(tablePanel)
     .registerPanel(codePanel)
+    .registerPanel(payloadPanel)
+    .registerPanel(schemaPanel)
     .registerAnnotation(statusAnnotation);
 }
