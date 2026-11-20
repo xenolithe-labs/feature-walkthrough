@@ -66,6 +66,10 @@ agent the config, each panel's shapes and the write, lint, fix, show loop. Copy 
 your agent's skills directory (for Claude Code, `.claude/skills/`). It also ships in the npm
 package.
 
+[`skills/walkthrough-design/`](skills/walkthrough-design/SKILL.md) is a second skill, for the design
+before the config: who the reader is, what to leave out, which views to use, how to cut the flow
+into calls and how to test the result. It has no syntax in it; its research is in `sources.md`.
+
 ### Explaining an algorithm
 
 Do not write the steps of a loop by hand. Run the algorithm with a `Recorder`
